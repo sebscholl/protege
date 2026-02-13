@@ -1,0 +1,27 @@
+{
+  "request": {
+    "method": "POST",
+    "pathPattern": "^/v1/chat/completions$"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "id": "chatcmpl_fixture_200",
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "Fixture response"
+          }
+        }
+      ]
+    }
+  },
+  "meta": {
+    "service": "openai",
+    "name": "chat completions success"
+  }
+}

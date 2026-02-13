@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@engine/*": ["engine/*"],
+      "@extensions/*": ["extensions/*"],
+      "@config/*": ["config/*"],
+      "@memory/*": ["memory/*"],
+      "@tests/*": ["tests/*"]
+    },
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["engine", "extensions", "tests", "vitest.config.ts"]
+}
