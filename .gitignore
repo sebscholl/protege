@@ -2,6 +2,18 @@ node_modules/
 dist/
 coverage/
 *.log
+*.pid
 .env
 .DS_Store
 .vscode/
+scratchpad.md
+tmp/
+
+# Runtime memory artifacts (keep directory docs tracked)
+memory/**
+!memory/
+!memory/README.md
+!memory/attachments/
+!memory/attachments/README.md
+!memory/logs/
+!memory/logs/README.md
