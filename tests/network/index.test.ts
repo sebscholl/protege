@@ -36,8 +36,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 describe('network fixture helpers', () => {
-  it('resolves fixture paths under tests/network/fixtures', () => {
-    expect(fixturePath.endsWith('tests/network/fixtures/openai/chat-completions/200.json')).toBe(true);
+  it('resolves fixture paths under tests/fixtures/api', () => {
+    expect(fixturePath.endsWith('tests/fixtures/api/openai/chat-completions/200.json')).toBe(true);
   });
 
   it('loads fixtures with request metadata', () => {

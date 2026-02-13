@@ -1,0 +1,19 @@
+From: sender@example.com
+To: protege@localhost
+Cc: teammate@example.com
+Subject: Gateway Test
+Message-ID: <fixture-message@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="sep"
+
+--sep
+Content-Type: text/plain; charset=utf-8
+
+hello gateway
+--sep
+Content-Type: application/json; name="payload.json"
+Content-Disposition: attachment; filename="payload.json"
+Content-Transfer-Encoding: base64
+
+eyJrZXkiOiAidmFsdWUifQ==
+--sep--

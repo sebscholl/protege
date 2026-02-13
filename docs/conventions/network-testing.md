@@ -7,21 +7,24 @@ Network test utilities live under `tests/network/`.
 Required structure:
 
 1. `tests/network/index.ts` exports shared MSW helper APIs.
-2. `tests/network/fixtures/` stores fixture definitions.
+2. `tests/fixtures/api/` stores API fixture definitions.
+3. `tests/fixtures/email/` stores MIME email fixtures (`.eml`).
 3. Fixture namespace format is:
-   - `tests/network/fixtures/{service}/{endpoint}/{code}.json`
+   - `tests/fixtures/api/{service}/{endpoint}/{code}.json`
 
 Example:
 
-- `tests/network/fixtures/openai/chat-completions/200.json`
-- `tests/network/fixtures/openai/chat-completions/429.json`
-- `tests/network/fixtures/anthropic/messages/200.json`
+- `tests/fixtures/api/openai/chat-completions/200.json`
+- `tests/fixtures/api/openai/chat-completions/429.json`
+- `tests/fixtures/api/anthropic/messages/200.json`
+- `tests/fixtures/email/email-plain.eml`
+- `tests/fixtures/email/email-with-attachment.eml`
 
 ## Fixture-Driven Interception
 
 Tests should declare fixture keys, not request details.
 
-1. Tests reference fixtures by key relative to `tests/network/fixtures/`.
+1. Tests reference API fixtures by key relative to `tests/fixtures/api/`.
 2. Fixture files define request matching (method/path).
 3. Fixture files define response payload and metadata.
 4. MSW helpers load fixtures and register handlers from fixture metadata.

@@ -9,7 +9,7 @@ import { http, HttpResponse } from 'msw';
 
 import { networkServer } from '@tests/network/server';
 
-const FIXTURE_ROOT = join(process.cwd(), 'tests', 'network', 'fixtures');
+const FIXTURE_ROOT = join(process.cwd(), 'tests', 'fixtures', 'api');
 type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[];
 
 /**

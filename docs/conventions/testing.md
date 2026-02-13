@@ -26,7 +26,7 @@
 ## Network Interception Rules
 
 1. Use `MSW` for network interception.
-2. Network calls MUST be intercepted with explicit fixture-backed handlers from `tests/network/fixtures/`.
+2. Network calls MUST be intercepted with explicit fixture-backed handlers from `tests/fixtures/api/`.
 3. Fixtures MUST cover both success and error paths when behavior differs.
 4. Tests SHOULD declare handlers in setup using shared helper utilities exported by `tests/network/index.ts`.
 5. Intercept helpers MAY support per-test payload overrides (for example `merge` semantics) while preserving fixture defaults.

@@ -8,17 +8,30 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts",
-    "format": "prettier --check ."
+    "format": "prettier --check .",
+    "gateway:start": "tsx engine/cli/index.ts gateway start",
+    "gateway:start:dev": "tsx engine/cli/index.ts gateway start --dev",
+    "gateway:stop": "tsx engine/cli/index.ts gateway stop",
+    "gateway:restart": "tsx engine/cli/index.ts gateway restart"
   },
   "devDependencies": {
+    "@types/mailparser": "^3.4.6",
     "@types/node": "^22.13.1",
+    "@types/nodemailer": "^7.0.9",
+    "@types/smtp-server": "^3.5.12",
     "@typescript-eslint/eslint-plugin": "^8.24.1",
     "@typescript-eslint/parser": "^8.24.1",
     "eslint": "^9.20.1",
     "msw": "^2.7.3",
     "prettier": "^3.5.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.3",
     "vite": "^6.2.0",
     "vitest": "^3.0.7"
+  },
+  "dependencies": {
+    "mailparser": "^3.9.3",
+    "nodemailer": "^8.0.1",
+    "smtp-server": "^3.18.1"
   }
 }
