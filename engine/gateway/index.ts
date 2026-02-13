@@ -8,6 +8,7 @@ import { sendGatewayReply } from '@engine/gateway/outbound';
 import { buildReplySubject } from '@engine/gateway/threading';
 
 import { createOutboundTransport } from './outbound';
+import type { AttachmentLimits } from './inbound';
 
 /**
  * Represents one gateway runtime mode.
@@ -23,6 +24,7 @@ export type GatewayRuntimeConfig = {
   port: number;
   logsDirPath: string;
   attachmentsDirPath: string;
+  attachmentLimits?: Partial<AttachmentLimits>;
   transport?: GatewayTransportConfig;
   defaultFromAddress: string;
 };
@@ -47,6 +49,7 @@ export async function startGatewayRuntime(
       dev: args.config.mode === 'dev',
       logsDirPath: args.config.logsDirPath,
       attachmentsDirPath: args.config.attachmentsDirPath,
+      attachmentLimits: args.config.attachmentLimits,
       logger,
       onMessage: async ({ message }): Promise<void> => {
         await handleInboundForRuntime({

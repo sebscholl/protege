@@ -32,8 +32,18 @@ export type GatewayInboundConfig = {
   dev: boolean;
   logsDirPath: string;
   attachmentsDirPath: string;
+  attachmentLimits?: Partial<AttachmentLimits>;
   logger: GatewayLogger;
   onMessage: InboundMessageHandler;
+};
+
+/**
+ * Represents configurable attachment limit thresholds for inbound processing.
+ */
+export type AttachmentLimits = {
+  maxAttachmentBytes: number;
+  maxAttachmentsPerMessage: number;
+  maxTotalAttachmentBytes: number;
 };
 
 /**
@@ -114,6 +124,7 @@ export async function handleInboundData(
     attachmentsDirPath: args.config.attachmentsDirPath,
     messageId,
     parsedMail,
+    limits: resolveAttachmentLimits({ input: args.config.attachmentLimits }),
   });
 
   args.config.logger.info({
@@ -191,6 +202,7 @@ export function persistAttachments(
     attachmentsDirPath: string;
     messageId: string;
     parsedMail: ParsedMail;
+    limits: AttachmentLimits;
   },
 ): InboundAttachment[] {
   const attachmentDirPath = join(
@@ -198,6 +210,11 @@ export function persistAttachments(
     sanitizeMessageIdForPath({ messageId: args.messageId }),
   );
   mkdirSync(attachmentDirPath, { recursive: true });
+
+  assertAttachmentLimits({
+    attachments: args.parsedMail.attachments,
+    limits: args.limits,
+  });
 
   return args.parsedMail.attachments.map((attachment, index) => {
     const fallbackName = `attachment-${index + 1}.bin`;
@@ -214,6 +231,47 @@ export function persistAttachments(
       checksum: createHash('sha256').update(attachment.content).digest('hex'),
     };
   });
+}
+
+/**
+ * Resolves effective attachment limits using defaults when values are absent.
+ */
+export function resolveAttachmentLimits(
+  args: {
+    input?: Partial<AttachmentLimits>;
+  },
+): AttachmentLimits {
+  return {
+    maxAttachmentBytes: args.input?.maxAttachmentBytes ?? 10 * 1024 * 1024,
+    maxAttachmentsPerMessage: args.input?.maxAttachmentsPerMessage ?? 10,
+    maxTotalAttachmentBytes: args.input?.maxTotalAttachmentBytes ?? 25 * 1024 * 1024,
+  };
+}
+
+/**
+ * Validates attachment count and size constraints before persisting files.
+ */
+export function assertAttachmentLimits(
+  args: {
+    attachments: ParsedMail['attachments'];
+    limits: AttachmentLimits;
+  },
+): void {
+  if (args.attachments.length > args.limits.maxAttachmentsPerMessage) {
+    throw new Error('Attachment count exceeds configured maxAttachmentsPerMessage.');
+  }
+
+  const totalBytes = args.attachments.reduce((sum, attachment) => sum + attachment.size, 0);
+  if (totalBytes > args.limits.maxTotalAttachmentBytes) {
+    throw new Error('Attachment size exceeds configured maxTotalAttachmentBytes.');
+  }
+
+  const oversizedAttachment = args.attachments.find(
+    (attachment) => attachment.size > args.limits.maxAttachmentBytes,
+  );
+  if (oversizedAttachment) {
+    throw new Error('Attachment size exceeds configured maxAttachmentBytes.');
+  }
 }
 
 /**

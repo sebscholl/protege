@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { handleInboundData } from '@engine/gateway/inbound';
 import { createFixtureSession, createFixtureStream } from '@tests/helpers/email-fixtures';
+import { createInboundTestConfig } from '@tests/helpers/gateway-inbound';
 
 let tempRootPath = '';
 let logsDirPath = '';
@@ -22,20 +23,13 @@ beforeAll(async (): Promise<void> => {
   await handleInboundData({
     stream: createFixtureStream({ fixtureFileName: 'email-with-attachment.eml' }),
     session: createFixtureSession(),
-    config: {
-      host: '127.0.0.1',
-      port: 2525,
-      dev: true,
+    config: createInboundTestConfig({
       logsDirPath,
       attachmentsDirPath,
-      logger: {
-        info: (): void => undefined,
-        error: (): void => undefined,
-      },
       onMessage: async ({ message }): Promise<void> => {
         capturedMessage = message;
       },
-    },
+    }),
   });
 });
 

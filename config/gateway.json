@@ -4,5 +4,10 @@
   "port": 2525,
   "logsDirPath": "memory/logs",
   "attachmentsDirPath": "memory/attachments",
+  "attachmentLimits": {
+    "maxAttachmentBytes": 10485760,
+    "maxAttachmentsPerMessage": 10,
+    "maxTotalAttachmentBytes": 26214400
+  },
   "defaultFromAddress": "protege@localhost"
 }

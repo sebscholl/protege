@@ -27,6 +27,10 @@ Milestone 1 is successful when Protege can:
    - `protege gateway restart`
 4. If inbound `Message-ID` is missing, generate a synthetic ID and treat it as canonical for threading.
 5. Persist inbound attachments in `memory/attachments/`.
+6. Enforce configurable attachment limits from `config/gateway.json`:
+   - `maxAttachmentBytes`
+   - `maxAttachmentsPerMessage`
+   - `maxTotalAttachmentBytes`
 
 ## 3. Outbound Test Strategy (Given ISP Port Constraint)
 
@@ -160,8 +164,12 @@ Notes:
    - log error + raw MIME reference
    - do not crash process
 2. Attachment write failure:
-   - log error + continue if core message parse succeeds
-3. Outbound send failure:
+   - reject inbound message processing and do not dispatch `onMessage`
+   - emit error details for operator visibility
+3. Attachment limit violation:
+   - reject inbound message processing and do not dispatch `onMessage`
+   - include reason (`count`, `per-file`, or `total-size`) in error output
+4. Outbound send failure:
    - retry up to 3 attempts with exponential backoff
    - emit terminal error event after max retries
 

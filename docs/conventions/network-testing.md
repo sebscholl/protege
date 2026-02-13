@@ -9,7 +9,7 @@ Required structure:
 1. `tests/network/index.ts` exports shared MSW helper APIs.
 2. `tests/fixtures/api/` stores API fixture definitions.
 3. `tests/fixtures/email/` stores MIME email fixtures (`.eml`).
-3. Fixture namespace format is:
+4. Fixture namespace format is:
    - `tests/fixtures/api/{service}/{endpoint}/{code}.json`
 
 Example:
