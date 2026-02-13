@@ -1,9 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { readGatewayRuntimeConfig, resolveDefaultGatewayConfigPath, startGatewayRuntime } from '@engine/gateway/index';
 
-const PID_FILE_PATH = join(process.cwd(), 'memory', 'gateway.pid');
+const PID_FILE_PATH = join(process.cwd(), 'tmp', 'gateway.pid');
 
 /**
  * Runs the Protege CLI argument parser and dispatches known commands.
@@ -58,7 +59,7 @@ export async function startGatewayCommand(
       }
     : baseConfig;
 
-  mkdirSync(join(process.cwd(), 'memory'), { recursive: true });
+  mkdirSync(join(process.cwd(), 'tmp'), { recursive: true });
   writeFileSync(PID_FILE_PATH, String(process.pid));
 
   await startGatewayRuntime({
@@ -96,4 +97,17 @@ async function runProcessCli(): Promise<void> {
   });
 }
 
-void runProcessCli();
+/**
+ * Returns true when this module is executing as the direct process entrypoint.
+ */
+export function isCliEntrypoint(): boolean {
+  if (!process.argv[1]) {
+    return false;
+  }
+
+  return fileURLToPath(import.meta.url) === process.argv[1];
+}
+
+if (isCliEntrypoint()) {
+  void runProcessCli();
+}
