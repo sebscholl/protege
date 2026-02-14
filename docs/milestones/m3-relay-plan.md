@@ -1,6 +1,6 @@
 # Milestone 3 Plan: Relay-First Reachability
 
-Status: Active (M3.1-M3.4 complete; M3.5 next)  
+Status: Complete  
 Scope: Optional external relay service + Protege relay client integration  
 Boundary: Relay is external to Protege core runtime and not required for local/direct mode.
 
@@ -140,6 +140,8 @@ Status: Complete
 
 ## M3.6 Bootstrap CLI Flow
 
+Status: Complete
+
 ### Tasks
 
 1. Add CLI flow to register persona with relay.
@@ -160,6 +162,8 @@ Status: Complete
 3. `tests/engine/cli/relay-bootstrap.test.ts`
 
 ## M3.7 End-to-End Relay Smoke
+
+Status: Complete
 
 ### Tasks
 

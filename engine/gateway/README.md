@@ -32,3 +32,12 @@ Responsible for SMTP parsing/sending and relay tunneling behavior.
 2. Relay client startup is now wired behind `config.gateway.relay.enabled` and starts one client per known persona.
 3. Inbound relay tunnel frames are assembled and ingested into shared gateway inbound processing.
 4. Outbound `email.send` now supports relay fallback when SMTP transport is not configured.
+5. Gateway and harness logs now propagate a shared `correlationId` per inbound message across receive, persistence, inference, tool calls, and runtime actions.
+6. Relay lifecycle logging includes per-persona `gateway.relay.client_starting`, `gateway.relay.authenticated`, `gateway.relay.disconnected`, and `gateway.relay.control_message` events.
+
+## Config Validation
+
+1. `config/gateway.json` is now fail-fast validated at startup.
+2. Required top-level fields: `mode`, `host`, `port`, `defaultFromAddress`.
+3. `relay` is optional, but when present must include valid websocket URL (`ws://` or `wss://`) plus positive integer timing fields.
+4. Invalid config now exits early with explicit field-level errors.

@@ -4,6 +4,7 @@ import { generateKeyPairSync, sign } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 
 import { base32Encode, extractEd25519RawPublicKey } from '@relay/src/crypto';
+import { readPositiveIntOrFallback } from '@relay/scripts/number';
 
 /**
  * Represents one normalized manual relay websocket auth test configuration.
@@ -50,10 +51,12 @@ export function resolveRelayWsManualTestConfig(
   },
 ): RelayWsManualTestConfig {
   const url = args.argv[2] ?? 'ws://127.0.0.1:8080/ws';
-  const timeoutRaw = Number.parseInt(args.argv[3] ?? '10000', 10);
   return {
     url,
-    timeoutMs: Number.isFinite(timeoutRaw) && timeoutRaw > 0 ? timeoutRaw : 10000,
+    timeoutMs: readPositiveIntOrFallback({
+      raw: args.argv[3],
+      fallback: 10000,
+    }),
   };
 }
 

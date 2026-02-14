@@ -2,6 +2,7 @@ import { pathToFileURL } from 'node:url';
 
 import { parseRelayTunnelFrame } from '@relay/src/tunnel';
 import { buildRelayPublicKeyBase32, relayWsMessageDataToText } from '@relay/scripts/manual-ws-auth-test';
+import { readPositiveIntOrFallback } from '@relay/scripts/number';
 
 import { generateKeyPairSync, sign } from 'node:crypto';
 
@@ -22,10 +23,12 @@ export function resolveRelayWsInboxConfig(
   },
 ): RelayWsInboxConfig {
   const url = args.argv[2] ?? 'ws://127.0.0.1:8080/ws';
-  const listenMsRaw = Number.parseInt(args.argv[3] ?? '30000', 10);
   return {
     url,
-    listenMs: Number.isFinite(listenMsRaw) && listenMsRaw > 0 ? listenMsRaw : 30000,
+    listenMs: readPositiveIntOrFallback({
+      raw: args.argv[3],
+      fallback: 30000,
+    }),
   };
 }
 

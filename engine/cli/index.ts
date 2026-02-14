@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { readGatewayRuntimeConfig, resolveDefaultGatewayConfigPath, startGatewayRuntime } from '@engine/gateway/index';
+import { parseRelayBootstrapArgs, runRelayBootstrap } from '@engine/cli/relay-bootstrap';
 import {
   createPersona,
   deletePersona,
@@ -36,7 +37,12 @@ export async function runCli(
     return;
   }
 
-  throw new Error('Usage: protege <gateway|persona> ...');
+  if (area === 'relay') {
+    runRelayCli({ argv: rest });
+    return;
+  }
+
+  throw new Error('Usage: protege <gateway|persona|relay> ...');
 }
 
 /**
@@ -136,6 +142,33 @@ export function runPersonaCli(
 }
 
 /**
+ * Dispatches relay-specific CLI commands.
+ */
+export function runRelayCli(
+  args: {
+    argv: string[];
+  },
+): void {
+  const [action, ...rest] = args.argv;
+  if (!action) {
+    throw new Error('Usage: protege relay <bootstrap> [options]');
+  }
+
+  if (action === 'bootstrap') {
+    const bootstrapArgs = parseRelayBootstrapArgs({
+      argv: rest,
+    });
+    const result = runRelayBootstrap({
+      bootstrapArgs,
+    });
+    writeCliJson({ value: result });
+    return;
+  }
+
+  throw new Error('Usage: protege relay <bootstrap> [options]');
+}
+
+/**
  * Parses persona create CLI flags from a small argv segment.
  */
 export function parsePersonaCreateArgs(
@@ -173,7 +206,7 @@ export function parsePersonaCreateArgs(
  */
 export function writeCliJson(
   args: {
-    value: PersonaMetadata | PersonaMetadata[] | Record<string, string>;
+    value: PersonaMetadata | PersonaMetadata[] | Record<string, unknown>;
   },
 ): void {
   process.stdout.write(`${JSON.stringify(args.value)}\n`);

@@ -1,21 +1,12 @@
-import type { KeyObject } from 'node:crypto';
-
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { base32Encode, extractEd25519RawPublicKey } from '@relay/src/crypto';
 import { createRelaySessionRegistry, readRelaySessionByPublicKey } from '@relay/src/session-registry';
 import { createRelayStore, readRelayChallenge } from '@relay/src/storage';
 import { createRelaySmtpChunkFrame } from '@relay/src/tunnel';
 import { attachRelayWsConnection, toRelayWsMessageJson } from '@relay/src/ws-connection';
-
-type TestSocket = {
-  sent: Array<string | Buffer>;
-  closedCode: number;
-  closedReason: string;
-  emitMessage: (payload: unknown) => void;
-  emitClose: () => void;
-};
+import { toPublicKeyBase32 } from '@tests/helpers/relay-crypto';
+import { createRelayWsSocketDouble } from '@tests/helpers/relay-socket-doubles';
 
 let jsonFromString = '';
 let jsonFromBuffer = '';
@@ -37,93 +28,6 @@ let outboundTunnelPayload = '';
 let invalidTunnelFrameCode = '';
 let invalidTunnelFrameCloseCode = -1;
 let invalidTunnelFrameCloseReason = '';
-
-/**
- * Converts one ed25519 public key object into lowercase base32 identity text.
- */
-function toPublicKeyBase32(
-  args: {
-    publicKey: KeyObject;
-  },
-): string {
-  const der = args.publicKey.export({
-    type: 'spki',
-    format: 'der',
-  }) as Buffer;
-  const raw = extractEd25519RawPublicKey({
-    spkiDer: der,
-  });
-  return base32Encode({
-    value: raw,
-  });
-}
-
-/**
- * Creates one websocket-like test double with controllable event emission.
- */
-function createTestSocket(): TestSocket & {
-  ws: {
-    send: (payload: string | Buffer) => void;
-    close: (
-      code: number,
-      reason: string,
-    ) => void;
-    on: (
-      event: 'message' | 'close',
-      listener: (payload?: unknown) => void,
-    ) => void;
-  };
-} {
-  const listeners: Record<string, ((payload?: unknown) => void)[]> = {
-    message: [],
-    close: [],
-  };
-  const state = {
-    sent: [] as Array<string | Buffer>,
-    closedCode: -1,
-    closedReason: '',
-  };
-
-  return {
-    get sent(): Array<string | Buffer> {
-      return state.sent;
-    },
-    get closedCode(): number {
-      return state.closedCode;
-    },
-    get closedReason(): string {
-      return state.closedReason;
-    },
-    ws: {
-      send: (payload: string | Buffer): void => {
-        state.sent.push(payload);
-      },
-      close: (
-        code: number,
-        reason: string,
-      ): void => {
-        state.closedCode = code;
-        state.closedReason = reason;
-      },
-      on: (
-        event: 'message' | 'close',
-        listener: (payload?: unknown) => void,
-      ): void => {
-        listeners[event].push(listener);
-      },
-    },
-    emitMessage: (payload: unknown): void => {
-      for (const listener of listeners.message) {
-        listener(payload);
-      }
-    },
-    emitClose: (): void => {
-      for (const listener of listeners.close) {
-        listener();
-      }
-    },
-  };
-}
 
 beforeAll((): void => {
   jsonFromString = toRelayWsMessageJson({
@@ -149,7 +53,7 @@ beforeAll((): void => {
     store: createRelayStore(),
     registry: createRelaySessionRegistry(),
   };
-  const invalidSocket = createTestSocket();
+  const invalidSocket = createRelayWsSocketDouble();
   attachRelayWsConnection({
     ws: invalidSocket.ws,
     runtime: invalidRuntime,
@@ -186,7 +90,7 @@ beforeAll((): void => {
       outboundTunnelPayload = args.frame.chunk?.toString('utf8') ?? '';
     },
   };
-  const socket = createTestSocket();
+  const socket = createRelayWsSocketDouble();
   attachRelayWsConnection({
     ws: socket.ws,
     runtime,
@@ -230,7 +134,7 @@ beforeAll((): void => {
     chunk: Buffer.from('outbound test', 'utf8'),
   }));
 
-  const invalidTunnelSocket = createTestSocket();
+  const invalidTunnelSocket = createRelayWsSocketDouble();
   const invalidTunnelStore = createRelayStore();
   const invalidTunnelRegistry = createRelaySessionRegistry();
   attachRelayWsConnection({

@@ -1,5 +1,5 @@
 {
-  "mode": "dev",
+  "mode": "default",
   "host": "127.0.0.1",
   "port": 2525,
   "attachmentLimits": {
@@ -7,5 +7,12 @@
     "maxAttachmentsPerMessage": 10,
     "maxTotalAttachmentBytes": 26214400
   },
-  "defaultFromAddress": "protege@localhost"
+  "defaultFromAddress": "protege@localhost",
+  "relay": {
+    "enabled": true,
+    "relayWsUrl": "wss://relay.protege.bot/ws",
+    "reconnectBaseDelayMs": 250,
+    "reconnectMaxDelayMs": 8000,
+    "heartbeatTimeoutMs": 30000
+  }
 }

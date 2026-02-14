@@ -14,3 +14,4 @@ Key runtime modules:
 4. `smtp-server.ts`: SMTP ingress server and stream handler.
 5. `smtp-ingress.ts`: recipient/session routing for inbound SMTP streams.
 6. `tunnel.ts`: binary SMTP-over-WS tunnel frame encoding/decoding.
+7. `outbound.ts`: outbound tunnel stream assembly and SMTP egress delivery.

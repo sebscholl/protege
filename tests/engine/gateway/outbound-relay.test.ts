@@ -18,6 +18,8 @@ let relayedChunkPayloadHasBody = false;
 let relayedMessageIdLength = 0;
 let chunkCount = 0;
 let invalidChunkSizeThrows = false;
+let retrySucceededAfterTransientFailure = false;
+let retryAttemptCount = 0;
 
 beforeAll(async (): Promise<void> => {
   envelopeRecipientCount = deriveEnvelopeRecipients({
@@ -103,6 +105,46 @@ beforeAll(async (): Promise<void> => {
   } catch {
     invalidChunkSizeThrows = true;
   }
+
+  const retryFrames: Buffer[] = [];
+  let firstAttempt = true;
+  await sendGatewayReplyViaRelay({
+    relayClient: {
+      stop: (): void => undefined,
+      sendTextMessage: (): void => undefined,
+      sendBinaryFrame: (args): void => {
+        retryAttemptCount += 1;
+        if (firstAttempt) {
+          firstAttempt = false;
+          throw new Error('relay backpressure simulated');
+        }
+
+        retryFrames.push(args.frame);
+      },
+      readStatus: (): { connected: boolean; authenticated: boolean; reconnectAttempt: number } => ({
+        connected: true,
+        authenticated: true,
+        reconnectAttempt: 0,
+      }),
+    },
+    logger: {
+      info: (): void => undefined,
+      error: (): void => undefined,
+    },
+    request: {
+      to: [{ address: 'receiver@example.com' }],
+      from: { address: 'persona@example.com' },
+      subject: 'Relay Retry Test',
+      text: 'relay retry body',
+      inReplyTo: '<inbound@example.com>',
+      references: ['<root@example.com>'],
+    },
+    retryPolicy: {
+      maxAttempts: 2,
+      baseDelayMs: 1,
+    },
+  });
+  retrySucceededAfterTransientFailure = retryFrames.length > 0;
 });
 
 describe('gateway outbound relay helpers', () => {
@@ -144,5 +186,13 @@ describe('gateway outbound relay helpers', () => {
 
   it('throws when chunk size is zero or negative', () => {
     expect(invalidChunkSizeThrows).toBe(true);
+  });
+
+  it('retries relay sends after transient frame send failures', () => {
+    expect(retrySucceededAfterTransientFailure).toBe(true);
+  });
+
+  it('attempts relay frame sends multiple times when retry policy allows', () => {
+    expect(retryAttemptCount > 1).toBe(true);
   });
 });

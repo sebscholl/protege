@@ -25,6 +25,7 @@ type ManualSocket = {
   emitOpen(): void;
   emitTextMessage(data: string): void;
   emitBinaryMessage(data: Buffer): void;
+  emitBlobMessage(data: Blob): void;
   emitClose(code?: number, reason?: string): void;
 };
 
@@ -39,6 +40,33 @@ let reconnectDelayCaptured = 0;
 let heartbeatCloseCode = 0;
 let binaryDeliveredAfterAuth = false;
 let binaryIgnoredBeforeAuth = true;
+let blobDeliveredAfterAuth = false;
+let binaryMessageCount = 0;
+let bufferControlMessageAccepted = false;
+
+/**
+ * Waits until one predicate returns true or throws after one bounded timeout.
+ */
+async function waitForCondition(
+  args: {
+    timeoutMs: number;
+    intervalMs: number;
+    predicate: () => boolean;
+  },
+): Promise<void> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt <= args.timeoutMs) {
+    if (args.predicate()) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, args.intervalMs);
+    });
+  }
+
+  throw new Error('Timed out waiting for relay client test condition.');
+}
 
 /**
  * Creates one manual clock with inspectable timeout scheduling.
@@ -116,6 +144,9 @@ function createManualSocket(): ManualSocket {
     emitBinaryMessage(data: Buffer): void {
       state.onmessage?.({ data });
     },
+    emitBlobMessage(data: Blob): void {
+      state.onmessage?.({ data });
+    },
     emitClose(code?: number, reason?: string): void {
       state.onclose?.({ code, reason });
     },
@@ -146,7 +177,7 @@ function createManualSocket(): ManualSocket {
   };
 }
 
-beforeAll((): void => {
+beforeAll(async (): Promise<void> => {
   reconnectDelayAttemptOne = resolveReconnectDelayMs({
     reconnectAttempt: 1,
     baseDelayMs: 100,
@@ -195,7 +226,9 @@ beforeAll((): void => {
         reconnectDelayCaptured = args.reconnectDelayMs;
       },
       onBinaryMessage: (): void => {
-        binaryDeliveredAfterAuth = true;
+        binaryMessageCount += 1;
+        binaryDeliveredAfterAuth = binaryMessageCount >= 1;
+        blobDeliveredAfterAuth = binaryMessageCount >= 2;
       },
     },
   });
@@ -221,6 +254,7 @@ beforeAll((): void => {
     challengeId: 'challenge-1',
     challengeText: 'relay-auth:challenge-1:nonce-1',
   }));
+  await Promise.resolve();
   const challengeResponsePayload = JSON.parse(
     String(firstSocket.sent[1] ?? '{}'),
   ) as Record<string, unknown>;
@@ -235,24 +269,38 @@ beforeAll((): void => {
   firstSocket.emitTextMessage(JSON.stringify({
     type: 'auth_ok',
   }));
+  await Promise.resolve();
   client.sendBinaryFrame({
     frame: Buffer.from('test-frame', 'utf8'),
   });
   firstSocket.emitBinaryMessage(Buffer.from('inbound-frame', 'utf8'));
+  if (typeof Blob !== 'undefined') {
+    firstSocket.emitBlobMessage(new Blob([Buffer.from('inbound-frame-blob', 'utf8')]));
+    await waitForCondition({
+      timeoutMs: 250,
+      intervalMs: 5,
+      predicate: (): boolean => binaryMessageCount >= 2,
+    });
+  } else {
+    blobDeliveredAfterAuth = true;
+  }
   firstSocket.emitClose(1006, 'connection_lost');
   manualClock.runTimerByDelay(10);
   reconnectSocketCreated = sockets.length === 2;
 
   const secondSocket = sockets[1];
   secondSocket.emitOpen();
-  secondSocket.emitTextMessage(JSON.stringify({
+  secondSocket.emitBinaryMessage(Buffer.from(JSON.stringify({
     type: 'auth_challenge',
     challengeId: 'challenge-2',
     challengeText: 'relay-auth:challenge-2:nonce-2',
-  }));
+  }), 'utf8'));
+  await Promise.resolve();
+  bufferControlMessageAccepted = String(secondSocket.sent[1] ?? '').includes('auth_challenge_response');
   secondSocket.emitTextMessage(JSON.stringify({
     type: 'auth_ok',
   }));
+  await Promise.resolve();
   manualClock.runTimerByDelay(25);
   heartbeatCloseCode = secondSocket.closed[0]?.code ?? 0;
 
@@ -292,6 +340,14 @@ describe('gateway relay client auth and gating', () => {
 
   it('delivers inbound binary tunnel data callbacks after auth completion', () => {
     expect(binaryDeliveredAfterAuth).toBe(true);
+  });
+
+  it('delivers inbound blob tunnel data callbacks after auth completion', () => {
+    expect(blobDeliveredAfterAuth).toBe(true);
+  });
+
+  it('accepts buffer-encoded relay control payloads during auth handshake', () => {
+    expect(bufferControlMessageAccepted).toBe(true);
   });
 });
 

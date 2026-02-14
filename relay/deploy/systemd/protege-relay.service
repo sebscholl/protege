@@ -1,0 +1,21 @@
+[Unit]
+Description=Protege Relay Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=protege
+Group=protege
+NoNewPrivileges=true
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+WorkingDirectory=/opt/protege
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npm run relay:start
+Restart=always
+RestartSec=2
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

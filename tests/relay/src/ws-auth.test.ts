@@ -1,9 +1,6 @@
-import type { KeyObject } from 'node:crypto';
-
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { extractEd25519RawPublicKey, base32Encode } from '@relay/src/crypto';
 import { createRelaySessionRegistry, readRelaySessionByPublicKey } from '@relay/src/session-registry';
 import { createRelayStore, readRelayChallenge } from '@relay/src/storage';
 import {
@@ -11,12 +8,8 @@ import {
   handleRelayWsAuthControlMessage,
   parseRelayWsControlMessage,
 } from '@relay/src/ws-auth';
-
-type SocketCapture = {
-  sentMessages: string[];
-  closeCode: number;
-  closeReason: string;
-};
+import { toPublicKeyBase32 } from '@tests/helpers/relay-crypto';
+import { createRelayAuthSocketDouble } from '@tests/helpers/relay-socket-doubles';
 
 let parsedChallengeRequestType = '';
 let parsedChallengeResponseType = '';
@@ -54,67 +47,6 @@ let replacedSocketClosedCode = -1;
 let replacedSocketClosedReason = '';
 let replacementRegistrySocketId = '';
 
-/**
- * Converts one ed25519 public key object into lowercase base32 identity text.
- */
-function toPublicKeyBase32(
-  args: {
-    publicKey: KeyObject;
-  },
-): string {
-  const publicKeyDer = args.publicKey.export({
-    type: 'spki',
-    format: 'der',
-  }) as Buffer;
-  const raw = extractEd25519RawPublicKey({
-    spkiDer: publicKeyDer,
-  });
-  return base32Encode({
-    value: raw,
-  });
-}
-
-/**
- * Creates one relay socket test double with captured outbound behavior.
- */
-function createSocket(
-  args: {
-    socketId: string;
-  },
-): {
-  socket: {
-    id: string;
-    send: (payload: string) => void;
-    close: (
-      code: number,
-      reason: string,
-    ) => void;
-  };
-  capture: SocketCapture;
-} {
-  const capture: SocketCapture = {
-    sentMessages: [],
-    closeCode: -1,
-    closeReason: '',
-  };
-  return {
-    socket: {
-      id: args.socketId,
-      send: (payload: string): void => {
-        capture.sentMessages.push(payload);
-      },
-      close: (
-        code: number,
-        reason: string,
-      ): void => {
-        capture.closeCode = code;
-        capture.closeReason = reason;
-      },
-    },
-    capture,
-  };
-}
-
 beforeAll((): void => {
   parsedChallengeRequestType = parseRelayWsControlMessage({
     messageJson: JSON.stringify({
@@ -141,7 +73,7 @@ beforeAll((): void => {
 
   const issueStore = createRelayStore();
   const issueRegistry = createRelaySessionRegistry();
-  const issueSocket = createSocket({ socketId: 'socket-issue' });
+  const issueSocket = createRelayAuthSocketDouble({ socketId: 'socket-issue' });
   const issuedResult = handleRelayWsAuthControlMessage({
     store: issueStore,
     registry: issueRegistry,
@@ -164,7 +96,7 @@ beforeAll((): void => {
 
   const validStore = createRelayStore();
   const validRegistry = createRelaySessionRegistry();
-  const validSocket = createSocket({ socketId: 'socket-valid' });
+  const validSocket = createRelayAuthSocketDouble({ socketId: 'socket-valid' });
   const challengeResult = handleRelayWsAuthControlMessage({
     store: validStore,
     registry: validRegistry,
@@ -213,7 +145,7 @@ beforeAll((): void => {
 
   const invalidMessageStore = createRelayStore();
   const invalidMessageRegistry = createRelaySessionRegistry();
-  const invalidMessageSocket = createSocket({ socketId: 'socket-invalid-message' });
+  const invalidMessageSocket = createRelayAuthSocketDouble({ socketId: 'socket-invalid-message' });
   handleRelayWsAuthControlMessage({
     store: invalidMessageStore,
     registry: invalidMessageRegistry,
@@ -232,7 +164,7 @@ beforeAll((): void => {
 
   const badSignatureStore = createRelayStore();
   const badSignatureRegistry = createRelaySessionRegistry();
-  const badSignatureSocket = createSocket({ socketId: 'socket-bad-signature' });
+  const badSignatureSocket = createRelayAuthSocketDouble({ socketId: 'socket-bad-signature' });
   const badSignatureChallengeResult = handleRelayWsAuthControlMessage({
     store: badSignatureStore,
     registry: badSignatureRegistry,
@@ -271,8 +203,8 @@ beforeAll((): void => {
 
   const replacementStore = createRelayStore();
   const replacementRegistry = createRelaySessionRegistry();
-  const replacementSocketA = createSocket({ socketId: 'socket-replace-a' });
-  const replacementSocketB = createSocket({ socketId: 'socket-replace-b' });
+  const replacementSocketA = createRelayAuthSocketDouble({ socketId: 'socket-replace-a' });
+  const replacementSocketB = createRelayAuthSocketDouble({ socketId: 'socket-replace-b' });
   const replacementChallengeA = handleRelayWsAuthControlMessage({
     store: replacementStore,
     registry: replacementRegistry,

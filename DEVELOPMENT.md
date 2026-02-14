@@ -137,6 +137,12 @@ sqlite3 memory/{persona_id}/temporal.db \
 
 ## Relay Manual Tests
 
+Bootstrap relay mode config and persona:
+
+```sh
+tsx engine/cli/index.ts relay bootstrap --relay-ws-url ws://127.0.0.1:8080/ws
+```
+
 Start relay:
 
 ```sh
@@ -165,3 +171,33 @@ swaks \
   --header "Subject: Relay SMTP Test" \
   --body "hello from swaks"
 ```
+
+## Relay Debugging
+
+Enable readable console logs in `config/system.json`:
+
+```json
+{
+  "logs_dir_path": "./tmp/logs",
+  "console_log_format": "pretty"
+}
+```
+
+Follow relay/gateway/harness activity in one stream:
+
+```sh
+tail -f tmp/logs/protege.log
+```
+
+Trace one message flow by `correlationId`:
+
+```sh
+grep 'correlationId' tmp/logs/protege.log | tail -n 50
+```
+
+Key relay lifecycle events to watch:
+
+1. `gateway.relay.client_starting`
+2. `gateway.relay.authenticated`
+3. `gateway.relay.control_message`
+4. `gateway.relay.disconnected`

@@ -3,12 +3,18 @@ import type { AddressInfo } from 'node:net';
 import type { Duplex } from 'node:stream';
 import type { SMTPServer } from 'smtp-server';
 import type { RelayWsConnectionSocket } from '@relay/src/ws-connection';
+import type { RelayTunnelFrame } from '@relay/src/tunnel';
 
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 
 import type { RelayRuntimeConfig } from '@relay/src/config';
 import { readRelayRuntimeConfig } from '@relay/src/config';
+import {
+  applyRelayOutboundTunnelFrame,
+  createRelayOutboundTunnelState,
+  sendRelayOutboundMime,
+} from '@relay/src/outbound';
 import { startRelaySmtpServer, stopRelaySmtpServer } from '@relay/src/smtp-server';
 import { createRelaySessionRegistry } from '@relay/src/session-registry';
 import { createRelayStore } from '@relay/src/storage';
@@ -41,6 +47,62 @@ export type RelayWebSocketUpgradeServer = {
     socket: Duplex,
     head: Buffer,
     callback: (ws: RelayWsConnectionSocket) => void,
+  ) => void;
+};
+
+/**
+ * Represents one set of optional relay lifecycle callbacks for runtime observability.
+ */
+export type RelayServerCallbacks = {
+  onIngressAccepted?: (
+    args: {
+      recipientAddress: string;
+      streamId: string;
+    },
+  ) => void;
+  onIngressRejected?: (
+    args: {
+      recipientAddress: string;
+      reason: string;
+    },
+  ) => void;
+  onOutboundQueued?: (
+    args: {
+      streamKey: string;
+      mailFrom: string;
+      rcptTo: string;
+      socketId: string;
+      publicKeyBase32: string;
+    },
+  ) => void;
+  onOutboundSent?: (
+    args: {
+      streamKey: string;
+      mailFrom: string;
+      rcptTo: string;
+      attemptCount: number;
+      messageId: string | null;
+      socketId: string;
+      publicKeyBase32: string;
+    },
+  ) => void;
+  onOutboundFailed?: (
+    args: {
+      streamKey: string;
+      mailFrom: string;
+      rcptTo: string;
+      message: string;
+      socketId: string;
+      publicKeyBase32: string;
+    },
+  ) => void;
+  onOutboundIgnored?: (
+    args: {
+      streamId: string;
+      reason: string;
+      socketId: string;
+      publicKeyBase32: string;
+    },
   ) => void;
 };
 
@@ -90,6 +152,13 @@ export function createRelayUpgradeHandler(
     webSocketServer: RelayWebSocketUpgradeServer;
     runtimeState: RelayRuntimeState;
     nowIso: () => string;
+    onOutboundTunnelFrame?: (
+      args: {
+        frame: RelayTunnelFrame;
+        socketId: string;
+        publicKeyBase32: string;
+      },
+    ) => void;
   },
 ): (
   request: IncomingMessage,
@@ -112,6 +181,7 @@ export function createRelayUpgradeHandler(
         runtime: {
           store: args.runtimeState.store,
           registry: args.runtimeState.sessionRegistry,
+          onOutboundTunnelFrame: args.onOutboundTunnelFrame,
         },
         nowIso: args.nowIso,
       });
@@ -125,11 +195,15 @@ export function createRelayUpgradeHandler(
 export async function startRelayServer(
   args: {
     config?: RelayRuntimeConfig;
+    callbacks?: RelayServerCallbacks;
+    sendOutboundMimeFn?: typeof sendRelayOutboundMime;
   } = {},
 ): Promise<StartedRelayServer> {
   const config = args.config ?? readRelayRuntimeConfig();
   const server = createServer(createRelayRequestHandler());
   const runtimeState = createRelayRuntimeState();
+  const outboundTunnelState = createRelayOutboundTunnelState();
+  const sendOutboundMimeFn = args.sendOutboundMimeFn ?? sendRelayOutboundMime;
   const webSocketServer = new WebSocketServer({
     noServer: true,
   });
@@ -137,6 +211,65 @@ export async function startRelayServer(
     webSocketServer,
     runtimeState,
     nowIso: (): string => new Date().toISOString(),
+    onOutboundTunnelFrame: (frameArgs): void => {
+      const result = applyRelayOutboundTunnelFrame({
+        state: outboundTunnelState,
+        socketId: frameArgs.socketId,
+        frame: frameArgs.frame,
+      });
+      if (result.ignoredReason) {
+        args.callbacks?.onOutboundIgnored?.({
+          streamId: frameArgs.frame.streamId,
+          reason: result.ignoredReason,
+          socketId: frameArgs.socketId,
+          publicKeyBase32: frameArgs.publicKeyBase32,
+        });
+        return;
+      }
+      if (!result.completed) {
+        return;
+      }
+
+      args.callbacks?.onOutboundQueued?.({
+        streamKey: result.completed.streamKey,
+        mailFrom: result.completed.mailFrom,
+        rcptTo: result.completed.rcptTo,
+        socketId: frameArgs.socketId,
+        publicKeyBase32: frameArgs.publicKeyBase32,
+      });
+      void sendOutboundMimeFn({
+        delivery: result.completed,
+        onAttemptError: (attemptErrorArgs): void => {
+          args.callbacks?.onOutboundFailed?.({
+            streamKey: result.completed?.streamKey ?? frameArgs.frame.streamId,
+            mailFrom: result.completed?.mailFrom ?? '',
+            rcptTo: result.completed?.rcptTo ?? '',
+            message: `attempt=${attemptErrorArgs.attempt} ${attemptErrorArgs.message}`,
+            socketId: frameArgs.socketId,
+            publicKeyBase32: frameArgs.publicKeyBase32,
+          });
+        },
+      }).then((deliveryInfo): void => {
+        args.callbacks?.onOutboundSent?.({
+          streamKey: result.completed?.streamKey ?? frameArgs.frame.streamId,
+          mailFrom: result.completed?.mailFrom ?? '',
+          rcptTo: result.completed?.rcptTo ?? '',
+          attemptCount: deliveryInfo.attemptCount,
+          messageId: deliveryInfo.messageId,
+          socketId: frameArgs.socketId,
+          publicKeyBase32: frameArgs.publicKeyBase32,
+        });
+      }).catch((error: Error): void => {
+        args.callbacks?.onOutboundFailed?.({
+          streamKey: result.completed?.streamKey ?? frameArgs.frame.streamId,
+          mailFrom: result.completed?.mailFrom ?? '',
+          rcptTo: result.completed?.rcptTo ?? '',
+          message: error.message,
+          socketId: frameArgs.socketId,
+          publicKeyBase32: frameArgs.publicKeyBase32,
+        });
+      });
+    },
   }));
 
   await new Promise<void>((resolve, reject) => {
@@ -149,6 +282,8 @@ export async function startRelayServer(
   const smtpServer = await startRelaySmtpServer({
     config: config.smtp,
     runtimeState,
+    onAccepted: args.callbacks?.onIngressAccepted,
+    onRejected: args.callbacks?.onIngressRejected,
   });
 
   const addressInfo = server.address() as AddressInfo;

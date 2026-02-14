@@ -1,12 +1,10 @@
-import type { KeyObject } from 'node:crypto';
-
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { deriveRelayEmailLocalPart, issueRelayChallenge } from '@relay/src/auth/challenge';
 import { verifyRelayChallengeResponse } from '@relay/src/auth/verify';
-import { base32Encode, extractEd25519RawPublicKey } from '@relay/src/crypto';
 import { createRelayStore, readRelayChallenge } from '@relay/src/storage';
+import { toPublicKeyBase32 } from '@tests/helpers/relay-crypto';
 
 let validAccepted = false;
 let validEmailLocalPart = '';
@@ -20,26 +18,6 @@ let duplicateCreatedAtStable = false;
 let duplicateLastSeenAdvanced = false;
 let derivedLocalPartLowercase = '';
 let challengeUsedAfterSuccess = false;
-
-/**
- * Converts one ed25519 public key object into lowercase base32 identity text.
- */
-function toPublicKeyBase32(
-  args: {
-    publicKey: KeyObject;
-  },
-): string {
-  const publicKeyDer = args.publicKey.export({
-    type: 'spki',
-    format: 'der',
-  }) as Buffer;
-  const raw = extractEd25519RawPublicKey({
-    spkiDer: publicKeyDer,
-  });
-  return base32Encode({
-    value: raw,
-  });
-}
 
 beforeAll((): void => {
   const keyPairA = generateKeyPairSync('ed25519');

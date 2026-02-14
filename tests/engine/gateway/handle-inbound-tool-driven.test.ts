@@ -7,6 +7,7 @@ import { http, HttpResponse } from 'msw';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { handleInboundForRuntime } from '@engine/gateway/index';
+import { toJsonRecord } from '@tests/helpers/json';
 import { loadNetworkFixture } from '@tests/network/index';
 import { networkServer } from '@tests/network/server';
 
@@ -16,21 +17,6 @@ let noToolRunFailed = false;
 let noToolOutboundMessageCount = 0;
 let toolRunErrorMessage = '';
 let noToolTemporalDbPath = '';
-
-/**
- * Converts unknown fixture response bodies into JSON-safe record payloads.
- */
-function toJsonRecord(
-  args: {
-    value: unknown;
-  },
-): Record<string, unknown> {
-  if (typeof args.value !== 'object' || args.value === null || Array.isArray(args.value)) {
-    return {};
-  }
-
-  return args.value as Record<string, unknown>;
-}
 
 beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-gateway-tool-driven-'));

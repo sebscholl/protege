@@ -191,57 +191,56 @@ export function startRelayClient(
     };
 
     currentSocket.onmessage = (event: RelayClientMessageEvent): void => {
-      scheduleHeartbeatTimeout();
-      if (Buffer.isBuffer(event.data) || event.data instanceof ArrayBuffer) {
-        if (!authenticated) {
-          return;
-        }
+      void handleRelayClientMessage({
+        event,
+        scheduleHeartbeatTimeout,
+        onBinaryMessage: (
+          onBinaryArgs: {
+            payload: Buffer;
+          },
+        ): void => {
+          if (!authenticated) {
+            return;
+          }
 
-        const payload = Buffer.isBuffer(event.data)
-          ? event.data
-          : Buffer.from(event.data);
-        args.callbacks?.onBinaryMessage?.({
-          payload,
-        });
-        return;
-      }
+          args.callbacks?.onBinaryMessage?.({
+            payload: onBinaryArgs.payload,
+          });
+        },
+        onControlPayload: (
+          onControlArgs: {
+            payload: Record<string, unknown>;
+          },
+        ): void => {
+          const payload = onControlArgs.payload;
+          args.callbacks?.onControlMessage?.({ payload });
 
-      if (typeof event.data !== 'string') {
-        return;
-      }
+          if (
+            payload.type === 'auth_challenge'
+            && typeof payload.challengeText === 'string'
+            && typeof payload.challengeId === 'string'
+          ) {
+            const signatureBase64 = signRelayChallenge({
+              privateKey,
+              challengeText: payload.challengeText,
+            });
+            currentSocket.send(JSON.stringify({
+              type: 'auth_challenge_response',
+              publicKeyBase32: args.config.publicKeyBase32,
+              challengeId: payload.challengeId,
+              signatureBase64,
+            }));
+            return;
+          }
 
-      let payload: Record<string, unknown>;
-      try {
-        payload = JSON.parse(event.data) as Record<string, unknown>;
-      } catch {
-        return;
-      }
-      args.callbacks?.onControlMessage?.({ payload });
-
-      if (
-        payload.type === 'auth_challenge'
-        && typeof payload.challengeText === 'string'
-        && typeof payload.challengeId === 'string'
-      ) {
-        const signatureBase64 = signRelayChallenge({
-          privateKey,
-          challengeText: payload.challengeText,
-        });
-        currentSocket.send(JSON.stringify({
-          type: 'auth_challenge_response',
-          publicKeyBase32: args.config.publicKeyBase32,
-          challengeId: payload.challengeId,
-          signatureBase64,
-        }));
-        return;
-      }
-
-      if (payload.type === 'auth_ok') {
-        authenticated = true;
-        reconnectAttempt = 0;
-        scheduleHeartbeatTimeout();
-        args.callbacks?.onAuthenticated?.();
-      }
+          if (payload.type === 'auth_ok') {
+            authenticated = true;
+            reconnectAttempt = 0;
+            scheduleHeartbeatTimeout();
+            args.callbacks?.onAuthenticated?.();
+          }
+        },
+      });
     };
 
     currentSocket.onerror = (): void => {
@@ -317,6 +316,150 @@ export function startRelayClient(
       };
     },
   };
+}
+
+/**
+ * Handles one inbound relay websocket message and routes normalized payloads to callbacks.
+ */
+export async function handleRelayClientMessage(
+  args: {
+    event: RelayClientMessageEvent;
+    scheduleHeartbeatTimeout: () => void;
+    onBinaryMessage: (
+      args: {
+        payload: Buffer;
+      },
+    ) => void;
+    onControlPayload: (
+      args: {
+        payload: Record<string, unknown>;
+      },
+    ) => void;
+  },
+): Promise<void> {
+  args.scheduleHeartbeatTimeout();
+  const normalizedPayload = await normalizeRelayClientIncomingPayload({
+    value: args.event.data,
+  });
+  if (normalizedPayload.type === 'binary') {
+    args.onBinaryMessage({
+      payload: normalizedPayload.payload,
+    });
+    return;
+  }
+
+  if (normalizedPayload.type !== 'text') {
+    return;
+  }
+
+  let payload: Record<string, unknown>;
+  try {
+    payload = JSON.parse(normalizedPayload.payload) as Record<string, unknown>;
+  } catch {
+    return;
+  }
+
+  args.onControlPayload({
+    payload,
+  });
+}
+
+/**
+ * Normalizes one incoming websocket payload into text, binary, or unsupported values.
+ */
+export async function normalizeRelayClientIncomingPayload(
+  args: {
+    value: unknown;
+  },
+): Promise<
+  | {
+      type: 'binary';
+      payload: Buffer;
+    }
+  | {
+      type: 'text';
+      payload: string;
+    }
+  | {
+      type: 'unsupported';
+    }
+> {
+  if (typeof args.value === 'string') {
+    return {
+      type: 'text',
+      payload: args.value,
+    };
+  }
+
+  if (Buffer.isBuffer(args.value)) {
+    return normalizeRelayBinaryLikePayload({
+      payload: args.value,
+    });
+  }
+
+  if (args.value instanceof ArrayBuffer) {
+    return normalizeRelayBinaryLikePayload({
+      payload: Buffer.from(args.value),
+    });
+  }
+
+  if (typeof Blob !== 'undefined' && args.value instanceof Blob) {
+    return normalizeRelayBinaryLikePayload({
+      payload: Buffer.from(await args.value.arrayBuffer()),
+    });
+  }
+
+  return {
+    type: 'unsupported',
+  };
+}
+
+/**
+ * Normalizes one binary-like websocket payload into control text when JSON-shaped, else binary.
+ */
+export function normalizeRelayBinaryLikePayload(
+  args: {
+    payload: Buffer;
+  },
+):
+  | {
+      type: 'binary';
+      payload: Buffer;
+    }
+  | {
+      type: 'text';
+      payload: string;
+    } {
+  const textPayload = args.payload.toString('utf8');
+  if (isRelayControlMessageJson({
+    value: textPayload,
+  })) {
+    return {
+      type: 'text',
+      payload: textPayload,
+    };
+  }
+
+  return {
+    type: 'binary',
+    payload: args.payload,
+  };
+}
+
+/**
+ * Returns true when one string decodes into a relay control JSON payload shape.
+ */
+export function isRelayControlMessageJson(
+  args: {
+    value: string;
+  },
+): boolean {
+  try {
+    const parsed = JSON.parse(args.value) as Record<string, unknown>;
+    return typeof parsed.type === 'string';
+  } catch {
+    return false;
+  }
 }
 
 /**

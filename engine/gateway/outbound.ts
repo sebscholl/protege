@@ -44,6 +44,7 @@ export async function sendGatewayReply(
     request: OutboundReplyRequest;
     logger: GatewayLogger;
     retryPolicy?: RetryPolicy;
+    correlationId?: string;
   },
 ): Promise<SentMessageInfo> {
   const retryPolicy: RetryPolicy = args.retryPolicy ?? {
@@ -64,6 +65,7 @@ export async function sendGatewayReply(
       args.logger.info({
         event: 'gateway.outbound.sending',
         context: {
+          correlationId: args.correlationId ?? null,
           attempt,
           to: args.request.to.map((item) => item.address),
           inReplyTo: parentId,
@@ -86,6 +88,7 @@ export async function sendGatewayReply(
       args.logger.info({
         event: 'gateway.outbound.sent',
         context: {
+          correlationId: args.correlationId ?? null,
           attempt,
           to: args.request.to.map((item) => item.address),
           inReplyTo: parentId,
@@ -97,6 +100,7 @@ export async function sendGatewayReply(
       args.logger.error({
         event: 'gateway.error',
         context: {
+          correlationId: args.correlationId ?? null,
           attempt,
           message: errorObject.message,
         },
@@ -122,6 +126,7 @@ export async function sendGatewayReplyViaRelay(
     request: OutboundReplyRequest;
     logger: GatewayLogger;
     retryPolicy?: RetryPolicy;
+    correlationId?: string;
   },
 ): Promise<{
   messageId: string;
@@ -180,6 +185,7 @@ export async function sendGatewayReplyViaRelay(
       args.logger.info({
         event: 'gateway.outbound.sent_via_relay',
         context: {
+          correlationId: args.correlationId ?? null,
           attempt,
           recipients: envelopeRecipients,
           inReplyTo: parentId,
@@ -194,6 +200,7 @@ export async function sendGatewayReplyViaRelay(
       args.logger.error({
         event: 'gateway.error',
         context: {
+          correlationId: args.correlationId ?? null,
           attempt,
           message: errorObject.message,
         },

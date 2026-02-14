@@ -121,15 +121,21 @@ export async function startGatewayRuntime(
   const transport = args.config.transport
     ? createOutboundTransport({ config: args.config.transport })
     : undefined;
-  const inboundConfig = createGatewayInboundProcessingConfig({
-    runtimeConfig: args.config,
-    logger,
-    transport,
-  });
+  let inboundConfig: ReturnType<typeof createGatewayInboundProcessingConfig> | undefined;
   const relayClientsByPersonaId = startGatewayRelayClients({
     relayConfig: args.config.relay,
     logger,
     onRelayInboundMime: (relayInboundArgs): void => {
+      if (!inboundConfig) {
+        logger.error({
+          event: 'gateway.relay.ingest_uninitialized',
+          context: {
+            recipientAddress: relayInboundArgs.recipientAddress,
+          },
+        });
+        return;
+      }
+
       void ingestRelayInboundMime({
         inboundConfig,
         recipientAddress: relayInboundArgs.recipientAddress,
@@ -146,6 +152,12 @@ export async function startGatewayRuntime(
       });
     },
   });
+  inboundConfig = createGatewayInboundProcessingConfig({
+    runtimeConfig: args.config,
+    logger,
+    transport,
+    relayClientsByPersonaId,
+  });
   if (relayClientsByPersonaId.size > 0) {
     logger.info({
       event: 'gateway.relay.clients_started',
@@ -154,7 +166,6 @@ export async function startGatewayRuntime(
       },
     });
   }
-  inboundConfig.relayClientsByPersonaId = relayClientsByPersonaId;
 
   await startInboundServer({
     config: inboundConfig,
@@ -209,11 +220,15 @@ export function createGatewayInboundProcessingConfig(
     }),
     resolvePersonaPaths: ({ personaId }) => resolveGatewayPersonaPaths({ personaId }),
     logger: args.logger,
-    relayClientsByPersonaId: undefined,
+    relayClientsByPersonaId: args.relayClientsByPersonaId,
     onMessage: async ({ message }): Promise<void> => {
+      const correlationId = buildGatewayCorrelationId({
+        message,
+      });
       args.logger.info({
         event: 'gateway.inbound.received',
         context: {
+          correlationId,
           personaId: message.personaId ?? null,
           threadId: message.threadId,
           messageId: message.messageId,
@@ -222,6 +237,7 @@ export function createGatewayInboundProcessingConfig(
       persistInboundMessageForRuntime({
         message,
         logger: args.logger,
+        correlationId,
       });
       enqueueInboundProcessing({
         logger: args.logger,
@@ -229,6 +245,7 @@ export function createGatewayInboundProcessingConfig(
         transport: args.transport,
         relayClientsByPersonaId: args.relayClientsByPersonaId,
         defaultFromAddress: args.runtimeConfig.defaultFromAddress,
+        correlationId,
       });
     },
   };
@@ -264,6 +281,13 @@ export function startGatewayRelayClients(
   });
   const startClient = args.startClient ?? startRelayClient;
   for (const persona of personas) {
+    args.logger.info({
+      event: 'gateway.relay.client_starting',
+      context: {
+        personaId: persona.personaId,
+        publicKeyBase32: persona.publicKeyBase32,
+      },
+    });
     const relayAssemblyState = createRelayTunnelAssemblyState();
     const passportKeyPem = readPersonaPassportKeyPem({
       personaId: persona.personaId,
@@ -321,6 +345,21 @@ export function startGatewayRelayClients(
                 mailFrom: completedArgs.mailFrom,
                 rawMimeBuffer: completedArgs.rawMimeBuffer,
               });
+            },
+          });
+        },
+        onControlMessage: (controlArgs): void => {
+          const type = typeof controlArgs.payload.type === 'string'
+            ? controlArgs.payload.type
+            : 'unknown';
+          args.logger.info({
+            event: 'gateway.relay.control_message',
+            context: {
+              personaId: persona.personaId,
+              type,
+              code: typeof controlArgs.payload.code === 'string'
+                ? controlArgs.payload.code
+                : null,
             },
           });
         },
@@ -417,11 +456,13 @@ export function enqueueInboundProcessing(
     transport?: ReturnType<typeof createOutboundTransport>;
     relayClientsByPersonaId?: Map<string, RelayClientController>;
     defaultFromAddress: string;
+    correlationId?: string;
   },
 ): void {
   args.logger.info({
     event: 'gateway.inbound.enqueued',
     context: {
+      correlationId: args.correlationId ?? null,
       personaId: args.message.personaId ?? null,
       threadId: args.message.threadId,
       messageId: args.message.messageId,
@@ -435,10 +476,12 @@ export function enqueueInboundProcessing(
       transport: args.transport,
       relayClientsByPersonaId: args.relayClientsByPersonaId,
       defaultFromAddress: args.defaultFromAddress,
+      correlationId: args.correlationId,
     }).catch((error: Error) => {
       args.logger.error({
         event: 'gateway.error',
         context: {
+          correlationId: args.correlationId ?? null,
           message: error.message,
           personaId: args.message.personaId ?? null,
           threadId: args.message.threadId,
@@ -459,6 +502,7 @@ export async function handleInboundForRuntime(
     transport?: ReturnType<typeof createOutboundTransport>;
     relayClientsByPersonaId?: Map<string, RelayClientController>;
     defaultFromAddress: string;
+    correlationId?: string;
   },
 ): Promise<void> {
   await runHarnessForPersistedInboundMessage({
@@ -470,8 +514,10 @@ export async function handleInboundForRuntime(
       transport: args.transport,
       relayClientsByPersonaId: args.relayClientsByPersonaId,
       defaultFromAddress: args.defaultFromAddress,
+      correlationId: args.correlationId,
     }),
     logger: args.logger,
+    correlationId: args.correlationId,
   });
 }
 
@@ -485,6 +531,7 @@ export function createGatewayRuntimeActionInvoker(
     transport?: ReturnType<typeof createOutboundTransport>;
     relayClientsByPersonaId?: Map<string, RelayClientController>;
     defaultFromAddress: string;
+    correlationId?: string;
   },
 ): (
   runtimeArgs: {
@@ -498,6 +545,13 @@ export function createGatewayRuntimeActionInvoker(
       payload: Record<string, unknown>;
     },
   ): Promise<Record<string, unknown>> => {
+    args.logger.info({
+      event: 'gateway.runtime_action.invoking',
+      context: {
+        correlationId: args.correlationId ?? null,
+        action: runtimeArgs.action,
+      },
+    });
     if (runtimeArgs.action !== 'email.send') {
       throw new Error(`Unsupported runtime action: ${runtimeArgs.action}`);
     }
@@ -512,6 +566,7 @@ export function createGatewayRuntimeActionInvoker(
         transport: args.transport,
         logger: args.logger,
         request,
+        correlationId: args.correlationId,
       });
       messageId = info.messageId ?? null;
     } else if (args.message.personaId && args.relayClientsByPersonaId?.has(args.message.personaId)) {
@@ -524,12 +579,21 @@ export function createGatewayRuntimeActionInvoker(
         relayClient,
         logger: args.logger,
         request,
+        correlationId: args.correlationId,
       });
       messageId = relayInfo.messageId;
     } else {
       throw new Error('Outbound transport is not configured for email.send.');
     }
 
+    args.logger.info({
+      event: 'gateway.runtime_action.completed',
+      context: {
+        correlationId: args.correlationId ?? null,
+        action: runtimeArgs.action,
+        messageId,
+      },
+    });
     return {
       messageId,
     };
@@ -740,9 +804,11 @@ export function readGatewayRuntimeConfig(
   }
 
   const text = readFileSync(args.configPath, 'utf8');
-  const parsed = JSON.parse(text) as GatewayRuntimeConfig;
-
-  return parsed;
+  const parsed = JSON.parse(text) as unknown;
+  return validateGatewayRuntimeConfig({
+    parsed,
+    configPath: args.configPath,
+  });
 }
 
 /**
@@ -750,4 +816,287 @@ export function readGatewayRuntimeConfig(
  */
 export function resolveDefaultGatewayConfigPath(): string {
   return join(process.cwd(), 'config', 'gateway.json');
+}
+
+/**
+ * Builds one stable correlation id for inbound processing and follow-up logs.
+ */
+export function buildGatewayCorrelationId(
+  args: {
+    message: InboundNormalizedMessage;
+  },
+): string {
+  const personaId = args.message.personaId ?? 'unknown';
+  const threadId = args.message.threadId.replace(/[^a-zA-Z0-9_-]/g, '');
+  const messageId = args.message.messageId.replace(/[^a-zA-Z0-9_@.-]/g, '');
+  return `${personaId}:${threadId}:${messageId}`;
+}
+
+/**
+ * Validates parsed gateway runtime config and returns normalized config.
+ */
+export function validateGatewayRuntimeConfig(
+  args: {
+    parsed: unknown;
+    configPath: string;
+  },
+): GatewayRuntimeConfig {
+  if (!isRecord({
+    value: args.parsed,
+  })) {
+    throw new Error(`Gateway config at ${args.configPath} must be a JSON object.`);
+  }
+  const parsed = args.parsed as Record<string, unknown>;
+
+  const mode = parsed.mode;
+  if (mode !== 'dev' && mode !== 'default') {
+    throw new Error(`Gateway config at ${args.configPath} must set mode to "dev" or "default".`);
+  }
+  const host = readNonEmptyString({
+    value: parsed.host,
+    fieldPath: 'host',
+    configPath: args.configPath,
+  });
+  const port = readPort({
+    value: parsed.port,
+    fieldPath: 'port',
+    configPath: args.configPath,
+  });
+  const defaultFromAddress = readEmailLikeAddress({
+    value: parsed.defaultFromAddress,
+    fieldPath: 'defaultFromAddress',
+    configPath: args.configPath,
+  });
+
+  const transport = validateGatewayTransportConfig({
+    value: parsed.transport,
+    configPath: args.configPath,
+  });
+  const relay = validateGatewayRelayConfig({
+    value: parsed.relay,
+    configPath: args.configPath,
+  });
+
+  return {
+    mode,
+    host,
+    port,
+    defaultFromAddress,
+    transport,
+    relay,
+  };
+}
+
+/**
+ * Validates optional gateway transport config section.
+ */
+export function validateGatewayTransportConfig(
+  args: {
+    value: unknown;
+    configPath: string;
+  },
+): GatewayTransportConfig | undefined {
+  if (args.value === undefined) {
+    return undefined;
+  }
+  if (!isRecord({
+    value: args.value,
+  })) {
+    throw new Error(`Gateway config at ${args.configPath} field transport must be an object.`);
+  }
+  const transport = args.value as Record<string, unknown>;
+
+  const host = readNonEmptyString({
+    value: transport.host,
+    fieldPath: 'transport.host',
+    configPath: args.configPath,
+  });
+  const port = readPort({
+    value: transport.port,
+    fieldPath: 'transport.port',
+    configPath: args.configPath,
+  });
+  const secure = readBoolean({
+    value: transport.secure,
+    fieldPath: 'transport.secure',
+    configPath: args.configPath,
+  });
+  let auth: GatewayTransportConfig['auth'];
+  if (transport.auth !== undefined) {
+    if (!isRecord({ value: transport.auth })) {
+      throw new Error(`Gateway config at ${args.configPath} field transport.auth must be an object.`);
+    }
+    const authConfig = transport.auth as Record<string, unknown>;
+    auth = {
+      user: readNonEmptyString({
+        value: authConfig.user,
+        fieldPath: 'transport.auth.user',
+        configPath: args.configPath,
+      }),
+      pass: readNonEmptyString({
+        value: authConfig.pass,
+        fieldPath: 'transport.auth.pass',
+        configPath: args.configPath,
+      }),
+    };
+  }
+
+  return {
+    host,
+    port,
+    secure,
+    auth,
+  };
+}
+
+/**
+ * Validates optional gateway relay config section.
+ */
+export function validateGatewayRelayConfig(
+  args: {
+    value: unknown;
+    configPath: string;
+  },
+): GatewayRelayClientRuntimeConfig | undefined {
+  if (args.value === undefined) {
+    return undefined;
+  }
+  if (!isRecord({
+    value: args.value,
+  })) {
+    throw new Error(`Gateway config at ${args.configPath} field relay must be an object.`);
+  }
+  const relay = args.value as Record<string, unknown>;
+
+  const enabled = readBoolean({
+    value: relay.enabled,
+    fieldPath: 'relay.enabled',
+    configPath: args.configPath,
+  });
+  const relayWsUrl = readNonEmptyString({
+    value: relay.relayWsUrl,
+    fieldPath: 'relay.relayWsUrl',
+    configPath: args.configPath,
+  });
+  if (!relayWsUrl.startsWith('ws://') && !relayWsUrl.startsWith('wss://')) {
+    throw new Error(`Gateway config at ${args.configPath} field relay.relayWsUrl must start with ws:// or wss://.`);
+  }
+
+  return {
+    enabled,
+    relayWsUrl,
+    reconnectBaseDelayMs: readPositiveInteger({
+      value: relay.reconnectBaseDelayMs,
+      fieldPath: 'relay.reconnectBaseDelayMs',
+      configPath: args.configPath,
+    }),
+    reconnectMaxDelayMs: readPositiveInteger({
+      value: relay.reconnectMaxDelayMs,
+      fieldPath: 'relay.reconnectMaxDelayMs',
+      configPath: args.configPath,
+    }),
+    heartbeatTimeoutMs: readPositiveInteger({
+      value: relay.heartbeatTimeoutMs,
+      fieldPath: 'relay.heartbeatTimeoutMs',
+      configPath: args.configPath,
+    }),
+  };
+}
+
+/**
+ * Returns true when one unknown value is a non-null object record.
+ */
+export function isRecord(
+  args: {
+    value: unknown;
+  },
+): boolean {
+  return typeof args.value === 'object' && args.value !== null && !Array.isArray(args.value);
+}
+
+/**
+ * Reads one required non-empty string config field.
+ */
+export function readNonEmptyString(
+  args: {
+    value: unknown;
+    fieldPath: string;
+    configPath: string;
+  },
+): string {
+  if (typeof args.value !== 'string' || args.value.trim().length === 0) {
+    throw new Error(`Gateway config at ${args.configPath} field ${args.fieldPath} must be a non-empty string.`);
+  }
+
+  return args.value;
+}
+
+/**
+ * Reads one required boolean config field.
+ */
+export function readBoolean(
+  args: {
+    value: unknown;
+    fieldPath: string;
+    configPath: string;
+  },
+): boolean {
+  if (typeof args.value !== 'boolean') {
+    throw new Error(`Gateway config at ${args.configPath} field ${args.fieldPath} must be a boolean.`);
+  }
+
+  return args.value;
+}
+
+/**
+ * Reads one required positive integer config field.
+ */
+export function readPositiveInteger(
+  args: {
+    value: unknown;
+    fieldPath: string;
+    configPath: string;
+  },
+): number {
+  if (!Number.isInteger(args.value) || (args.value as number) <= 0) {
+    throw new Error(`Gateway config at ${args.configPath} field ${args.fieldPath} must be a positive integer.`);
+  }
+
+  return args.value as number;
+}
+
+/**
+ * Reads one required TCP port field with standard range validation.
+ */
+export function readPort(
+  args: {
+    value: unknown;
+    fieldPath: string;
+    configPath: string;
+  },
+): number {
+  const port = readPositiveInteger(args);
+  if (port < 1 || port > 65535) {
+    throw new Error(`Gateway config at ${args.configPath} field ${args.fieldPath} must be within 1-65535.`);
+  }
+
+  return port;
+}
+
+/**
+ * Reads one required mailbox-like address value for sender identity defaults.
+ */
+export function readEmailLikeAddress(
+  args: {
+    value: unknown;
+    fieldPath: string;
+    configPath: string;
+  },
+): string {
+  const address = readNonEmptyString(args);
+  if (!/^[^\s@]+@[^\s@]+$/.test(address)) {
+    throw new Error(`Gateway config at ${args.configPath} field ${args.fieldPath} must look like an email address.`);
+  }
+
+  return address;
 }
