@@ -21,3 +21,6 @@ personas/**
 
 # Legacy persona location during migration (keep ignored)
 config/personas/**
+
+# Local config overrides (untracked secrets/machine settings)
+config/inference.local.json

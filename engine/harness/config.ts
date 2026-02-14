@@ -38,6 +38,13 @@ export function resolveDefaultInferenceConfigPath(): string {
 }
 
 /**
+ * Resolves the default local inference override path in repository config.
+ */
+export function resolveDefaultInferenceLocalConfigPath(): string {
+  return join(process.cwd(), 'config', 'inference.local.json');
+}
+
+/**
  * Resolves the default system prompt path in repository config.
  */
 export function resolveDefaultSystemPromptPath(): string {
@@ -50,6 +57,7 @@ export function resolveDefaultSystemPromptPath(): string {
 export function readInferenceRuntimeConfig(
   args: {
     configPath?: string;
+    localConfigPath?: string;
   } = {},
 ): InferenceRuntimeConfig {
   const configPath = args.configPath ?? resolveDefaultInferenceConfigPath();
@@ -57,8 +65,18 @@ export function readInferenceRuntimeConfig(
     throw new Error(`Inference config not found at ${configPath}`);
   }
 
-  const text = readFileSync(configPath, 'utf8');
-  const parsed = JSON.parse(text) as Record<string, unknown>;
+  const localConfigPath = args.localConfigPath ?? resolveDefaultInferenceLocalConfigPath();
+  const baseConfig = readJsonRecord({
+    filePath: configPath,
+  });
+  const localConfig = existsSync(localConfigPath)
+    ? readJsonRecord({ filePath: localConfigPath })
+    : undefined;
+  const parsed = mergeConfigRecords({
+    base: baseConfig,
+    overlay: localConfig,
+  });
+
   if (typeof parsed.provider !== 'string' || typeof parsed.model !== 'string') {
     throw new Error('Inference config must define string provider and model fields.');
   }
@@ -76,6 +94,57 @@ export function readInferenceRuntimeConfig(
       ? parsed.max_output_tokens
       : undefined,
   };
+}
+
+/**
+ * Reads one JSON file and returns it as a generic record.
+ */
+export function readJsonRecord(
+  args: {
+    filePath: string;
+  },
+): Record<string, unknown> {
+  const text = readFileSync(args.filePath, 'utf8');
+  return JSON.parse(text) as Record<string, unknown>;
+}
+
+/**
+ * Deep-merges base config with overlay config for local overrides.
+ */
+export function mergeConfigRecords(
+  args: {
+    base: Record<string, unknown>;
+    overlay?: Record<string, unknown>;
+  },
+): Record<string, unknown> {
+  if (!args.overlay) {
+    return args.base;
+  }
+
+  const output: Record<string, unknown> = { ...args.base };
+  for (const [key, value] of Object.entries(args.overlay)) {
+    const baseValue = output[key];
+    if (isPlainRecordValue(baseValue) && isPlainRecordValue(value)) {
+      output[key] = mergeConfigRecords({
+        base: baseValue,
+        overlay: value,
+      });
+      continue;
+    }
+
+    output[key] = value;
+  }
+
+  return output;
+}
+
+/**
+ * Returns true when value is a non-null plain object record.
+ */
+export function isPlainRecordValue(
+  value: unknown,
+): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /**
