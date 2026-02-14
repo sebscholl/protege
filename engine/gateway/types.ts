@@ -24,6 +24,7 @@ export type InboundAttachment = {
  * Represents the normalized inbound message contract used by gateway consumers.
  */
 export type InboundNormalizedMessage = {
+  personaId?: string;
   messageId: string;
   threadId: string;
   from: MailAddress[];

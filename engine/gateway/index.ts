@@ -6,6 +6,12 @@ import { join } from 'node:path';
 import { startInboundServer } from '@engine/gateway/inbound';
 import { sendGatewayReply } from '@engine/gateway/outbound';
 import { buildReplySubject } from '@engine/gateway/threading';
+import {
+  extractEmailLocalPart,
+  resolveDefaultPersonaRoots,
+  resolvePersonaByEmailLocalPart,
+  resolvePersonaMemoryPaths,
+} from '@engine/shared/personas';
 
 import { createOutboundTransport } from './outbound';
 import type { AttachmentLimits } from './inbound';
@@ -30,6 +36,47 @@ export type GatewayRuntimeConfig = {
 };
 
 /**
+ * Resolves one persona id from SMTP envelope recipient local-part addressing.
+ */
+export function resolvePersonaIdFromSession(
+  args: {
+    recipientAddress?: string;
+  },
+): string | undefined {
+  if (!args.recipientAddress) {
+    return undefined;
+  }
+
+  const emailLocalPart = extractEmailLocalPart({ emailAddress: args.recipientAddress });
+  const persona = resolvePersonaByEmailLocalPart({
+    emailLocalPart,
+    roots: resolveDefaultPersonaRoots(),
+  });
+  return persona?.personaId;
+}
+
+/**
+ * Resolves per-persona gateway log and attachment directories.
+ */
+export function resolveGatewayPersonaPaths(
+  args: {
+    personaId: string;
+  },
+): {
+  logsDirPath: string;
+  attachmentsDirPath: string;
+} {
+  const paths = resolvePersonaMemoryPaths({
+    personaId: args.personaId,
+    roots: resolveDefaultPersonaRoots(),
+  });
+  return {
+    logsDirPath: paths.logsDirPath,
+    attachmentsDirPath: paths.attachmentsDirPath,
+  };
+}
+
+/**
  * Starts gateway runtime and wires inbound messages to temporary autoresponder behavior.
  */
 export async function startGatewayRuntime(
@@ -50,6 +97,10 @@ export async function startGatewayRuntime(
       logsDirPath: args.config.logsDirPath,
       attachmentsDirPath: args.config.attachmentsDirPath,
       attachmentLimits: args.config.attachmentLimits,
+      resolvePersonaId: ({ session }): string | undefined => resolvePersonaIdFromSession({
+        recipientAddress: session.envelope?.rcptTo?.[0]?.address,
+      }),
+      resolvePersonaPaths: ({ personaId }) => resolveGatewayPersonaPaths({ personaId }),
       logger,
       onMessage: async ({ message }): Promise<void> => {
         await handleInboundForRuntime({

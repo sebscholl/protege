@@ -42,6 +42,19 @@ export type GatewayInboundConfig = {
   logsDirPath: string;
   attachmentsDirPath: string;
   attachmentLimits?: Partial<AttachmentLimits>;
+  resolvePersonaId?: (
+    args: {
+      session: SMTPServerSession;
+    },
+  ) => string | undefined;
+  resolvePersonaPaths?: (
+    args: {
+      personaId: string;
+    },
+  ) => {
+    logsDirPath: string;
+    attachmentsDirPath: string;
+  };
   logger: GatewayLogger;
   onMessage: InboundMessageHandler;
 };
@@ -144,6 +157,15 @@ export async function handleInboundData(
     config: GatewayInboundConfig;
   },
 ): Promise<void> {
+  const personaId = args.config.resolvePersonaId
+    ? args.config.resolvePersonaId({ session: args.session })
+    : undefined;
+  const personaPaths = personaId && args.config.resolvePersonaPaths
+    ? args.config.resolvePersonaPaths({ personaId })
+    : undefined;
+  const logsDirPath = personaPaths?.logsDirPath ?? args.config.logsDirPath;
+  const attachmentsDirPath = personaPaths?.attachmentsDirPath ?? args.config.attachmentsDirPath;
+
   const rawMimeBuffer = await readStreamBuffer({ stream: args.stream });
   const parsedMail = await parseInboundMail({ rawMimeBuffer });
   const receivedAt = new Date().toISOString();
@@ -155,12 +177,12 @@ export async function handleInboundData(
     messageId,
   });
   const rawMimePath = persistRawMime({
-    logsDirPath: args.config.logsDirPath,
+    logsDirPath,
     messageId,
     content: rawMimeBuffer,
   });
   const attachments = persistAttachments({
-    attachmentsDirPath: args.config.attachmentsDirPath,
+    attachmentsDirPath,
     messageId,
     parsedMail,
     limits: resolveAttachmentLimits({ input: args.config.attachmentLimits }),
@@ -174,10 +196,12 @@ export async function handleInboundData(
       rawMimePath,
       attachmentCount: attachments.length,
       smtpSessionId: args.session.id,
+      personaId: personaId ?? null,
     },
   });
 
   const message: InboundNormalizedMessage = {
+    personaId,
     messageId,
     threadId,
     from: mapAddressObject({ value: parsedMail.from }),

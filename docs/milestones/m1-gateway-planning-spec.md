@@ -26,7 +26,7 @@ Milestone 1 is successful when Protege can:
    - `protege gateway stop`
    - `protege gateway restart`
 4. If inbound `Message-ID` is missing, generate a synthetic ID and treat it as canonical for threading.
-5. Persist inbound attachments in `memory/attachments/`.
+5. Persist inbound attachments in persona-scoped memory namespace (`memory/{persona_id}/attachments/`) when persona routing resolves.
 6. Enforce configurable attachment limits from `config/gateway.json`:
    - `maxAttachmentBytes`
    - `maxAttachmentsPerMessage`
@@ -144,8 +144,8 @@ Notes:
 
 ## 8. Storage and Logging Rules
 
-1. Persist raw MIME under `memory/logs/gateway/inbound/`.
-2. Persist attachments under `memory/attachments/{messageId}/`.
+1. Persist raw MIME under `memory/{persona_id}/logs/gateway/inbound/` when persona routing resolves, otherwise fallback configured path.
+2. Persist attachments under `memory/{persona_id}/attachments/{messageId}/` when persona routing resolves, otherwise fallback configured path.
 3. Log structured events (JSON):
    - `gateway.inbound.received`
    - `gateway.inbound.parsed`

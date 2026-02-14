@@ -12,12 +12,15 @@ This version freezes the architecture decisions made during discovery.
 6. Extension trust: trusted in-process execution.
 7. Reliability bar: no silent failures, retry up to 3x, notify owner on terminal failure.
 8. TUI v1 commands: `chat`, `status`, `logs`, `doctor`.
-9. Attachment handling v1: store files in `memory/attachments/`, no deep parsing by default.
+9. Attachment handling v1: store files in `memory/{persona_id}/attachments/` when persona routing resolves, no deep parsing by default.
 10. Public-key email encoding: lowercase `base32` (no padding) derived from `ed25519` public key.
 11. Key storage: persona-scoped `passport.key` stored alongside persona configuration.
 12. Persona routing: inbound routes explicitly by recipient address `{persona_pubkey}@relay-protege-mail.com`.
 13. TUI targeting: user explicitly specifies intended persona for new conversations.
 14. Relay abuse control in v1: IP rate limiting (and optional temporary IP blocks).
+15. Memory naming split:
+   - temporal memory in `memory/{persona_id}/temporal.db`
+   - active memory in `memory/{persona_id}/active.md`
 
 ## Relay Identity and Auth (Replaces Token-Issuance Model)
 
@@ -141,7 +144,7 @@ Exit:
 3. Implement scheduler responsibilities + cron + retry.
 4. Implement whitelist and recursion-depth safeguards.
 5. Implement hooks loading and event dispatch.
-6. Persist inbound attachments to `memory/attachments/` with metadata.
+6. Persist inbound attachments to `memory/{persona_id}/attachments/` with metadata.
 
 Exit:
 - Fully featured agent behavior from final spec is operational.

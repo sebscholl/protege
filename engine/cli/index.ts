@@ -1,8 +1,17 @@
+import type { PersonaMetadata } from '@engine/shared/personas';
+
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { readGatewayRuntimeConfig, resolveDefaultGatewayConfigPath, startGatewayRuntime } from '@engine/gateway/index';
+import {
+  createPersona,
+  deletePersona,
+  listPersonas,
+  readPersonaMetadata,
+  setActivePersona,
+} from '@engine/shared/personas';
 
 const PID_FILE_PATH = join(process.cwd(), 'tmp', 'gateway.pid');
 
@@ -14,8 +23,31 @@ export async function runCli(
     argv: string[];
   },
 ): Promise<void> {
-  const [area, action, modeFlag] = args.argv;
-  if (area !== 'gateway' || !action) {
+  const [area, ...rest] = args.argv;
+
+  if (area === 'gateway') {
+    await runGatewayCli({ argv: rest });
+    return;
+  }
+
+  if (area === 'persona') {
+    runPersonaCli({ argv: rest });
+    return;
+  }
+
+  throw new Error('Usage: protege <gateway|persona> ...');
+}
+
+/**
+ * Dispatches gateway-specific CLI commands.
+ */
+export async function runGatewayCli(
+  args: {
+    argv: string[];
+  },
+): Promise<void> {
+  const [action, modeFlag] = args.argv;
+  if (!action) {
     throw new Error('Usage: protege gateway <start|stop|restart> [--dev]');
   }
 
@@ -40,6 +72,110 @@ export async function runCli(
   }
 
   throw new Error('Usage: protege gateway <start|stop|restart> [--dev]');
+}
+
+/**
+ * Dispatches persona-specific CLI commands.
+ */
+export function runPersonaCli(
+  args: {
+    argv: string[];
+  },
+): void {
+  const [action, maybeId, ...rest] = args.argv;
+  if (!action) {
+    throw new Error('Usage: protege persona <create|list|info|use|delete> ...');
+  }
+
+  if (action === 'create') {
+    const parsed = parsePersonaCreateArgs({ argv: [maybeId ?? '', ...rest] });
+    const persona = createPersona({
+      label: parsed.label,
+      setActive: parsed.setActive,
+    });
+    writeCliJson({ value: persona });
+    return;
+  }
+
+  if (action === 'list') {
+    writeCliJson({ value: listPersonas() });
+    return;
+  }
+
+  if (action === 'info') {
+    if (!maybeId) {
+      throw new Error('Usage: protege persona info <persona_id>');
+    }
+
+    writeCliJson({ value: readPersonaMetadata({ personaId: maybeId }) });
+    return;
+  }
+
+  if (action === 'use') {
+    if (!maybeId) {
+      throw new Error('Usage: protege persona use <persona_id>');
+    }
+
+    setActivePersona({ personaId: maybeId });
+    writeCliJson({ value: { activePersonaId: maybeId } });
+    return;
+  }
+
+  if (action === 'delete') {
+    if (!maybeId) {
+      throw new Error('Usage: protege persona delete <persona_id>');
+    }
+
+    deletePersona({ personaId: maybeId });
+    writeCliJson({ value: { deletedPersonaId: maybeId } });
+    return;
+  }
+
+  throw new Error('Usage: protege persona <create|list|info|use|delete> ...');
+}
+
+/**
+ * Parses persona create CLI flags from a small argv segment.
+ */
+export function parsePersonaCreateArgs(
+  args: {
+    argv: string[];
+  },
+): {
+  label?: string;
+  setActive: boolean;
+} {
+  let label: string | undefined;
+  let setActive = false;
+
+  for (let index = 0; index < args.argv.length; index += 1) {
+    const token = args.argv[index];
+    if (token === '--set-active') {
+      setActive = true;
+      continue;
+    }
+
+    if (token === '--name') {
+      label = args.argv[index + 1] || undefined;
+      index += 1;
+    }
+  }
+
+  return {
+    label,
+    setActive,
+  };
+}
+
+/**
+ * Writes one JSON payload line to stdout for CLI data responses.
+ */
+export function writeCliJson(
+  args: {
+    value: PersonaMetadata | PersonaMetadata[] | Record<string, string>;
+  },
+): void {
+  process.stdout.write(`${JSON.stringify(args.value)}\n`);
 }
 
 /**

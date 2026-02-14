@@ -57,10 +57,15 @@ protege/
 │   ├── inference.json
 │   ├── system-prompt.md
 │   └── personas/
+│       └── {persona_id}/
+│           ├── persona.json
+│           └── passport.key
 ├── memory/
-│   ├── protege.db
-│   ├── attachments/
-│   └── logs/
+│   └── {persona_id}/
+│       ├── temporal.db
+│       ├── active.md
+│       ├── attachments/
+│       └── logs/
 ├── extensions/
 │   ├── extensions.json
 │   ├── tools/
@@ -101,9 +106,8 @@ The Gateway is responsible for all email communication. It consists of two parts
 
 The Relay is a minimal, open-source service. Its sole purpose is to act as a bridge between the standard SMTP protocol and the local bot. The protocol is **raw SMTP tunneled over WebSocket.**
 
-1.  The bot connects to the Relay via WebSocket and sends a single `auth` message:
-    `{"type": "auth", "subdomain": "alice", "token": "..."}`
-2.  The Relay authenticates the token and maps the WebSocket to the subdomain.
+1.  The bot connects to the Relay via WebSocket and performs a signed challenge-response handshake using its local `ed25519` keypair from `passport.key`.
+2.  The Relay authenticates the signature, binds the connection to the persona public key identity, and routes mail for `{persona_pubkey}@relay-protege-mail.com`.
 3.  From then on, all messages on the socket are raw SMTP data streams (binary frames), piped in both directions.
 
 ### 4.2. Local Gateway Client
@@ -120,7 +124,7 @@ The Scheduler provides the agent with proactive capabilities. It is designed to 
 
 ### 5.1. Data Model
 
-Scheduled tasks are called "Responsibilities." They are stored in the `protege.db` SQLite database.
+Scheduled tasks are called "Responsibilities." They are stored in the `temporal.db` SQLite database.
 
 ```typescript
 // In file: engine/scheduler/storage.ts

@@ -23,7 +23,7 @@ This document outlines the recommended order of development for Protege, designe
 
 | Step | Component | Task | Test | Depends On |
 |---|---|---|---|---|
-| 5 | **Config & Memory** | Implement loading for `config/` files and initialize the `memory/protege.db` SQLite database with `better-sqlite3`. | `node -e "..."` | M1 |
+| 5 | **Config & Memory** | Implement loading for `config/` files and initialize persona-scoped memory (`memory/{persona_id}/temporal.db` with `better-sqlite3`, plus `memory/{persona_id}/active.md` for short-horizon working memory). | `node -e "..."` | M1 |
 | 6 | **Inference Harness** | Build the core LLM call loop. It must accept the parsed email object from `mailparser`, build a context (system prompt + email body), call the LLM, and return a string response. | Unit test | Step 5 |
 | 7 | **Full Loop** | Wire the Gateway to the Harness. Inbound email from Step 2 now calls the Harness (Step 6), and the Harness's response is sent as the reply via the outbound Gateway (Step 3). | Manual test | Step 6 |
 | 8 | **Memory (History)** | Add conversation history. Store each turn in the SQLite DB (keyed by thread ID) and retrieve it to build context for the next turn. | Unit test | Step 7 |
@@ -41,9 +41,9 @@ This document outlines the recommended order of development for Protege, designe
 |---|---|---|---|---|
 | 10 | **Relay Server** | Build the centralized Relay service. It should handle WebSocket connections, the `auth` handshake, and pipe raw SMTP data. | Unit test | - |
 | 11 | **Gateway (Relay Client)** | Add the WebSocket client to the local Gateway. On startup, it connects to the Relay and authenticates. Inbound/outbound mail is now tunneled. | Manual test | M2, Step 10 |
-| 12 | **Installation CLI** | Build the `npx create-protege` experience. It should prompt for configuration, register with the Relay API to get a subdomain/token, and write the `.env` file. | Manual test | Step 11 |
+| 12 | **Installation CLI** | Build the `npx create-protege` experience. It should prompt for configuration, generate an `ed25519` passport keypair, register the public key with the Relay, and write the `.env` file plus persona key material. | Manual test | Step 11 |
 
-**Outcome of M3:** The agent is now live on the internet. You can email `your-agent@protege.email` from Gmail and get a response. The zero-config installation is complete.
+**Outcome of M3:** The agent is now live on the internet. You can email `{persona_pubkey}@relay-protege-mail.com` from Gmail and get a response. The zero-config installation is complete.
 
 ---
 

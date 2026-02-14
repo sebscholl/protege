@@ -1,5 +1,7 @@
 # Protege: Implementation Plan (v2)
 
+> Status: Superseded by `docs/protege-implementation-plan-v3.md`. This document is kept as historical planning context and is not normative.
+
 This version incorporates product decisions from discovery.
 
 ## Locked Product Decisions

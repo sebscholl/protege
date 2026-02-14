@@ -153,7 +153,7 @@ This plan translates the specification and sequencing documents into an executio
    - Structured logs
    - Health endpoints (relay + local bot)
    - Diagnostics command (`protege doctor`)
-3. Add backup/restore strategy for `memory/protege.db` and attachments.
+3. Add backup/restore strategy for `memory/{persona_id}/temporal.db` and attachments.
 4. Perform security review and dependency audit.
 5. Add release packaging, versioning policy, and upgrade path.
 

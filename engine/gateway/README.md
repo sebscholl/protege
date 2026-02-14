@@ -17,5 +17,5 @@ Responsible for SMTP parsing/sending and relay tunneling behavior.
 
 1. Dev mode runs local SMTP on configured local host/port.
 2. Inbound mail is parsed and normalized for harness consumption.
-3. Raw MIME and attachments are persisted under `memory/`.
+3. Raw MIME and attachments are persisted under persona memory namespaces (`memory/{persona_id}/...`) when recipient routing resolves a persona.
 4. Outbound replies include deterministic threading headers.

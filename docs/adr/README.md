@@ -9,6 +9,7 @@ Accepted ADRs:
 5. `0005-persona-address-routing-and-tui-targeting.md`
 6. `0006-relay-abuse-control-v1.md`
 7. `0007-conventions-enforced-by-tooling.md`
+8. `0008-memory-model-temporal-and-active.md`
 
 Notes:
 
