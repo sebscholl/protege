@@ -116,6 +116,8 @@ Status: Complete
 
 ## M3.5 Local Relay Client (Protege Side)
 
+Status: Complete
+
 ### Tasks
 
 1. Add optional relay client mode in gateway.

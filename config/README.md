@@ -9,9 +9,10 @@ Includes model/provider settings and prompts. It should not contain runtime-gene
 Current top-level config files:
 
 1. `gateway.json` for SMTP gateway runtime behavior.
-2. `inference.json` for harness/provider behavior.
-3. `system.json` for global runtime behavior (for example unified log path).
-4. Optional `inference.local.json` for untracked local overrides merged on top of `inference.json`.
+2. `gateway.example.json` as a copy-ready gateway config template.
+3. `inference.json` for harness/provider behavior.
+4. `system.json` for global runtime behavior (for example unified log path).
+5. Optional `inference.local.json` for untracked local overrides merged on top of `inference.json`.
 
 Inference config includes provider-specific credentials:
 
@@ -25,6 +26,36 @@ Gateway config includes attachment safety limits:
 1. `attachmentLimits.maxAttachmentBytes`
 2. `attachmentLimits.maxAttachmentsPerMessage`
 3. `attachmentLimits.maxTotalAttachmentBytes`
+
+Gateway config supports optional relay-client runtime mode:
+
+1. `relay.enabled`
+2. `relay.relayWsUrl`
+3. `relay.reconnectBaseDelayMs`
+4. `relay.reconnectMaxDelayMs`
+5. `relay.heartbeatTimeoutMs`
+
+Example `config/gateway.json` relay block:
+
+```json
+{
+  "relay": {
+    "enabled": true,
+    "relayWsUrl": "ws://127.0.0.1:8080/ws",
+    "reconnectBaseDelayMs": 250,
+    "reconnectMaxDelayMs": 8000,
+    "heartbeatTimeoutMs": 30000
+  }
+}
+```
+
+Relay field behavior:
+
+1. `relay.enabled`: Starts one relay websocket client per local persona.
+2. `relay.relayWsUrl`: Relay websocket endpoint used for auth and SMTP tunneling.
+3. `relay.reconnectBaseDelayMs`: Initial reconnect delay after disconnect.
+4. `relay.reconnectMaxDelayMs`: Maximum reconnect delay cap during exponential backoff.
+5. `relay.heartbeatTimeoutMs`: Idle timeout before forcing reconnect if relay traffic stops.
 
 System config includes unified runtime logging path:
 

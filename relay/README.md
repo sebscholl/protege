@@ -29,3 +29,27 @@ swaks \
 ```
 
 If the websocket client for that persona is authenticated, the inbox terminal will print `smtp_start`, `smtp_chunk`, and `smtp_end` tunnel frames.
+
+## Relay Service Config
+
+`relay/config.json` fields:
+
+1. `host`: HTTP/WebSocket bind host.
+2. `port`: HTTP/WebSocket bind port.
+3. `smtp.enabled`: Enables relay SMTP ingress listener.
+4. `smtp.host`: SMTP ingress bind host.
+5. `smtp.port`: SMTP ingress bind port.
+
+Example:
+
+```json
+{
+  "host": "127.0.0.1",
+  "port": 8080,
+  "smtp": {
+    "enabled": true,
+    "host": "127.0.0.1",
+    "port": 2526
+  }
+}
+```

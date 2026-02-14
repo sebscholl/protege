@@ -25,3 +25,10 @@ Responsible for SMTP parsing/sending and relay tunneling behavior.
 8. Outbound replies include deterministic threading headers when outbound transport is configured.
 9. Outbound sender identity is locked to the addressed persona identity for reply consistency.
 10. Threaded replies normalize subject to `Re: <inbound-subject>` by default.
+
+## Relay Client Notes (M3.5 In Progress)
+
+1. `engine/gateway/relay-client.ts` provides websocket relay auth, reconnect backoff, heartbeat timeout, and pre-auth outbound gating.
+2. Relay client startup is now wired behind `config.gateway.relay.enabled` and starts one client per known persona.
+3. Inbound relay tunnel frames are assembled and ingested into shared gateway inbound processing.
+4. Outbound `email.send` now supports relay fallback when SMTP transport is not configured.

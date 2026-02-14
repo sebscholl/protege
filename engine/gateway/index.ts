@@ -3,20 +3,28 @@ import type {
   InboundNormalizedMessage,
   OutboundReplyRequest,
 } from '@engine/gateway/types';
+import type { SMTPServerDataStream, SMTPServerSession } from 'smtp-server';
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { Readable } from 'node:stream';
 
-import { startInboundServer } from '@engine/gateway/inbound';
-import { sendGatewayReply } from '@engine/gateway/outbound';
+import { handleInboundData, startInboundServer } from '@engine/gateway/inbound';
+import { sendGatewayReply, sendGatewayReplyViaRelay } from '@engine/gateway/outbound';
+import { applyRelayTunnelFrame, createRelayTunnelAssemblyState } from '@engine/gateway/relay-tunnel';
+import { startRelayClient } from '@engine/gateway/relay-client';
+import type { RelayClientController } from '@engine/gateway/relay-client';
 import { buildReplySubject } from '@engine/gateway/threading';
 import {
   persistInboundMessageForRuntime,
   runHarnessForPersistedInboundMessage,
 } from '@engine/harness/runtime';
+import { parseRelayTunnelFrame } from '@relay/src/tunnel';
 import { createUnifiedLogger } from '@engine/shared/logger';
 import {
   extractEmailLocalPart,
+  listPersonas,
+  resolvePersonaConfigDirPath,
   resolveDefaultPersonaRoots,
   resolvePersonaByEmailLocalPart,
   resolvePersonaMemoryPaths,
@@ -40,7 +48,19 @@ export type GatewayRuntimeConfig = {
   port: number;
   attachmentLimits?: Partial<AttachmentLimits>;
   transport?: GatewayTransportConfig;
+  relay?: GatewayRelayClientRuntimeConfig;
   defaultFromAddress: string;
+};
+
+/**
+ * Represents optional relay-client runtime config used by gateway relay mode.
+ */
+export type GatewayRelayClientRuntimeConfig = {
+  enabled: boolean;
+  relayWsUrl: string;
+  reconnectBaseDelayMs: number;
+  reconnectMaxDelayMs: number;
+  heartbeatTimeoutMs: number;
 };
 
 /**
@@ -101,41 +121,290 @@ export async function startGatewayRuntime(
   const transport = args.config.transport
     ? createOutboundTransport({ config: args.config.transport })
     : undefined;
-
-  await startInboundServer({
-    config: {
-      host: args.config.host,
-      port: args.config.port,
-      dev: args.config.mode === 'dev',
-      requirePersonaRouting: true,
-      attachmentLimits: args.config.attachmentLimits,
-      resolvePersonaId: ({ session }): string | undefined => resolvePersonaIdFromSession({
-        recipientAddress: session.envelope?.rcptTo?.[0]?.address,
-      }),
-      resolvePersonaPaths: ({ personaId }) => resolveGatewayPersonaPaths({ personaId }),
-      logger,
-      onMessage: async ({ message }): Promise<void> => {
-        logger.info({
-          event: 'gateway.inbound.received',
+  const inboundConfig = createGatewayInboundProcessingConfig({
+    runtimeConfig: args.config,
+    logger,
+    transport,
+  });
+  const relayClientsByPersonaId = startGatewayRelayClients({
+    relayConfig: args.config.relay,
+    logger,
+    onRelayInboundMime: (relayInboundArgs): void => {
+      void ingestRelayInboundMime({
+        inboundConfig,
+        recipientAddress: relayInboundArgs.recipientAddress,
+        mailFrom: relayInboundArgs.mailFrom,
+        rawMimeBuffer: relayInboundArgs.rawMimeBuffer,
+      }).catch((error: Error) => {
+        logger.error({
+          event: 'gateway.relay.ingest_failed',
           context: {
-            personaId: message.personaId ?? null,
-            threadId: message.threadId,
-            messageId: message.messageId,
+            message: error.message,
+            recipientAddress: relayInboundArgs.recipientAddress,
           },
         });
-        persistInboundMessageForRuntime({
-          message,
-          logger,
-        });
-        enqueueInboundProcessing({
-          logger,
-          message,
-          transport,
-          defaultFromAddress: args.config.defaultFromAddress,
-        });
-      },
+      });
     },
   });
+  if (relayClientsByPersonaId.size > 0) {
+    logger.info({
+      event: 'gateway.relay.clients_started',
+      context: {
+        relayClientCount: relayClientsByPersonaId.size,
+      },
+    });
+  }
+  inboundConfig.relayClientsByPersonaId = relayClientsByPersonaId;
+
+  await startInboundServer({
+    config: inboundConfig,
+  });
+}
+
+/**
+ * Creates one shared inbound-processing config used by direct SMTP and relay-ingested MIME flows.
+ */
+export function createGatewayInboundProcessingConfig(
+  args: {
+    runtimeConfig: GatewayRuntimeConfig;
+    logger: ReturnType<typeof createUnifiedLogger>;
+    transport?: ReturnType<typeof createOutboundTransport>;
+    relayClientsByPersonaId?: Map<string, RelayClientController>;
+  },
+): {
+  host: string;
+  port: number;
+  dev: boolean;
+  requirePersonaRouting: true;
+  attachmentLimits?: Partial<AttachmentLimits>;
+  resolvePersonaId: (
+    args: {
+      session: SMTPServerSession;
+    },
+  ) => string | undefined;
+  resolvePersonaPaths: (
+    args: {
+      personaId: string;
+    },
+  ) => {
+    logsDirPath: string;
+    attachmentsDirPath: string;
+  };
+  logger: ReturnType<typeof createUnifiedLogger>;
+  relayClientsByPersonaId?: Map<string, RelayClientController>;
+  onMessage: (
+    args: {
+      message: InboundNormalizedMessage;
+    },
+  ) => Promise<void>;
+} {
+  return {
+    host: args.runtimeConfig.host,
+    port: args.runtimeConfig.port,
+    dev: args.runtimeConfig.mode === 'dev',
+    requirePersonaRouting: true,
+    attachmentLimits: args.runtimeConfig.attachmentLimits,
+    resolvePersonaId: ({ session }): string | undefined => resolvePersonaIdFromSession({
+      recipientAddress: session.envelope?.rcptTo?.[0]?.address,
+    }),
+    resolvePersonaPaths: ({ personaId }) => resolveGatewayPersonaPaths({ personaId }),
+    logger: args.logger,
+    relayClientsByPersonaId: undefined,
+    onMessage: async ({ message }): Promise<void> => {
+      args.logger.info({
+        event: 'gateway.inbound.received',
+        context: {
+          personaId: message.personaId ?? null,
+          threadId: message.threadId,
+          messageId: message.messageId,
+        },
+      });
+      persistInboundMessageForRuntime({
+        message,
+        logger: args.logger,
+      });
+      enqueueInboundProcessing({
+        logger: args.logger,
+        message,
+        transport: args.transport,
+        relayClientsByPersonaId: args.relayClientsByPersonaId,
+        defaultFromAddress: args.runtimeConfig.defaultFromAddress,
+      });
+    },
+  };
+}
+
+/**
+ * Starts one relay client per known persona when relay mode is enabled.
+ */
+export function startGatewayRelayClients(
+  args: {
+    relayConfig?: GatewayRelayClientRuntimeConfig;
+    logger: {
+      info: (args: { event: string; context: Record<string, unknown> }) => void;
+      error: (args: { event: string; context: Record<string, unknown> }) => void;
+    };
+    onRelayInboundMime?: (
+      args: {
+        recipientAddress: string;
+        mailFrom: string;
+        rawMimeBuffer: Buffer;
+      },
+    ) => void;
+    startClient?: typeof startRelayClient;
+  },
+): Map<string, RelayClientController> {
+  const relayClientsByPersonaId = new Map<string, RelayClientController>();
+  if (!args.relayConfig?.enabled) {
+    return relayClientsByPersonaId;
+  }
+
+  const personas = listPersonas({
+    roots: resolveDefaultPersonaRoots(),
+  });
+  const startClient = args.startClient ?? startRelayClient;
+  for (const persona of personas) {
+    const relayAssemblyState = createRelayTunnelAssemblyState();
+    const passportKeyPem = readPersonaPassportKeyPem({
+      personaId: persona.personaId,
+    });
+    const controller = startClient({
+      config: {
+        relayWsUrl: args.relayConfig.relayWsUrl,
+        publicKeyBase32: persona.publicKeyBase32,
+        privateKeyPem: passportKeyPem,
+        reconnectBaseDelayMs: args.relayConfig.reconnectBaseDelayMs,
+        reconnectMaxDelayMs: args.relayConfig.reconnectMaxDelayMs,
+        heartbeatTimeoutMs: args.relayConfig.heartbeatTimeoutMs,
+      },
+      callbacks: {
+        onAuthenticated: (): void => {
+          args.logger.info({
+            event: 'gateway.relay.authenticated',
+            context: {
+              personaId: persona.personaId,
+              publicKeyBase32: persona.publicKeyBase32,
+            },
+          });
+        },
+        onDisconnected: (disconnectArgs): void => {
+          args.logger.error({
+            event: 'gateway.relay.disconnected',
+            context: {
+              personaId: persona.personaId,
+              reconnectAttempt: disconnectArgs.reconnectAttempt,
+              reconnectDelayMs: disconnectArgs.reconnectDelayMs,
+            },
+          });
+        },
+        onBinaryMessage: (messageArgs): void => {
+          const frame = parseRelayTunnelFrame({
+            payload: messageArgs.payload,
+          });
+          if (!frame) {
+            args.logger.error({
+              event: 'gateway.relay.frame_invalid',
+              context: {
+                personaId: persona.personaId,
+                bytes: messageArgs.payload.length,
+              },
+            });
+            return;
+          }
+
+          applyRelayTunnelFrame({
+            state: relayAssemblyState,
+            frame,
+            onCompleted: (completedArgs): void => {
+              args.onRelayInboundMime?.({
+                recipientAddress: completedArgs.rcptTo,
+                mailFrom: completedArgs.mailFrom,
+                rawMimeBuffer: completedArgs.rawMimeBuffer,
+              });
+            },
+          });
+        },
+      },
+    });
+    relayClientsByPersonaId.set(persona.personaId, controller);
+  }
+
+  return relayClientsByPersonaId;
+}
+
+/**
+ * Ingests one relay-delivered raw MIME payload through the shared gateway inbound processor.
+ */
+export async function ingestRelayInboundMime(
+  args: {
+    inboundConfig: {
+      resolvePersonaId: (
+        args: {
+          session: SMTPServerSession;
+        },
+      ) => string | undefined;
+      resolvePersonaPaths: (
+        args: {
+          personaId: string;
+        },
+      ) => {
+        logsDirPath: string;
+        attachmentsDirPath: string;
+      };
+      logger: ReturnType<typeof createUnifiedLogger>;
+      onMessage: (
+        args: {
+          message: InboundNormalizedMessage;
+        },
+      ) => Promise<void>;
+      requirePersonaRouting: true;
+      attachmentLimits?: Partial<AttachmentLimits>;
+      host: string;
+      port: number;
+      dev: boolean;
+    };
+    recipientAddress: string;
+    mailFrom: string;
+    rawMimeBuffer: Buffer;
+  },
+): Promise<void> {
+  const stream = Readable.from([args.rawMimeBuffer]) as SMTPServerDataStream;
+  const session = {
+    id: `relay-${Date.now().toString(36)}`,
+    envelope: {
+      mailFrom: {
+        address: args.mailFrom,
+        args: false,
+      },
+      rcptTo: [
+        {
+          address: args.recipientAddress,
+          args: false,
+        },
+      ],
+    },
+  } as unknown as SMTPServerSession;
+
+  await handleInboundData({
+    stream,
+    session,
+    config: args.inboundConfig,
+  });
+}
+
+/**
+ * Reads one persona passport private key PEM from persona config namespace.
+ */
+export function readPersonaPassportKeyPem(
+  args: {
+    personaId: string;
+  },
+): string {
+  const configDirPath = resolvePersonaConfigDirPath({
+    personaId: args.personaId,
+    roots: resolveDefaultPersonaRoots(),
+  });
+  return readFileSync(join(configDirPath, 'passport.key'), 'utf8');
 }
 
 /**
@@ -146,6 +415,7 @@ export function enqueueInboundProcessing(
     logger: ReturnType<typeof createGatewayLogger>;
     message: InboundNormalizedMessage;
     transport?: ReturnType<typeof createOutboundTransport>;
+    relayClientsByPersonaId?: Map<string, RelayClientController>;
     defaultFromAddress: string;
   },
 ): void {
@@ -163,6 +433,7 @@ export function enqueueInboundProcessing(
       logger: args.logger,
       message: args.message,
       transport: args.transport,
+      relayClientsByPersonaId: args.relayClientsByPersonaId,
       defaultFromAddress: args.defaultFromAddress,
     }).catch((error: Error) => {
       args.logger.error({
@@ -186,6 +457,7 @@ export async function handleInboundForRuntime(
     logger: ReturnType<typeof createGatewayLogger>;
     message: InboundNormalizedMessage;
     transport?: ReturnType<typeof createOutboundTransport>;
+    relayClientsByPersonaId?: Map<string, RelayClientController>;
     defaultFromAddress: string;
   },
 ): Promise<void> {
@@ -196,6 +468,7 @@ export async function handleInboundForRuntime(
       message: args.message,
       logger: args.logger,
       transport: args.transport,
+      relayClientsByPersonaId: args.relayClientsByPersonaId,
       defaultFromAddress: args.defaultFromAddress,
     }),
     logger: args.logger,
@@ -210,6 +483,7 @@ export function createGatewayRuntimeActionInvoker(
     message: InboundNormalizedMessage;
     logger: ReturnType<typeof createGatewayLogger>;
     transport?: ReturnType<typeof createOutboundTransport>;
+    relayClientsByPersonaId?: Map<string, RelayClientController>;
     defaultFromAddress: string;
   },
 ): (
@@ -227,22 +501,37 @@ export function createGatewayRuntimeActionInvoker(
     if (runtimeArgs.action !== 'email.send') {
       throw new Error(`Unsupported runtime action: ${runtimeArgs.action}`);
     }
-    if (!args.transport) {
-      throw new Error('Outbound transport is not configured for email.send.');
-    }
-
     const request = buildEmailSendRequestFromAction({
       message: args.message,
       payload: runtimeArgs.payload,
       defaultFromAddress: args.defaultFromAddress,
     });
-    const info = await sendGatewayReply({
-      transport: args.transport,
-      logger: args.logger,
-      request,
-    });
+    let messageId: string | null = null;
+    if (args.transport) {
+      const info = await sendGatewayReply({
+        transport: args.transport,
+        logger: args.logger,
+        request,
+      });
+      messageId = info.messageId ?? null;
+    } else if (args.message.personaId && args.relayClientsByPersonaId?.has(args.message.personaId)) {
+      const relayClient = args.relayClientsByPersonaId.get(args.message.personaId);
+      if (!relayClient) {
+        throw new Error('Relay client lookup failed for outbound email.send.');
+      }
+
+      const relayInfo = await sendGatewayReplyViaRelay({
+        relayClient,
+        logger: args.logger,
+        request,
+      });
+      messageId = relayInfo.messageId;
+    } else {
+      throw new Error('Outbound transport is not configured for email.send.');
+    }
+
     return {
-      messageId: info.messageId ?? null,
+      messageId,
     };
   };
 }
