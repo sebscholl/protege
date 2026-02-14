@@ -1,6 +1,6 @@
 # Milestone 1 Planning Spec: Gateway (Local Email Roundtrip)
 
-- Status: Draft for sign-off
+- Status: Completed
 - Date: 2026-02-13
 - Scope owner: Protege team
 
@@ -216,3 +216,15 @@ Notes:
 2. Synthetic Message-ID fallback accepted.
 3. Attachment persistence accepted.
 4. Primary manual test target accepted: local sink first.
+
+## 13. Completion Record
+
+1. Milestone completed on `2026-02-14`.
+2. Manual verification passed for:
+   - plain inbound email
+   - inbound email with attachment (with and without explicit MIME type)
+   - inbound email without `Message-ID` (synthetic fallback verified)
+3. Automated validation status at closeout:
+   - `typecheck`: pass
+   - `lint`: pass
+   - `test`: pass

@@ -24,6 +24,15 @@ import {
 } from '@engine/gateway/threading';
 
 /**
+ * Enumerates stable inbound error reason codes for operational logging.
+ */
+export type InboundErrorCode =
+  | 'stream_read_error'
+  | 'parse_error'
+  | 'attachment_limit_exceeded'
+  | 'attachment_write_failed';
+
+/**
  * Represents one inbound SMTP runtime configuration.
  */
 export type GatewayInboundConfig = {
@@ -47,6 +56,25 @@ export type AttachmentLimits = {
 };
 
 /**
+ * Represents a typed inbound processing error with a stable reason code.
+ */
+export class GatewayInboundError extends Error {
+  public readonly code: InboundErrorCode;
+
+  public constructor(
+    args: {
+      code: InboundErrorCode;
+      message: string;
+      cause?: unknown;
+    },
+  ) {
+    super(args.message);
+    this.code = args.code;
+    this.cause = args.cause;
+  }
+}
+
+/**
  * Starts the inbound SMTP server and returns the active server instance.
  */
 export function startInboundServer(
@@ -66,7 +94,18 @@ export function startInboundServer(
         stream,
         session,
         config: args.config,
-      }).then(() => callback(), (error: Error) => callback(error));
+      }).then(() => callback(), (error: Error) => {
+        const inboundError = asInboundError({ error });
+        args.config.logger.error({
+          event: 'gateway.error',
+          context: {
+            reasonCode: inboundError.code,
+            message: inboundError.message,
+            smtpSessionId: session.id,
+          },
+        });
+        callback(inboundError);
+      });
     },
   });
 
@@ -106,7 +145,7 @@ export async function handleInboundData(
   },
 ): Promise<void> {
   const rawMimeBuffer = await readStreamBuffer({ stream: args.stream });
-  const parsedMail = await simpleParser(rawMimeBuffer);
+  const parsedMail = await parseInboundMail({ rawMimeBuffer });
   const receivedAt = new Date().toISOString();
   const messageId = ensureMessageId({ value: parsedMail.messageId });
   const references = normalizeReferences({ references: toReferenceArray({ references: parsedMail.references }) });
@@ -171,9 +210,34 @@ export function readStreamBuffer(
     args.stream.on('data', (chunk: Buffer | string) => {
       chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     });
-    args.stream.once('error', (error) => reject(error));
+    args.stream.once('error', (error) => {
+      reject(new GatewayInboundError({
+        code: 'stream_read_error',
+        message: 'Failed to read inbound SMTP stream.',
+        cause: error,
+      }));
+    });
     args.stream.once('end', () => resolve(Buffer.concat(chunks)));
   });
+}
+
+/**
+ * Parses one raw MIME payload into a mailparser object with typed error mapping.
+ */
+export async function parseInboundMail(
+  args: {
+    rawMimeBuffer: Buffer;
+  },
+): Promise<ParsedMail> {
+  try {
+    return await simpleParser(args.rawMimeBuffer);
+  } catch (error) {
+    throw new GatewayInboundError({
+      code: 'parse_error',
+      message: 'Failed to parse inbound MIME payload.',
+      cause: error,
+    });
+  }
 }
 
 /**
@@ -209,7 +273,15 @@ export function persistAttachments(
     args.attachmentsDirPath,
     sanitizeMessageIdForPath({ messageId: args.messageId }),
   );
-  mkdirSync(attachmentDirPath, { recursive: true });
+  try {
+    mkdirSync(attachmentDirPath, { recursive: true });
+  } catch (error) {
+    throw new GatewayInboundError({
+      code: 'attachment_write_failed',
+      message: 'Failed to create attachment directory.',
+      cause: error,
+    });
+  }
 
   assertAttachmentLimits({
     attachments: args.parsedMail.attachments,
@@ -220,7 +292,15 @@ export function persistAttachments(
     const fallbackName = `attachment-${index + 1}.bin`;
     const sanitizedName = sanitizeFileName({ value: attachment.filename ?? fallbackName });
     const filePath = join(attachmentDirPath, sanitizedName);
-    writeFileSync(filePath, attachment.content);
+    try {
+      writeFileSync(filePath, attachment.content);
+    } catch (error) {
+      throw new GatewayInboundError({
+        code: 'attachment_write_failed',
+        message: 'Failed to persist inbound attachment content.',
+        cause: error,
+      });
+    }
 
     return {
       filename: sanitizedName,
@@ -258,20 +338,56 @@ export function assertAttachmentLimits(
   },
 ): void {
   if (args.attachments.length > args.limits.maxAttachmentsPerMessage) {
-    throw new Error('Attachment count exceeds configured maxAttachmentsPerMessage.');
+    throw new GatewayInboundError({
+      code: 'attachment_limit_exceeded',
+      message: 'Attachment count exceeds configured maxAttachmentsPerMessage.',
+    });
   }
 
   const totalBytes = args.attachments.reduce((sum, attachment) => sum + attachment.size, 0);
   if (totalBytes > args.limits.maxTotalAttachmentBytes) {
-    throw new Error('Attachment size exceeds configured maxTotalAttachmentBytes.');
+    throw new GatewayInboundError({
+      code: 'attachment_limit_exceeded',
+      message: 'Attachment size exceeds configured maxTotalAttachmentBytes.',
+    });
   }
 
   const oversizedAttachment = args.attachments.find(
     (attachment) => attachment.size > args.limits.maxAttachmentBytes,
   );
   if (oversizedAttachment) {
-    throw new Error('Attachment size exceeds configured maxAttachmentBytes.');
+    throw new GatewayInboundError({
+      code: 'attachment_limit_exceeded',
+      message: 'Attachment size exceeds configured maxAttachmentBytes.',
+    });
   }
+}
+
+/**
+ * Normalizes unknown thrown values into typed inbound errors.
+ */
+export function asInboundError(
+  args: {
+    error: unknown;
+  },
+): GatewayInboundError {
+  if (args.error instanceof GatewayInboundError) {
+    return args.error;
+  }
+
+  if (args.error instanceof Error) {
+    return new GatewayInboundError({
+      code: 'parse_error',
+      message: args.error.message,
+      cause: args.error,
+    });
+  }
+
+  return new GatewayInboundError({
+    code: 'parse_error',
+    message: 'Unknown inbound processing failure.',
+    cause: args.error,
+  });
 }
 
 /**

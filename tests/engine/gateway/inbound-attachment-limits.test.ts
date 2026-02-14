@@ -1,3 +1,5 @@
+import type { GatewayInboundError } from '@engine/gateway/inbound';
+
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,9 +13,9 @@ import { createInboundTestConfig } from '@tests/helpers/gateway-inbound';
 let tempRootPath = '';
 let logsDirPath = '';
 let attachmentsDirPath = '';
-let perAttachmentLimitError: Error | undefined;
-let totalAttachmentLimitError: Error | undefined;
-let attachmentCountLimitError: Error | undefined;
+let perAttachmentLimitError: GatewayInboundError | undefined;
+let totalAttachmentLimitError: GatewayInboundError | undefined;
+let attachmentCountLimitError: GatewayInboundError | undefined;
 let perAttachmentMessageCalls = 0;
 let totalAttachmentMessageCalls = 0;
 let attachmentCountMessageCalls = 0;
@@ -41,7 +43,7 @@ beforeAll(async (): Promise<void> => {
       }),
     });
   } catch (error) {
-    perAttachmentLimitError = error as Error;
+    perAttachmentLimitError = error as GatewayInboundError;
   }
 
   try {
@@ -62,7 +64,7 @@ beforeAll(async (): Promise<void> => {
       }),
     });
   } catch (error) {
-    totalAttachmentLimitError = error as Error;
+    totalAttachmentLimitError = error as GatewayInboundError;
   }
 
   try {
@@ -83,7 +85,7 @@ beforeAll(async (): Promise<void> => {
       }),
     });
   } catch (error) {
-    attachmentCountLimitError = error as Error;
+    attachmentCountLimitError = error as GatewayInboundError;
   }
 });
 
@@ -102,6 +104,10 @@ describe('gateway inbound attachment limits', () => {
 
   it('throws when attachment count exceeds configured count limit', () => {
     expect(attachmentCountLimitError?.message).toBe('Attachment count exceeds configured maxAttachmentsPerMessage.');
+  });
+
+  it('uses stable reason code for all attachment limit failures', () => {
+    expect(perAttachmentLimitError?.code).toBe('attachment_limit_exceeded');
   });
 
   it('does not dispatch onMessage for per-file size violations', () => {
