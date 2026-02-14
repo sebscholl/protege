@@ -7,7 +7,12 @@ import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { listThreadMessages, searchMessages, storeInboundMessage } from '@engine/harness/storage';
+import {
+  listThreadMessages,
+  searchMessages,
+  storeInboundMessage,
+  storeOutboundMessage,
+} from '@engine/harness/storage';
 import { initializeDatabase } from '@engine/shared/database';
 
 let tempRootPath = '';
@@ -15,6 +20,7 @@ let db: ProtegeDatabase | undefined;
 let storedMessageId = '';
 let threadMessagesCount = 0;
 let searchResultsCount = 0;
+let outboundDirection = '';
 
 const inboundFixture: InboundNormalizedMessage = {
   messageId: '<fixture-inbound@protege.local>',
@@ -57,6 +63,25 @@ beforeAll((): void => {
     db: db as ProtegeDatabase,
     query: 'uniquekeyword',
   }).length;
+
+  storeOutboundMessage({
+    db: db as ProtegeDatabase,
+    request: {
+      threadId: inboundFixture.threadId,
+      messageId: '<fixture-outbound@protege.local>',
+      inReplyTo: inboundFixture.messageId,
+      sender: 'protege@localhost',
+      recipients: ['sender@example.com'],
+      subject: 'Re: Storage fixture subject',
+      text: 'Outbound response',
+      receivedAt: '2026-02-14T00:00:10.000Z',
+      metadata: {},
+    },
+  });
+  outboundDirection = listThreadMessages({
+    db: db as ProtegeDatabase,
+    threadId: inboundFixture.threadId,
+  })[1]?.direction ?? '';
 });
 
 afterAll((): void => {
@@ -75,5 +100,9 @@ describe('harness storage persistence', () => {
 
   it('returns results from fts search over stored messages', () => {
     expect(searchResultsCount).toBe(1);
+  });
+
+  it('stores outbound messages with outbound direction', () => {
+    expect(outboundDirection).toBe('outbound');
   });
 });

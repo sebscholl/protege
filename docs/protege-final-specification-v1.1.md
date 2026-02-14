@@ -55,6 +55,7 @@ protege/
 ├── .env
 ├── config/
 │   ├── inference.json
+│   ├── system.json
 │   ├── system-prompt.md
 ├── personas/
 │   └── {persona_id}/
@@ -116,7 +117,7 @@ The Relay is a minimal, open-source service. Its sole purpose is to act as a bri
 This component runs on the user's machine and acts as the local mail server.
 
 *   **Connection:** Establishes a persistent outbound WebSocket connection to the Central Relay (if used), or listens directly on port 25 (if available).
-*   **Inbound Processing:** When an email is received, it is parsed using `mailparser`. The parsed object is then passed to the Inference Harness.
+*   **Inbound Processing:** When an email is received, it is parsed using `mailparser`, persisted, and acknowledged quickly. Harness inference is then enqueued asynchronously.
 *   **Outbound Sending:** When the agent needs to send a reply, it uses `nodemailer` to compose the email with correct threading headers. The email is then sent via the Central Relay or a direct SMTP connection.
 
 ## 5. Scheduler (Responsibilities)

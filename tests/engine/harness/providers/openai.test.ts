@@ -1,0 +1,78 @@
+import type { HarnessProviderGenerateRequest } from '@engine/harness/provider-contract';
+
+import { beforeAll, describe, expect, it } from 'vitest';
+
+import { HarnessProviderError } from '@engine/harness/provider-contract';
+import {
+  createOpenAiProviderAdapter,
+  generateWithOpenAi,
+} from '@engine/harness/providers/openai';
+import { mswIntercept } from '@tests/network/index';
+
+const request: HarnessProviderGenerateRequest = {
+  modelId: 'openai/gpt-4.1',
+  messages: [
+    {
+      role: 'user',
+      parts: [{ type: 'text', text: 'Hello' }],
+    },
+  ],
+};
+
+let successText = '';
+let failureCode = '';
+let unsupportedProviderCode = '';
+
+beforeAll(async (): Promise<void> => {
+  mswIntercept({ fixtureKey: 'openai/chat-completions/200' });
+  const adapter = createOpenAiProviderAdapter({
+    config: {
+      apiKey: 'test-key',
+      baseUrl: 'https://api.openai.com/v1',
+    },
+  });
+  const success = await adapter.generate({ request });
+  successText = success.text ?? '';
+
+  mswIntercept({ fixtureKey: 'openai/chat-completions/500' });
+  try {
+    await generateWithOpenAi({
+      request,
+      config: {
+        apiKey: 'test-key',
+        baseUrl: 'https://api.openai.com/v1',
+      },
+    });
+  } catch (error) {
+    failureCode = (error as HarnessProviderError).code;
+  }
+
+  try {
+    await generateWithOpenAi({
+      request: {
+        ...request,
+        modelId: 'anthropic/claude-3-7-sonnet',
+      },
+      config: {
+        apiKey: 'test-key',
+        baseUrl: 'https://api.openai.com/v1',
+      },
+    });
+  } catch (error) {
+    unsupportedProviderCode = (error as HarnessProviderError).code;
+  }
+});
+
+describe('openai provider adapter', () => {
+  it('returns normalized assistant text on successful responses', () => {
+    expect(successText).toBe('Fixture response');
+  });
+
+  it('maps 5xx provider responses to provider_internal', () => {
+    expect(failureCode).toBe('provider_internal');
+  });
+
+  it('rejects non-openai provider model ids', () => {
+    expect(unsupportedProviderCode).toBe('unsupported_provider');
+  });
+});

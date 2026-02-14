@@ -32,6 +32,21 @@ export type StoreInboundMessageRequest = {
 };
 
 /**
+ * Represents one storage request for persisting outbound harness responses.
+ */
+export type StoreOutboundMessageRequest = {
+  threadId: string;
+  messageId: string;
+  inReplyTo: string;
+  sender: string;
+  recipients: string[];
+  subject: string;
+  text: string;
+  receivedAt: string;
+  metadata: Record<string, unknown>;
+};
+
+/**
  * Represents one normalized harness input used to build runtime context.
  */
 export type HarnessInput = {

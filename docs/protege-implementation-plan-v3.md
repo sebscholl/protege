@@ -21,6 +21,8 @@ This version freezes the architecture decisions made during discovery.
 15. Memory naming split:
    - temporal memory in `memory/{persona_id}/temporal.db`
    - active memory in `memory/{persona_id}/active.md`
+16. Inbound sequencing: persist and acknowledge SMTP quickly, then enqueue async harness execution.
+17. Unified runtime logging: global `config/system.json` controls log path and console format.
 
 ## Relay Identity and Auth (Replaces Token-Issuance Model)
 
@@ -102,11 +104,11 @@ Exit:
 
 ## 2) Milestone 1: Gateway Proof (Local)
 
-1. Build inbound SMTP listener (dev port 2525).
+1. Build inbound SMTP listener (dev port 2525) with prompt acknowledgement semantics.
 2. Parse MIME with `mailparser` into normalized internal message object.
 3. Build outbound sender with `nodemailer`.
 4. Implement deterministic threading headers.
-5. Wire inbound -> hardcoded reply path.
+5. Wire inbound -> persisted message -> async harness pipeline.
 
 Exit:
 - Round-trip email works and threads correctly.

@@ -1,6 +1,10 @@
 import type { ProtegeDatabase } from '@engine/shared/database';
 
-import type { HarnessStoredMessage, StoreInboundMessageRequest } from '@engine/harness/types';
+import type {
+  HarnessStoredMessage,
+  StoreInboundMessageRequest,
+  StoreOutboundMessageRequest,
+} from '@engine/harness/types';
 
 import { randomUUID } from 'node:crypto';
 
@@ -95,6 +99,72 @@ export function storeInboundMessage(
     receivedAt: args.request.message.receivedAt,
     rawMimePath: args.request.message.rawMimePath,
     metadata,
+  };
+}
+
+/**
+ * Persists one outbound harness message into thread history storage.
+ */
+export function storeOutboundMessage(
+  args: {
+    db: ProtegeDatabase;
+    request: StoreOutboundMessageRequest;
+  },
+): HarnessStoredMessage {
+  const nowIso = new Date().toISOString();
+  ensureThread({
+    db: args.db,
+    threadId: args.request.threadId,
+    rootMessageId: args.request.inReplyTo,
+    nowIso,
+  });
+
+  const id = randomUUID();
+  args.db.prepare(`
+    INSERT INTO messages (
+      id,
+      thread_id,
+      direction,
+      message_id,
+      in_reply_to,
+      sender,
+      recipients,
+      subject,
+      text_body,
+      html_body,
+      received_at,
+      raw_mime_path,
+      metadata_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    args.request.threadId,
+    'outbound',
+    args.request.messageId,
+    args.request.inReplyTo,
+    args.request.sender,
+    JSON.stringify(args.request.recipients),
+    args.request.subject,
+    args.request.text,
+    null,
+    args.request.receivedAt,
+    '__generated__',
+    JSON.stringify(args.request.metadata),
+  );
+
+  return {
+    id,
+    threadId: args.request.threadId,
+    direction: 'outbound',
+    messageId: args.request.messageId,
+    inReplyTo: args.request.inReplyTo,
+    sender: args.request.sender,
+    recipients: args.request.recipients,
+    subject: args.request.subject,
+    textBody: args.request.text,
+    receivedAt: args.request.receivedAt,
+    rawMimePath: '__generated__',
+    metadata: args.request.metadata,
   };
 }
 

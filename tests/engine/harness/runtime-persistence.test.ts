@@ -1,0 +1,75 @@
+import type { InboundNormalizedMessage } from '@engine/gateway/types';
+
+import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import Database from 'better-sqlite3';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { persistInboundMessageForRuntime } from '@engine/harness/runtime';
+
+let tempRootPath = '';
+let previousCwd = '';
+let temporalDbPath = '';
+let inboundCount = 0;
+let databaseCreated = false;
+
+const message: InboundNormalizedMessage = {
+  personaId: 'persona-persist',
+  messageId: '<persist-1@example.com>',
+  threadId: 'thread-persist',
+  from: [{ address: 'sender@example.com' }],
+  to: [{ address: 'agent@example.com' }],
+  cc: [],
+  bcc: [],
+  envelopeRcptTo: [{ address: 'agent@example.com' }],
+  subject: 'Persist only',
+  text: 'Store and ack.',
+  references: [],
+  receivedAt: '2026-02-14T00:00:00.000Z',
+  rawMimePath: '/tmp/inbound.eml',
+  attachments: [],
+};
+
+beforeAll((): void => {
+  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-harness-runtime-persist-'));
+  previousCwd = process.cwd();
+  process.chdir(tempRootPath);
+  mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
+  mkdirSync(join(tempRootPath, 'personas', message.personaId as string), { recursive: true });
+  writeFileSync(join(tempRootPath, 'personas', message.personaId as string, 'persona.json'), JSON.stringify({
+    personaId: message.personaId,
+    publicKeyBase32: 'fixture',
+    emailLocalPart: 'fixture',
+    createdAt: '2026-02-14T00:00:00.000Z',
+  }));
+
+  persistInboundMessageForRuntime({ message });
+
+  temporalDbPath = join(tempRootPath, 'memory', message.personaId as string, 'temporal.db');
+  databaseCreated = existsSync(temporalDbPath);
+  if (databaseCreated) {
+    const db = new Database(temporalDbPath, { readonly: true });
+    const row = db.prepare(
+      "SELECT COUNT(*) as count FROM messages WHERE direction = 'inbound'",
+    ).get() as { count: number };
+    inboundCount = row.count;
+    db.close();
+  }
+});
+
+afterAll((): void => {
+  process.chdir(previousCwd);
+  rmSync(tempRootPath, { recursive: true, force: true });
+});
+
+describe('harness inbound persistence phase', () => {
+  it('creates persona temporal database during inbound persistence', () => {
+    expect(databaseCreated).toBe(true);
+  });
+
+  it('stores inbound message row before async inference phase', () => {
+    expect(inboundCount).toBe(1);
+  });
+});

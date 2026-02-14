@@ -7,11 +7,17 @@ import { startInboundServer } from '@engine/gateway/inbound';
 import { sendGatewayReply } from '@engine/gateway/outbound';
 import { buildReplySubject } from '@engine/gateway/threading';
 import {
+  persistInboundMessageForRuntime,
+  runHarnessForPersistedInboundMessage,
+} from '@engine/harness/runtime';
+import { createUnifiedLogger } from '@engine/shared/logger';
+import {
   extractEmailLocalPart,
   resolveDefaultPersonaRoots,
   resolvePersonaByEmailLocalPart,
   resolvePersonaMemoryPaths,
 } from '@engine/shared/personas';
+import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
 
 import { createOutboundTransport } from './outbound';
 import type { AttachmentLimits } from './inbound';
@@ -75,14 +81,19 @@ export function resolveGatewayPersonaPaths(
 }
 
 /**
- * Starts gateway runtime and wires inbound messages to temporary autoresponder behavior.
+ * Starts gateway runtime and wires inbound messages to harness inference behavior.
  */
 export async function startGatewayRuntime(
   args: {
     config: GatewayRuntimeConfig;
   },
 ): Promise<void> {
-  const logger = createGatewayLogger();
+  const globalConfig = readGlobalRuntimeConfig();
+  const logger = createUnifiedLogger({
+    logsDirPath: globalConfig.logsDirPath,
+    scope: 'gateway',
+    consoleLogFormat: globalConfig.consoleLogFormat,
+  });
   const transport = args.config.transport
     ? createOutboundTransport({ config: args.config.transport })
     : undefined;
@@ -100,7 +111,19 @@ export async function startGatewayRuntime(
       resolvePersonaPaths: ({ personaId }) => resolveGatewayPersonaPaths({ personaId }),
       logger,
       onMessage: async ({ message }): Promise<void> => {
-        await handleInboundForRuntime({
+        logger.info({
+          event: 'gateway.inbound.received',
+          context: {
+            personaId: message.personaId ?? null,
+            threadId: message.threadId,
+            messageId: message.messageId,
+          },
+        });
+        persistInboundMessageForRuntime({
+          message,
+          logger,
+        });
+        enqueueInboundProcessing({
           logger,
           message,
           transport,
@@ -112,7 +135,47 @@ export async function startGatewayRuntime(
 }
 
 /**
- * Handles one inbound message with temporary hardcoded reply behavior.
+ * Enqueues async inbound processing after message persistence is complete.
+ */
+export function enqueueInboundProcessing(
+  args: {
+    logger: ReturnType<typeof createGatewayLogger>;
+    message: InboundNormalizedMessage;
+    transport?: ReturnType<typeof createOutboundTransport>;
+    defaultFromAddress: string;
+  },
+): void {
+  args.logger.info({
+    event: 'gateway.inbound.enqueued',
+    context: {
+      personaId: args.message.personaId ?? null,
+      threadId: args.message.threadId,
+      messageId: args.message.messageId,
+    },
+  });
+
+  queueMicrotask(() => {
+    void handleInboundForRuntime({
+      logger: args.logger,
+      message: args.message,
+      transport: args.transport,
+      defaultFromAddress: args.defaultFromAddress,
+    }).catch((error: Error) => {
+      args.logger.error({
+        event: 'gateway.error',
+        context: {
+          message: error.message,
+          personaId: args.message.personaId ?? null,
+          threadId: args.message.threadId,
+          messageId: args.message.messageId,
+        },
+      });
+    });
+  });
+}
+
+/**
+ * Handles one inbound message by running async harness inference and optional smtp reply.
  */
 export async function handleInboundForRuntime(
   args: {
@@ -122,6 +185,12 @@ export async function handleInboundForRuntime(
     defaultFromAddress: string;
   },
 ): Promise<void> {
+  const result = await runHarnessForPersistedInboundMessage({
+    message: args.message,
+    defaultFromAddress: args.defaultFromAddress,
+    logger: args.logger,
+  });
+
   if (!args.transport || args.message.from.length === 0) {
     return;
   }
@@ -135,7 +204,7 @@ export async function handleInboundForRuntime(
         address: args.defaultFromAddress,
       },
       subject: buildReplySubject({ subject: args.message.subject }),
-      text: 'Protege gateway received your message.',
+      text: result.responseText,
       inReplyTo: args.message.messageId,
       references: args.message.references,
     },
