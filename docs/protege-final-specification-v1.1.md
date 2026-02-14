@@ -56,10 +56,10 @@ protege/
 ├── config/
 │   ├── inference.json
 │   ├── system-prompt.md
-│   └── personas/
-│       └── {persona_id}/
-│           ├── persona.json
-│           └── passport.key
+├── personas/
+│   └── {persona_id}/
+│       ├── persona.json
+│       └── passport.key
 ├── memory/
 │   └── {persona_id}/
 │       ├── temporal.db
@@ -90,6 +90,7 @@ protege/
 |---|---|---|
 | **`.env`** | The Keys | Secrets and machine-specific variables (`API_KEY`, `RELAY_URL`, etc.). |
 | **`config/`** | The Pantry | User-editable configuration that defines the agent's behavior and personality. |
+| **`personas/`** | The Identity Shelf | Persona identity material and metadata (`persona.json`, `passport.key`). |
 | **`memory/`** | The Refrigerator | Runtime data created and used by the agent (database, attachments, logs). |
 | **`extensions/`** | The Spice Rack | Third-party add-ons (tools and hooks) to extend the agent's capabilities. |
 | **`engine/`** | The Engine Room | The core, immutable source code of the Protege application. |

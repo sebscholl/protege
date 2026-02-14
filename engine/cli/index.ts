@@ -1,5 +1,6 @@
 import type { PersonaMetadata } from '@engine/shared/personas';
 
+import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -208,6 +209,7 @@ export async function startGatewayCommand(
  */
 export function stopGatewayCommand(): void {
   if (!existsSync(PID_FILE_PATH)) {
+    stopGatewayByProcessScan();
     return;
   }
 
@@ -222,6 +224,39 @@ export function stopGatewayCommand(): void {
   }
 
   unlinkSync(PID_FILE_PATH);
+  stopGatewayByProcessScan();
+}
+
+/**
+ * Stops orphaned gateway start processes when pid marker is missing or stale.
+ */
+export function stopGatewayByProcessScan(): void {
+  const pids = listGatewayStartProcessIds();
+  for (const pid of pids) {
+    try {
+      process.kill(pid, 'SIGTERM');
+    } catch {
+      // Ignore processes that already exited.
+    }
+  }
+}
+
+/**
+ * Lists process ids that match the gateway start command shape.
+ */
+export function listGatewayStartProcessIds(): number[] {
+  try {
+    const output = execSync('pgrep -f "engine/cli/index.ts gateway start"', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return output
+      .split('\n')
+      .map((line) => Number(line.trim()))
+      .filter((pid) => Number.isInteger(pid) && pid > 0 && pid !== process.pid);
+  } catch {
+    return [];
+  }
 }
 
 /**

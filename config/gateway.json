@@ -2,8 +2,6 @@
   "mode": "dev",
   "host": "127.0.0.1",
   "port": 2525,
-  "logsDirPath": "memory/logs",
-  "attachmentsDirPath": "memory/attachments",
   "attachmentLimits": {
     "maxAttachmentBytes": 10485760,
     "maxAttachmentsPerMessage": 10,

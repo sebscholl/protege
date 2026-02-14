@@ -1,6 +1,6 @@
 import type { GatewayTransportConfig, InboundNormalizedMessage } from '@engine/gateway/types';
 
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { startInboundServer } from '@engine/gateway/inbound';
@@ -28,8 +28,6 @@ export type GatewayRuntimeConfig = {
   mode: GatewayMode;
   host: string;
   port: number;
-  logsDirPath: string;
-  attachmentsDirPath: string;
   attachmentLimits?: Partial<AttachmentLimits>;
   transport?: GatewayTransportConfig;
   defaultFromAddress: string;
@@ -94,8 +92,7 @@ export async function startGatewayRuntime(
       host: args.config.host,
       port: args.config.port,
       dev: args.config.mode === 'dev',
-      logsDirPath: args.config.logsDirPath,
-      attachmentsDirPath: args.config.attachmentsDirPath,
+      requirePersonaRouting: true,
       attachmentLimits: args.config.attachmentLimits,
       resolvePersonaId: ({ session }): string | undefined => resolvePersonaIdFromSession({
         recipientAddress: session.envelope?.rcptTo?.[0]?.address,
@@ -186,9 +183,6 @@ export function readGatewayRuntimeConfig(
 
   const text = readFileSync(args.configPath, 'utf8');
   const parsed = JSON.parse(text) as GatewayRuntimeConfig;
-
-  mkdirSync(parsed.logsDirPath, { recursive: true });
-  mkdirSync(parsed.attachmentsDirPath, { recursive: true });
 
   return parsed;
 }

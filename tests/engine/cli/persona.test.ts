@@ -41,13 +41,13 @@ beforeAll(async (): Promise<void> => {
   await runCli({ argv: ['persona', 'use', createdPersonaId] });
   void outputs.pop();
   activePersonaId = readFileSync(
-    join(tempRootPath, 'config', 'personas', '.active-persona'),
+    join(tempRootPath, 'personas', '.active-persona'),
     'utf8',
   ).trim();
 
   await runCli({ argv: ['persona', 'delete', createdPersonaId] });
   void outputs.pop();
-  personaDeleted = !existsSync(join(tempRootPath, 'config', 'personas', createdPersonaId));
+  personaDeleted = !existsSync(join(tempRootPath, 'personas', createdPersonaId));
 
   process.stdout.write = stdoutWrite;
 });

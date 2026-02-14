@@ -25,7 +25,7 @@ export type PersonaMetadata = {
  * Represents root paths used by persona config and memory storage.
  */
 export type PersonaRoots = {
-  personasConfigDirPath: string;
+  personasDirPath: string;
   memoryDirPath: string;
 };
 
@@ -36,7 +36,7 @@ const ACTIVE_PERSONA_FILE_NAME = '.active-persona';
  */
 export function resolveDefaultPersonaRoots(): PersonaRoots {
   return {
-    personasConfigDirPath: join(process.cwd(), 'config', 'personas'),
+    personasDirPath: join(process.cwd(), 'personas'),
     memoryDirPath: join(process.cwd(), 'memory'),
   };
 }
@@ -50,7 +50,7 @@ export function resolveActivePersonaPointerPath(
   } = {},
 ): string {
   const roots = args.roots ?? resolveDefaultPersonaRoots();
-  return join(roots.personasConfigDirPath, ACTIVE_PERSONA_FILE_NAME);
+  return join(roots.personasDirPath, ACTIVE_PERSONA_FILE_NAME);
 }
 
 /**
@@ -63,7 +63,7 @@ export function resolvePersonaConfigDirPath(
   },
 ): string {
   const roots = args.roots ?? resolveDefaultPersonaRoots();
-  return join(roots.personasConfigDirPath, args.personaId);
+  return join(roots.personasDirPath, args.personaId);
 }
 
 /**
@@ -117,7 +117,7 @@ export function createPersona(
   } = {},
 ): PersonaMetadata {
   const roots = args.roots ?? resolveDefaultPersonaRoots();
-  mkdirSync(roots.personasConfigDirPath, { recursive: true });
+  mkdirSync(roots.personasDirPath, { recursive: true });
   mkdirSync(roots.memoryDirPath, { recursive: true });
 
   const keyPair = generateKeyPairSync('ed25519');
@@ -174,11 +174,11 @@ export function listPersonas(
   } = {},
 ): PersonaMetadata[] {
   const roots = args.roots ?? resolveDefaultPersonaRoots();
-  if (!existsSync(roots.personasConfigDirPath)) {
+  if (!existsSync(roots.personasDirPath)) {
     return [];
   }
 
-  const items = readdirSync(roots.personasConfigDirPath, { withFileTypes: true });
+  const items = readdirSync(roots.personasDirPath, { withFileTypes: true });
   return items
     .filter((entry) => entry.isDirectory())
     .map((entry) => readPersonaMetadata({ personaId: entry.name, roots }));

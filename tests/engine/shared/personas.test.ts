@@ -34,7 +34,7 @@ let derivedPersonaIdLength = 0;
 beforeAll((): void => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-personas-'));
   roots = {
-    personasConfigDirPath: join(tempRootPath, 'config', 'personas'),
+    personasDirPath: join(tempRootPath, 'personas'),
     memoryDirPath: join(tempRootPath, 'memory'),
   };
 

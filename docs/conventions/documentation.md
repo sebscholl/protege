@@ -12,7 +12,7 @@ Examples include:
 4. `engine/gateway/`
 5. `engine/harness/`
 6. `engine/scheduler/`
-7. `config/personas/`
+7. `personas/`
 
 Each folder README MUST explain:
 

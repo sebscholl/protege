@@ -144,16 +144,17 @@ Notes:
 
 ## 8. Storage and Logging Rules
 
-1. Persist raw MIME under `memory/{persona_id}/logs/gateway/inbound/` when persona routing resolves, otherwise fallback configured path.
-2. Persist attachments under `memory/{persona_id}/attachments/{messageId}/` when persona routing resolves, otherwise fallback configured path.
-3. Log structured events (JSON):
+1. Persist raw MIME under `memory/{persona_id}/logs/gateway/inbound/` after persona recipient routing resolves.
+2. Persist attachments under `memory/{persona_id}/attachments/{messageId}/` after persona recipient routing resolves.
+3. Reject inbound SMTP processing when recipient does not resolve to a known local persona.
+4. Log structured events (JSON):
    - `gateway.inbound.received`
    - `gateway.inbound.parsed`
    - `gateway.inbound.attachments_persisted`
    - `gateway.outbound.sending`
    - `gateway.outbound.sent`
    - `gateway.error`
-4. Include correlation fields:
+5. Include correlation fields:
    - `messageId`
    - `threadId`
    - `smtpSessionId` when available
@@ -193,7 +194,7 @@ Notes:
 ## 10.3 Manual Verification
 
 1. Start gateway in dev mode.
-2. Send sample message using `swaks` or local mail client to `localhost:2525`.
+2. Send sample message using `swaks` or local mail client to `localhost:2525`, targeting a known persona local-part recipient.
 3. Confirm logs and persisted artifacts.
 4. Confirm outbound captured in sink/sandbox with expected headers.
 5. Confirm threading in at least one client/sandbox viewer.

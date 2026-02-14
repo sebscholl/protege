@@ -30,7 +30,9 @@ export type InboundErrorCode =
   | 'stream_read_error'
   | 'parse_error'
   | 'attachment_limit_exceeded'
-  | 'attachment_write_failed';
+  | 'attachment_write_failed'
+  | 'persona_not_found'
+  | 'storage_path_unresolved';
 
 /**
  * Represents one inbound SMTP runtime configuration.
@@ -39,8 +41,9 @@ export type GatewayInboundConfig = {
   host: string;
   port: number;
   dev: boolean;
-  logsDirPath: string;
-  attachmentsDirPath: string;
+  logsDirPath?: string;
+  attachmentsDirPath?: string;
+  requirePersonaRouting?: boolean;
   attachmentLimits?: Partial<AttachmentLimits>;
   resolvePersonaId?: (
     args: {
@@ -157,14 +160,29 @@ export async function handleInboundData(
     config: GatewayInboundConfig;
   },
 ): Promise<void> {
+  const requirePersonaRouting = args.config.requirePersonaRouting === true;
   const personaId = args.config.resolvePersonaId
     ? args.config.resolvePersonaId({ session: args.session })
     : undefined;
+  if (requirePersonaRouting && !personaId) {
+    await drainInboundStream({ stream: args.stream });
+    throw new GatewayInboundError({
+      code: 'persona_not_found',
+      message: 'Inbound message recipient did not map to a known persona.',
+    });
+  }
+
   const personaPaths = personaId && args.config.resolvePersonaPaths
     ? args.config.resolvePersonaPaths({ personaId })
     : undefined;
   const logsDirPath = personaPaths?.logsDirPath ?? args.config.logsDirPath;
   const attachmentsDirPath = personaPaths?.attachmentsDirPath ?? args.config.attachmentsDirPath;
+  if (!logsDirPath || !attachmentsDirPath) {
+    throw new GatewayInboundError({
+      code: 'storage_path_unresolved',
+      message: 'Inbound message storage paths could not be resolved.',
+    });
+  }
 
   const rawMimeBuffer = await readStreamBuffer({ stream: args.stream });
   const parsedMail = await parseInboundMail({ rawMimeBuffer });
@@ -242,6 +260,27 @@ export function readStreamBuffer(
       }));
     });
     args.stream.once('end', () => resolve(Buffer.concat(chunks)));
+  });
+}
+
+/**
+ * Drains one inbound SMTP stream without persisting data.
+ */
+export function drainInboundStream(
+  args: {
+    stream: SMTPServerDataStream;
+  },
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    args.stream.once('error', (error) => {
+      reject(new GatewayInboundError({
+        code: 'stream_read_error',
+        message: 'Failed to drain inbound SMTP stream.',
+        cause: error,
+      }));
+    });
+    args.stream.once('end', () => resolve());
+    args.stream.resume();
   });
 }
 

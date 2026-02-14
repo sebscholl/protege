@@ -4,7 +4,7 @@
 swaks \
     --server 127.0.0.1:2525 \
     --from sender@example.com \
-    --to protege@localhost \
+    --to {persona_pubkey}@relay-protege-mail.com \
     --header "Subject: Manual Test" \
     --body "hello"
 ```
@@ -15,7 +15,7 @@ swaks \
 swaks \
     --server 127.0.0.1:2525 \
     --from sender@example.com \
-    --to protege@localhost \
+    --to {persona_pubkey}@relay-protege-mail.com \
     --header "Subject: Manual Attachment Test" \
     --body "Testing inbound attachment parsing." \
     --attach @/home/sebscholl/Code/protege/tmp/pic.png
@@ -27,7 +27,7 @@ swaks \
 swaks \
     --server 127.0.0.1:2525 \
     --from sender@example.com \
-    --to protege@localhost \
+    --to {persona_pubkey}@relay-protege-mail.com \
     --header "Subject: Manual Attachment Test" \
     --body "Testing inbound attachment parsing with MIMETYPE." \
     --attach-type image/png \
@@ -40,15 +40,15 @@ swaks \
 swaks \
     --server 127.0.0.1:2525 \
     --from sender@example.com \
-    --to protege@localhost \
+    --to {persona_pubkey}@relay-protege-mail.com \
     --header "Subject: Missing Message-ID Test" \
     --suppress-data \
-    --data "From: sender@example.com\nTo: protege@localhost\nSubject: Missing Message-ID Test\n\nhello"
+    --data "From: sender@example.com\nTo: {persona_pubkey}@relay-protege-mail.com\nSubject: Missing Message-ID Test\n\nhello"
 ```
 
 ## Verify persisted artifacts
 
 ```sh
-find memory/logs/gateway/inbound -type f | tail -n 5
-find memory/attachments -type f | tail -n 10
+find memory/{persona_id}/logs/gateway/inbound -type f | tail -n 5
+find memory/{persona_id}/attachments -type f | tail -n 10
 ```
