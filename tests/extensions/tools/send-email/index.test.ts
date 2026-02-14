@@ -19,6 +19,9 @@ let mixedCaseAddressAccepted = false;
 let invalidAddressMessage = '';
 let whitespaceAddressMessage = '';
 let missingTopLevelDomainMessage = '';
+let threadingModePayloadValue = '';
+let invalidThreadingModeMessage = '';
+let forwardedThreadingMode = '';
 
 beforeAll(async (): Promise<void> => {
   const config = readSendEmailToolConfig();
@@ -63,6 +66,7 @@ beforeAll(async (): Promise<void> => {
             references: args.payload.references as string[] | undefined,
             headers: args.payload.headers as Record<string, string> | undefined,
           });
+          threadingModePayloadValue = String(args.payload.threadingMode ?? '');
           sentMessageSource = info.message.toString('utf8');
           return {
             messageId: info.messageId,
@@ -209,6 +213,54 @@ beforeAll(async (): Promise<void> => {
   } catch (error) {
     missingTopLevelDomainMessage = (error as Error).message;
   }
+
+  try {
+    await tool.execute({
+      input: {
+        to: ['sender@example.com'],
+        subject: 'New thread mode',
+        text: 'Hello.',
+        threadingMode: 'new_thread',
+      },
+      context: {
+        runtime: {
+          invoke: async (
+            args: {
+              action: string;
+              payload: Record<string, unknown>;
+            },
+          ): Promise<Record<string, unknown>> => {
+            if (args.action !== 'email.send') {
+              throw new Error(`Unsupported action: ${args.action}`);
+            }
+
+            forwardedThreadingMode = String(args.payload.threadingMode ?? '');
+            return { messageId: 'threading-mode-forwarded' };
+          },
+        },
+      },
+    });
+  } catch {
+    forwardedThreadingMode = '';
+  }
+
+  try {
+    await tool.execute({
+      input: {
+        to: ['sender@example.com'],
+        subject: 'Invalid threading mode',
+        text: 'Hello.',
+        threadingMode: 'invalid_mode',
+      },
+      context: {
+        runtime: {
+          invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'unused' }),
+        },
+      },
+    });
+  } catch (error) {
+    invalidThreadingModeMessage = (error as Error).message;
+  }
 });
 
 describe('send-email tool extension', () => {
@@ -262,5 +314,17 @@ describe('send-email tool extension', () => {
 
   it('rejects recipients missing a top-level domain segment', () => {
     expect(missingTopLevelDomainMessage.includes('valid email addresses')).toBe(true);
+  });
+
+  it('defaults threading mode to reply_current behavior when omitted', () => {
+    expect(threadingModePayloadValue).toBe('');
+  });
+
+  it('rejects unsupported threading mode values', () => {
+    expect(invalidThreadingModeMessage.includes('threadingMode')).toBe(true);
+  });
+
+  it('forwards explicit new_thread threading mode to runtime payloads', () => {
+    expect(forwardedThreadingMode).toBe('new_thread');
   });
 });

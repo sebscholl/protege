@@ -13,7 +13,7 @@ Protege stores key material per persona and may have multiple personas locally. 
 
 1. Persona selection is explicit by destination address.
 2. Canonical relay address format is:
-   - `{persona_pubkey}@relay-protege-mail.com`
+   - `{persona_pubkey}@<relay_mail_domain>`
 3. Inbound processing maps recipient local-part to persona public key.
 4. TUI commands that initiate a conversation must specify target persona (or choose from an explicit list), never rely on implicit global active persona.
 5. Thread records persist persona identity to prevent cross-persona history contamination.

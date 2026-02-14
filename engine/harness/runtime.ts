@@ -554,6 +554,7 @@ export function buildInboundRoutingContextNote(
     `- references: ${references.join(', ') || 'none'}`,
     'If responding by email, use send_email with concrete email addresses. Do not use labels like "user".',
     'For normal replies, send_email.to should usually include reply_to_default.',
+    'Threading defaults to replying on the current message. Only set send_email.threadingMode to "new_thread" when intentionally starting a separate thread.',
   ].join('\n');
 }
 

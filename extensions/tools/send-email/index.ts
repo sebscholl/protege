@@ -26,6 +26,7 @@ export type SendEmailToolInput = {
   html?: string;
   inReplyTo?: string;
   references?: string[];
+  threadingMode?: 'reply_current' | 'new_thread';
   headers?: Record<string, string>;
 };
 
@@ -113,6 +114,10 @@ export function createSendEmailTool(
         references: {
           type: 'array',
           items: { type: 'string' },
+        },
+        threadingMode: {
+          type: 'string',
+          enum: ['reply_current', 'new_thread'],
         },
         headers: {
           type: 'object',
@@ -207,8 +212,27 @@ export function normalizeSendEmailInput(
     html: readOptionalString({ value: args.input.html }),
     inReplyTo: readOptionalString({ value: args.input.inReplyTo }),
     references: readOptionalStringArray({ value: args.input.references, fieldName: 'references' }),
+    threadingMode: readOptionalThreadingMode({ value: args.input.threadingMode }),
     headers: readOptionalStringRecord({ value: args.input.headers }),
   };
+}
+
+/**
+ * Reads one optional threading mode and validates supported send_email values.
+ */
+export function readOptionalThreadingMode(
+  args: {
+    value: unknown;
+  },
+): 'reply_current' | 'new_thread' | undefined {
+  if (args.value === undefined) {
+    return undefined;
+  }
+  if (args.value === 'reply_current' || args.value === 'new_thread') {
+    return args.value;
+  }
+
+  throw new SendEmailToolInputError('send_email input field "threadingMode" must be "reply_current" or "new_thread".');
 }
 
 /**

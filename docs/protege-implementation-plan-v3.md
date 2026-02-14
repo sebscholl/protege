@@ -15,7 +15,7 @@ This version freezes the architecture decisions made during discovery.
 9. Attachment handling v1: store files in `memory/{persona_id}/attachments/` when persona routing resolves, no deep parsing by default.
 10. Public-key email encoding: lowercase `base32` (no padding) derived from `ed25519` public key.
 11. Key storage: persona-scoped `passport.key` stored alongside persona configuration.
-12. Persona routing: inbound routes explicitly by recipient address `{persona_pubkey}@relay-protege-mail.com`.
+12. Persona routing: inbound routes explicitly by recipient address `{persona_pubkey}@<relay_mail_domain>`.
 13. TUI targeting: user explicitly specifies intended persona for new conversations.
 14. Relay abuse control in v1: IP rate limiting (and optional temporary IP blocks).
 15. Memory naming split:
@@ -23,6 +23,7 @@ This version freezes the architecture decisions made during discovery.
    - active memory in `memory/{persona_id}/active.md`
 16. Inbound sequencing: persist and acknowledge SMTP quickly, then enqueue async harness execution.
 17. Unified runtime logging: global `config/system.json` controls log path and console format.
+18. Tool-driven outbound email defaults to same-thread replies; explicit `threadingMode: "new_thread"` is required to start separate conversations.
 
 ## Relay Identity and Auth (Replaces Token-Issuance Model)
 
@@ -59,7 +60,7 @@ Relay abuse controls are network-level (IP rate limits and temporary IP blocklis
 
 ## Subdomain/Address Policy
 
-1. Every agent has a unique, cryptic, non-editable address derived from its public key in the form `{persona_pubkey}@relay-protege-mail.com`.
+1. Every agent has a unique, cryptic, non-editable address derived from its public key in the form `{persona_pubkey}@<relay_mail_domain>`.
 2. Addresses are permanent for the lifetime of that keypair.
 3. Lost keypair implies new identity/address.
 4. Relay should not recycle prior addresses in v1.

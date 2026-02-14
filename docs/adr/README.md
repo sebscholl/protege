@@ -13,6 +13,7 @@ Accepted ADRs:
 9. `0009-provider-contract-shape-v1.md`
 10. `0010-async-inbound-ack-and-harness-queue.md`
 11. `0011-tool-implementation-isolation.md`
+12. `0012-email-send-defaults-to-current-thread.md`
 
 Notes:
 

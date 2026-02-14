@@ -610,6 +610,9 @@ export function buildEmailSendRequestFromAction(
     defaultFromAddress: string;
   },
 ): OutboundReplyRequest {
+  const threadingMode = readEmailSendThreadingMode({
+    value: args.payload.threadingMode,
+  });
   const to = Array.isArray(args.payload.to)
     ? args.payload.to.filter(
         (item): item is string => typeof item === 'string' && item.trim().length > 0,
@@ -636,8 +639,8 @@ export function buildEmailSendRequestFromAction(
     throw new Error('email.send requires non-empty payload.text.');
   }
 
-  const inReplyTo = typeof args.payload.inReplyTo === 'string'
-    ? args.payload.inReplyTo
+  const inReplyTo = threadingMode === 'new_thread'
+    ? (typeof args.payload.inReplyTo === 'string' ? args.payload.inReplyTo : args.message.messageId)
     : args.message.messageId;
   const subject = resolveReplySubject({
     message: args.message,
@@ -662,9 +665,29 @@ export function buildEmailSendRequestFromAction(
       ? args.payload.html
       : undefined,
     inReplyTo,
-    references: toStringArray({ value: args.payload.references }) ?? args.message.references,
+    references: threadingMode === 'new_thread'
+      ? (toStringArray({ value: args.payload.references }) ?? [])
+      : args.message.references,
     headers: toStringRecord({ value: args.payload.headers }),
   };
+}
+
+/**
+ * Reads email.send threading mode and defaults to reply_current behavior for deterministic threading.
+ */
+export function readEmailSendThreadingMode(
+  args: {
+    value: unknown;
+  },
+): 'reply_current' | 'new_thread' {
+  if (args.value === undefined) {
+    return 'reply_current';
+  }
+  if (args.value === 'reply_current' || args.value === 'new_thread') {
+    return args.value;
+  }
+
+  throw new Error('email.send payload.threadingMode must be "reply_current" or "new_thread".');
 }
 
 /**

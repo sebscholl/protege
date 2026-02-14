@@ -22,6 +22,10 @@ let explicitCcCount = -1;
 let lockedFromAddress = '';
 let defaultInReplyTo = '';
 let defaultReferencesCount = -1;
+let forcedReplyModeInReplyTo = '';
+let forcedReplyModeSubject = '';
+let newThreadModeInReplyTo = '';
+let newThreadModeSubject = '';
 
 beforeAll(async (): Promise<void> => {
   const streamTransport = createTransport({
@@ -289,6 +293,65 @@ beforeAll(async (): Promise<void> => {
   });
   defaultInReplyTo = defaultThreadingRequest.inReplyTo;
   defaultReferencesCount = defaultThreadingRequest.references.length;
+
+  const forcedReplyModeRequest = buildEmailSendRequestFromAction({
+    message: {
+      personaId: 'persona-test',
+      messageId: '<inbound@example.com>',
+      threadId: 'thread-1',
+      from: [{ address: 'sender@example.com' }],
+      to: [{ address: 'agent@example.com' }],
+      cc: [],
+      bcc: [],
+      envelopeRcptTo: [{ address: 'persona@example.com' }],
+      subject: 'Manual Test',
+      text: 'Body',
+      references: ['<root@example.com>', '<parent@example.com>'],
+      receivedAt: '2026-02-14T00:00:00.000Z',
+      rawMimePath: '/tmp/inbound.eml',
+      attachments: [],
+    },
+    payload: {
+      to: ['sender@example.com'],
+      subject: 'Custom Subject That Should Be Ignored',
+      inReplyTo: '<different-anchor@example.com>',
+      references: ['<different-root@example.com>'],
+      text: 'Reply body',
+    },
+    defaultFromAddress: 'protege@localhost',
+  });
+  forcedReplyModeInReplyTo = forcedReplyModeRequest.inReplyTo;
+  forcedReplyModeSubject = forcedReplyModeRequest.subject;
+
+  const newThreadModeRequest = buildEmailSendRequestFromAction({
+    message: {
+      personaId: 'persona-test',
+      messageId: '<inbound@example.com>',
+      threadId: 'thread-1',
+      from: [{ address: 'sender@example.com' }],
+      to: [{ address: 'agent@example.com' }],
+      cc: [],
+      bcc: [],
+      envelopeRcptTo: [{ address: 'persona@example.com' }],
+      subject: 'Manual Test',
+      text: 'Body',
+      references: ['<root@example.com>', '<parent@example.com>'],
+      receivedAt: '2026-02-14T00:00:00.000Z',
+      rawMimePath: '/tmp/inbound.eml',
+      attachments: [],
+    },
+    payload: {
+      to: ['sender@example.com'],
+      subject: 'Intentional New Thread',
+      inReplyTo: '<new-thread-anchor@example.com>',
+      threadingMode: 'new_thread',
+      references: ['<new-thread-root@example.com>'],
+      text: 'Reply body',
+    },
+    defaultFromAddress: 'protege@localhost',
+  });
+  newThreadModeInReplyTo = newThreadModeRequest.inReplyTo;
+  newThreadModeSubject = newThreadModeRequest.subject;
 });
 
 describe('gateway runtime action invoker hardening', () => {
@@ -346,5 +409,21 @@ describe('gateway runtime action invoker hardening', () => {
 
   it('defaults references to inbound reference chain when payload omits references', () => {
     expect(defaultReferencesCount).toBe(2);
+  });
+
+  it('forces in-reply-to to inbound message id in default threaded reply mode', () => {
+    expect(forcedReplyModeInReplyTo).toBe('<inbound@example.com>');
+  });
+
+  it('forces reply subject from inbound subject in default threaded reply mode', () => {
+    expect(forcedReplyModeSubject).toBe('Re: Manual Test');
+  });
+
+  it('allows custom in-reply-to when threading mode is explicitly new_thread', () => {
+    expect(newThreadModeInReplyTo).toBe('<new-thread-anchor@example.com>');
+  });
+
+  it('allows custom subject when threading mode is explicitly new_thread', () => {
+    expect(newThreadModeSubject).toBe('Intentional New Thread');
   });
 });

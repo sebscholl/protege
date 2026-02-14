@@ -43,7 +43,7 @@ This document outlines the recommended order of development for Protege, designe
 | 11 | **Gateway (Relay Client)** | Add the WebSocket client to the local Gateway. On startup, it connects to the Relay and authenticates. Inbound/outbound mail is now tunneled. | Manual test | M2, Step 10 |
 | 12 | **Installation CLI** | Build the `npx create-protege` experience. It should prompt for configuration, generate an `ed25519` passport keypair, register the public key with the Relay, and write the `.env` file plus persona key material. | Manual test | Step 11 |
 
-**Outcome of M3:** The agent is now live on the internet. You can email `{persona_pubkey}@relay-protege-mail.com` from Gmail and get a response. The zero-config installation is complete.
+**Outcome of M3:** The agent is now live on the internet. You can email `{persona_pubkey}@<relay_mail_domain>` from Gmail and get a response. The zero-config installation is complete.
 
 ---
 

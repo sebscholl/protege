@@ -33,7 +33,8 @@ Optional:
 4. `html: string`
 5. `inReplyTo: string`
 6. `references: string[]`
-7. `headers: Record<string, string>`
+7. `threadingMode: "reply_current" | "new_thread"`
+8. `headers: Record<string, string>`
 
 ## Notes
 
@@ -41,4 +42,5 @@ Optional:
 2. Runtime must support `email.send` in `context.runtime.invoke`.
 3. Recipient fields must be concrete email addresses.
 4. Runtime enforces canonical sender identity for threaded replies.
-5. Runtime may normalize same-thread reply subjects to preserve thread semantics.
+5. Runtime defaults to same-thread replies; use `threadingMode: "new_thread"` only when intentionally starting a separate conversation.
+6. Runtime may normalize same-thread reply subjects to preserve thread semantics.

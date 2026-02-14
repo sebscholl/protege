@@ -111,7 +111,7 @@ The Gateway is responsible for all email communication. It consists of two parts
 The Relay is a minimal, open-source service. Its sole purpose is to act as a bridge between the standard SMTP protocol and the local bot. The protocol is **raw SMTP tunneled over WebSocket.**
 
 1.  The bot connects to the Relay via WebSocket and performs a signed challenge-response handshake using its local `ed25519` keypair from `passport.key`.
-2.  The Relay authenticates the signature, binds the connection to the persona public key identity, and routes mail for `{persona_pubkey}@relay-protege-mail.com`.
+2.  The Relay authenticates the signature, binds the connection to the persona public key identity, and routes mail for `{persona_pubkey}@<relay_mail_domain>`.
 3.  From then on, all messages on the socket are raw SMTP data streams (binary frames), piped in both directions.
 
 ### 4.2. Local Gateway Client

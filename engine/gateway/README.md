@@ -25,6 +25,7 @@ Responsible for SMTP parsing/sending and relay tunneling behavior.
 8. Outbound replies include deterministic threading headers when outbound transport is configured.
 9. Outbound sender identity is locked to the addressed persona identity for reply consistency.
 10. Threaded replies normalize subject to `Re: <inbound-subject>` by default.
+11. Runtime action `email.send` defaults to `reply_current` threading; explicit `threadingMode: "new_thread"` is required to start a separate thread.
 
 ## Relay Client Notes (M3.5 In Progress)
 
