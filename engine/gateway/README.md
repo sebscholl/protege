@@ -21,4 +21,7 @@ Responsible for SMTP parsing/sending and relay tunneling behavior.
 4. Gateway runtime persists inbound thread messages to persona temporal storage before completing SMTP request handling.
 5. Harness inference is enqueued asynchronously after inbound persistence to avoid long-running SMTP transactions.
 6. If inbound recipient routing does not resolve to a known persona, SMTP ingestion is rejected.
-7. Outbound replies include deterministic threading headers when outbound transport is configured.
+7. Outbound SMTP delivery is tool-driven (`email.send`) rather than implicit fallback replies.
+8. Outbound replies include deterministic threading headers when outbound transport is configured.
+9. Outbound sender identity is locked to the addressed persona identity for reply consistency.
+10. Threaded replies normalize subject to `Re: <inbound-subject>` by default.

@@ -39,3 +39,6 @@ Optional:
 
 1. Tool execution fails fast when required fields are missing.
 2. Runtime must support `email.send` in `context.runtime.invoke`.
+3. Recipient fields must be concrete email addresses.
+4. Runtime enforces canonical sender identity for threaded replies.
+5. Runtime may normalize same-thread reply subjects to preserve thread semantics.

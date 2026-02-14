@@ -34,6 +34,12 @@ Gateway transport config (`config/gateway.json`):
 
 ## Manual Email Tests
 
+Important behavior:
+
+1. Outbound delivery is tool-driven.
+2. The model must call `send_email` for user-visible replies to be delivered.
+3. Threaded replies default to persona sender identity and `Re:` subject normalization.
+
 Set the persona public key:
 
 ```sh
