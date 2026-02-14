@@ -21,29 +21,6 @@ export type HarnessToolDefinition = {
 export type HarnessToolRegistry = Record<string, HarnessToolDefinition>;
 
 /**
- * Represents one normalized send-email request payload used by tool execution.
- */
-export type HarnessToolSendEmailRequest = {
-  to: string[];
-  from: string;
-  cc?: string[];
-  bcc?: string[];
-  subject: string;
-  text: string;
-  html?: string;
-  inReplyTo?: string;
-  references?: string[];
-  headers?: Record<string, string>;
-};
-
-/**
- * Represents one normalized send-email result payload returned to tool callers.
- */
-export type HarnessToolSendEmailResult = {
-  messageId?: string;
-};
-
-/**
  * Represents runtime dependencies available while executing one tool.
  */
 export type HarnessToolExecutionContext = {

@@ -6,8 +6,25 @@ Tool extensions expose callable capabilities to the inference harness.
 
 Tool contracts should stay stable and explicitly documented per extension.
 
+## Tool Structure
+
+Each tool must be implemented as:
+
+1. `extensions/tools/{tool-name}/index.ts`
+2. `extensions/tools/{tool-name}/config.json`
+3. `extensions/tools/{tool-name}/README.md`
+
+`index.ts` is the tool's sole code entry point and exports the tool definition and execution method.
+
+## Isolation Boundary
+
+1. Tool-specific request/response types must live inside the tool directory.
+2. Tool-specific validation and mapping logic must live inside the tool directory.
+3. Core engine code may only depend on generic tool contracts (`name`, `description`, `inputSchema`, `execute`) and generic runtime invocation.
+4. If logic only applies to one tool, it belongs in that tool's directory.
+
 ## Current Tools
 
-1. `send-email`: Sends outbound email via harness runtime `context.sendEmail`.
+1. `send-email`: Sends outbound email via generic runtime action invocation.
 
 Each tool lives in its own directory with `index.ts`, `config.json`, and `README.md`.
