@@ -190,8 +190,12 @@ export function extractOpenAiToolCalls(
       parsedArguments = typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
         ? parsed as Record<string, unknown>
         : {};
-    } catch {
-      parsedArguments = {};
+    } catch (error) {
+      throw new HarnessProviderError({
+        code: 'response_parse_failed',
+        message: `Failed to parse tool-call arguments for tool: ${name}.`,
+        cause: error,
+      });
     }
 
     output.push({

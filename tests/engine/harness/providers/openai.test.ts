@@ -23,6 +23,7 @@ let successText = '';
 let successToolCallName = '';
 let failureCode = '';
 let unsupportedProviderCode = '';
+let invalidToolArgumentsCode = '';
 
 beforeAll(async (): Promise<void> => {
   mswIntercept({ fixtureKey: 'openai/chat-completions/200' });
@@ -77,6 +78,24 @@ beforeAll(async (): Promise<void> => {
   } catch (error) {
     unsupportedProviderCode = (error as HarnessProviderError).code;
   }
+
+  mswIntercept({ fixtureKey: 'openai/chat-completions/200-tool-call-invalid-arguments' });
+  try {
+    await adapter.generate({
+      request: {
+        ...request,
+        tools: [{
+          name: 'send_email',
+          description: 'Send outbound mail.',
+          inputSchema: {
+            type: 'object',
+          },
+        }],
+      },
+    });
+  } catch (error) {
+    invalidToolArgumentsCode = (error as HarnessProviderError).code;
+  }
 });
 
 describe('openai provider adapter', () => {
@@ -90,6 +109,10 @@ describe('openai provider adapter', () => {
 
   it('parses function tool calls into normalized tool-call payloads', () => {
     expect(successToolCallName).toBe('send_email');
+  });
+
+  it('fails with response_parse_failed when tool-call arguments are invalid json', () => {
+    expect(invalidToolArgumentsCode).toBe('response_parse_failed');
   });
 
   it('rejects non-openai provider model ids', () => {

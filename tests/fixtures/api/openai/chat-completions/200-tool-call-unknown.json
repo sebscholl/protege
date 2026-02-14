@@ -1,0 +1,38 @@
+{
+  "request": {
+    "method": "POST",
+    "pathPattern": "^/v1/chat/completions$"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "id": "chatcmpl_fixture_200_tool_call_unknown",
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+              {
+                "id": "call_unknown_1",
+                "type": "function",
+                "function": {
+                  "name": "not_a_real_tool",
+                  "arguments": "{\"value\":\"test\"}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ]
+    }
+  },
+  "meta": {
+    "service": "openai",
+    "name": "chat completions unknown tool call"
+  }
+}

@@ -264,6 +264,12 @@ export function createGatewayRuntimeActionInvoker(
     const text = typeof runtimeArgs.payload.text === 'string'
       ? runtimeArgs.payload.text
       : '';
+    if (subject.trim().length === 0) {
+      throw new Error('email.send requires non-empty payload.subject.');
+    }
+    if (text.trim().length === 0) {
+      throw new Error('email.send requires non-empty payload.text.');
+    }
     const fromAddress = typeof runtimeArgs.payload.from === 'string'
       ? runtimeArgs.payload.from
       : args.defaultFromAddress;
