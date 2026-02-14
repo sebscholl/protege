@@ -13,6 +13,9 @@
     "gateway:start:dev": "tsx engine/cli/index.ts gateway start --dev",
     "gateway:stop": "tsx engine/cli/index.ts gateway stop",
     "gateway:restart": "tsx engine/cli/index.ts gateway restart",
+    "relay:start": "tsx relay/src/main.ts",
+    "relay:test:ws-auth": "tsx relay/scripts/manual-ws-auth-test.ts",
+    "relay:listen:ws-inbox": "tsx relay/scripts/manual-ws-inbox.ts",
     "persona:create": "tsx engine/cli/index.ts persona create --set-active",
     "persona:list": "tsx engine/cli/index.ts persona list"
   },

@@ -11,6 +11,7 @@
     "baseUrl": ".",
     "paths": {
       "@engine/*": ["engine/*"],
+      "@relay/*": ["relay/*"],
       "@extensions/*": ["extensions/*"],
       "@config/*": ["config/*"],
       "@memory/*": ["memory/*"],
@@ -18,5 +19,5 @@
     },
     "types": ["node", "vitest/globals"]
   },
-  "include": ["engine", "extensions", "tests", "vitest.config.ts"]
+  "include": ["engine", "relay", "extensions", "tests", "vitest.config.ts"]
 }

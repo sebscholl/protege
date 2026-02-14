@@ -134,3 +134,34 @@ Latest thread messages:
 sqlite3 memory/{persona_id}/temporal.db \
   "select received_at,direction,message_id,coalesce(in_reply_to,''),subject,substr(text_body,1,160) from messages order by received_at desc limit 10;"
 ```
+
+## Relay Manual Tests
+
+Start relay:
+
+```sh
+npm run relay:start
+```
+
+Manual websocket auth smoke:
+
+```sh
+npm run relay:test:ws-auth
+```
+
+Listen for tunneled SMTP frames:
+
+```sh
+npm run relay:listen:ws-inbox
+```
+
+Send SMTP into relay ingress:
+
+```sh
+swaks \
+  --server 127.0.0.1:2526 \
+  --from sender@example.com \
+  --to <persona_pubkey_base32>@relay-protege-mail.com \
+  --header "Subject: Relay SMTP Test" \
+  --body "hello from swaks"
+```

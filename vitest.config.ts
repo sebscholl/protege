@@ -17,6 +17,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@engine': resolveFromRoot({ relativePath: './engine' }),
+      '@relay': resolveFromRoot({ relativePath: './relay' }),
       '@extensions': resolveFromRoot({ relativePath: './extensions' }),
       '@config': resolveFromRoot({ relativePath: './config' }),
       '@memory': resolveFromRoot({ relativePath: './memory' }),
