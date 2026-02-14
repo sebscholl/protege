@@ -107,3 +107,17 @@ When new decisions are made:
 2. Add a new ADR if the decision is architectural or broadly procedural.
 3. Keep historical intent intact; avoid rewriting old decisions without noting supersession.
 
+## Slash Commands
+
+Use these shorthand commands in this repo:
+
+1. `/review-commit-push "<commit message>" [branch]`
+   - This is an agent workflow command, not a shell script.
+   - Required workflow:
+     1. Review all unstaged/staged changes for correctness and risks.
+     2. Verify docs and folder `README.md` files are current for changed behavior.
+     3. Update docs/READMEs/ADRs as needed before commit.
+     4. Run quality gates: `lint`, `typecheck`, `test`.
+     5. Stage changes, create a thoughtful commit message, and push.
+     6. If working on a feature branch, merge into the target branch after checks pass.
+   - If docs are stale, the command must fix them before commit rather than asking to skip.

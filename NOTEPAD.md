@@ -1,10 +1,18 @@
+# Manual Tests
+
+Set the persona pubkey as a variable.
+
+```sh
+export PERSONA_PUBKEY=5whp2sfr7nigrtfmwer5m7hxufs4mzunqezkcxusge2jj3k2xosq
+```
+
 ## Send a test email (plain text)
 
 ```sh
 swaks \
     --server 127.0.0.1:2525 \
     --from sender@example.com \
-    --to {persona_pubkey}@relay-protege-mail.com \
+    --to "$PERSONA_PUBKEY@relay-protege-mail.com" \
     --header "Subject: Manual Test" \
     --body "hello"
 ```
@@ -15,7 +23,7 @@ swaks \
 swaks \
     --server 127.0.0.1:2525 \
     --from sender@example.com \
-    --to {persona_pubkey}@relay-protege-mail.com \
+    --to "$PERSONA_PUBKEY@relay-protege-mail.com" \
     --header "Subject: Manual Attachment Test" \
     --body "Testing inbound attachment parsing." \
     --attach @/home/sebscholl/Code/protege/tmp/pic.png
@@ -27,7 +35,7 @@ swaks \
 swaks \
     --server 127.0.0.1:2525 \
     --from sender@example.com \
-    --to {persona_pubkey}@relay-protege-mail.com \
+    --to "$PERSONA_PUBKEY@relay-protege-mail.com" \
     --header "Subject: Manual Attachment Test" \
     --body "Testing inbound attachment parsing with MIMETYPE." \
     --attach-type image/png \
@@ -40,10 +48,10 @@ swaks \
 swaks \
     --server 127.0.0.1:2525 \
     --from sender@example.com \
-    --to {persona_pubkey}@relay-protege-mail.com \
+    --to "$PERSONA_PUBKEY@relay-protege-mail.com" \
     --header "Subject: Missing Message-ID Test" \
     --suppress-data \
-    --data "From: sender@example.com\nTo: {persona_pubkey}@relay-protege-mail.com\nSubject: Missing Message-ID Test\n\nhello"
+    --data "From: sender@example.com\nTo: "$PERSONA_PUBKEY@relay-protege-mail.com"\nSubject: Missing Message-ID Test\n\nhello"
 ```
 
 ## Verify persisted artifacts
