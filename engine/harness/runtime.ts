@@ -270,6 +270,12 @@ export async function executeProviderToolLoop(
         }),
       };
     }
+    args.toolContext.logger?.info({
+      event: 'harness.tool.calls.received',
+      context: {
+        count: response.toolCalls.length,
+      },
+    });
 
     providerMessages.push({
       role: 'assistant',
@@ -277,11 +283,38 @@ export async function executeProviderToolLoop(
       toolCalls: response.toolCalls,
     });
     for (const toolCall of response.toolCalls) {
-      const toolResult = await executeRegisteredTool({
-        registry: args.registry,
-        name: toolCall.name,
-        input: toolCall.input,
-        context: args.toolContext,
+      args.toolContext.logger?.info({
+        event: 'harness.tool.call.started',
+        context: {
+          toolName: toolCall.name,
+          toolCallId: toolCall.id,
+        },
+      });
+      let toolResult: Record<string, unknown>;
+      try {
+        toolResult = await executeRegisteredTool({
+          registry: args.registry,
+          name: toolCall.name,
+          input: toolCall.input,
+          context: args.toolContext,
+        });
+      } catch (error) {
+        args.toolContext.logger?.error({
+          event: 'harness.tool.call.failed',
+          context: {
+            toolName: toolCall.name,
+            toolCallId: toolCall.id,
+            message: (error as Error).message,
+          },
+        });
+        throw error;
+      }
+      args.toolContext.logger?.info({
+        event: 'harness.tool.call.completed',
+        context: {
+          toolName: toolCall.name,
+          toolCallId: toolCall.id,
+        },
       });
       providerMessages.push({
         role: 'tool',
@@ -368,6 +401,12 @@ export function toHarnessInput(
     metadata: {
       references: args.message.references,
       personaId: args.message.personaId,
+      from: args.message.from.map((item) => item.address),
+      to: args.message.to.map((item) => item.address),
+      cc: args.message.cc.map((item) => item.address),
+      bcc: args.message.bcc.map((item) => item.address),
+      replyToDefault: args.message.from[0]?.address ?? '',
+      replyFromAddress: args.message.envelopeRcptTo[0]?.address ?? args.message.to[0]?.address ?? '',
     },
   };
 }
@@ -378,6 +417,7 @@ export function toHarnessInput(
 export function buildProviderMessages(
   args: {
     context: {
+      threadId: string;
       activeMemory: string;
       history: Array<{
         direction: 'inbound' | 'outbound' | 'synthetic';
@@ -387,6 +427,7 @@ export function buildProviderMessages(
       input: {
         messageId: string;
         text: string;
+        metadata?: Record<string, unknown>;
       };
     };
     systemPrompt: string;
@@ -399,6 +440,13 @@ export function buildProviderMessages(
   }
   if (args.context.activeMemory.length > 0) {
     systemParts.push(`Active memory:\n${args.context.activeMemory}`);
+  }
+  const inboundRoutingContext = buildInboundRoutingContextNote({
+    input: args.context.input,
+    threadId: args.context.threadId,
+  });
+  if (inboundRoutingContext.length > 0) {
+    systemParts.push(inboundRoutingContext);
   }
   if (systemParts.length > 0) {
     messages.push({
@@ -423,6 +471,85 @@ export function buildProviderMessages(
     parts: [{ type: 'text', text: args.context.input.text }],
   });
   return messages;
+}
+
+/**
+ * Builds one deterministic email-routing context note for tool-call address selection.
+ */
+export function buildInboundRoutingContextNote(
+  args: {
+    input: {
+      messageId: string;
+      metadata?: Record<string, unknown>;
+    };
+    threadId?: string;
+  },
+): string {
+  const metadata = args.input.metadata ?? {};
+  const from = readStringArrayMetadata({
+    value: metadata.from,
+  });
+  const to = readStringArrayMetadata({
+    value: metadata.to,
+  });
+  const cc = readStringArrayMetadata({
+    value: metadata.cc,
+  });
+  const bcc = readStringArrayMetadata({
+    value: metadata.bcc,
+  });
+  const references = readStringArrayMetadata({
+    value: metadata.references,
+  });
+  const replyToDefault = typeof metadata.replyToDefault === 'string'
+    ? metadata.replyToDefault
+    : '';
+  const replyFromAddress = typeof metadata.replyFromAddress === 'string'
+    ? metadata.replyFromAddress
+    : '';
+
+  if (
+    from.length === 0
+    && to.length === 0
+    && cc.length === 0
+    && bcc.length === 0
+    && replyToDefault.length === 0
+    && replyFromAddress.length === 0
+  ) {
+    return '';
+  }
+
+  return [
+    'Inbound email routing context:',
+    `- message_id: ${args.input.messageId}`,
+    `- thread_id: ${args.threadId ?? 'unknown'}`,
+    `- reply_to_default: ${replyToDefault || 'unknown'}`,
+    `- reply_from_address: ${replyFromAddress || 'unknown'}`,
+    `- from: ${from.join(', ') || 'none'}`,
+    `- to: ${to.join(', ') || 'none'}`,
+    `- cc: ${cc.join(', ') || 'none'}`,
+    `- bcc: ${bcc.join(', ') || 'none'}`,
+    `- references: ${references.join(', ') || 'none'}`,
+    'If responding by email, use send_email with concrete email addresses. Do not use labels like "user".',
+    'For normal replies, send_email.to should usually include reply_to_default.',
+  ].join('\n');
+}
+
+/**
+ * Reads one metadata value as a filtered string-array.
+ */
+export function readStringArrayMetadata(
+  args: {
+    value: unknown;
+  },
+): string[] {
+  if (!Array.isArray(args.value)) {
+    return [];
+  }
+
+  return args.value.filter(
+    (item): item is string => typeof item === 'string' && item.trim().length > 0,
+  );
 }
 
 /**

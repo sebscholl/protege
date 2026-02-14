@@ -8,15 +8,24 @@ import {
 
 let toolName = '';
 let schemaType = '';
+let toolDescription = '';
 let sentMessageSource = '';
 let validationMessage = '';
+let invalidRecipientMessage = '';
 let configDefaultFromAddress = '';
+let plusAddressAccepted = false;
+let subdomainAddressAccepted = false;
+let mixedCaseAddressAccepted = false;
+let invalidAddressMessage = '';
+let whitespaceAddressMessage = '';
+let missingTopLevelDomainMessage = '';
 
 beforeAll(async (): Promise<void> => {
   const config = readSendEmailToolConfig();
   configDefaultFromAddress = config.defaultFromAddress ?? '';
   const tool = createSendEmailTool();
   toolName = tool.name;
+  toolDescription = tool.description;
   schemaType = String(tool.inputSchema.type ?? '');
 
   const transport = createTransport({
@@ -78,6 +87,128 @@ beforeAll(async (): Promise<void> => {
   } catch (error) {
     validationMessage = (error as Error).message;
   }
+
+  try {
+    await tool.execute({
+      input: {
+        to: ['user'],
+        subject: 'Invalid recipient',
+        text: 'Hello.',
+      },
+      context: {
+        runtime: {
+          invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'unused' }),
+        },
+      },
+    });
+  } catch (error) {
+    invalidRecipientMessage = (error as Error).message;
+  }
+
+  try {
+    await tool.execute({
+      input: {
+        to: ['first.last+alerts@example.com'],
+        subject: 'Plus accepted',
+        text: 'Hello.',
+      },
+      context: {
+        runtime: {
+          invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'ok-1' }),
+        },
+      },
+    });
+    plusAddressAccepted = true;
+  } catch {
+    plusAddressAccepted = false;
+  }
+
+  try {
+    await tool.execute({
+      input: {
+        to: ['ops@mail.service.example.com'],
+        subject: 'Subdomain accepted',
+        text: 'Hello.',
+      },
+      context: {
+        runtime: {
+          invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'ok-2' }),
+        },
+      },
+    });
+    subdomainAddressAccepted = true;
+  } catch {
+    subdomainAddressAccepted = false;
+  }
+
+  try {
+    await tool.execute({
+      input: {
+        to: ['Patricia.Smith@Example.COM'],
+        subject: 'Case accepted',
+        text: 'Hello.',
+      },
+      context: {
+        runtime: {
+          invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'ok-3' }),
+        },
+      },
+    });
+    mixedCaseAddressAccepted = true;
+  } catch {
+    mixedCaseAddressAccepted = false;
+  }
+
+  try {
+    await tool.execute({
+      input: {
+        to: ['invalid-address'],
+        subject: 'Invalid',
+        text: 'Hello.',
+      },
+      context: {
+        runtime: {
+          invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'unused' }),
+        },
+      },
+    });
+  } catch (error) {
+    invalidAddressMessage = (error as Error).message;
+  }
+
+  try {
+    await tool.execute({
+      input: {
+        to: ['  sender@example.com'],
+        subject: 'Whitespace invalid',
+        text: 'Hello.',
+      },
+      context: {
+        runtime: {
+          invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'unused' }),
+        },
+      },
+    });
+  } catch (error) {
+    whitespaceAddressMessage = (error as Error).message;
+  }
+
+  try {
+    await tool.execute({
+      input: {
+        to: ['sender@example'],
+        subject: 'Missing TLD',
+        text: 'Hello.',
+      },
+      context: {
+        runtime: {
+          invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'unused' }),
+        },
+      },
+    });
+  } catch (error) {
+    missingTopLevelDomainMessage = (error as Error).message;
+  }
 });
 
 describe('send-email tool extension', () => {
@@ -87,6 +218,10 @@ describe('send-email tool extension', () => {
 
   it('declares object input schema for provider tool exposure', () => {
     expect(schemaType).toBe('object');
+  });
+
+  it('documents that user-visible replies require send_email delivery', () => {
+    expect(toolDescription.includes('user to receive your response')).toBe(true);
   });
 
   it('reads default from-address from tool config', () => {
@@ -99,5 +234,33 @@ describe('send-email tool extension', () => {
 
   it('rejects invalid payloads missing required fields', () => {
     expect(validationMessage.includes('subject')).toBe(true);
+  });
+
+  it('rejects recipient placeholders that are not valid email addresses', () => {
+    expect(invalidRecipientMessage.includes('valid email addresses')).toBe(true);
+  });
+
+  it('accepts plus-addressing recipient formats', () => {
+    expect(plusAddressAccepted).toBe(true);
+  });
+
+  it('accepts recipient addresses on deep subdomains', () => {
+    expect(subdomainAddressAccepted).toBe(true);
+  });
+
+  it('accepts mixed-case recipient addresses', () => {
+    expect(mixedCaseAddressAccepted).toBe(true);
+  });
+
+  it('rejects malformed recipients without an at-sign/domain format', () => {
+    expect(invalidAddressMessage.includes('valid email addresses')).toBe(true);
+  });
+
+  it('rejects recipients with leading whitespace', () => {
+    expect(whitespaceAddressMessage.includes('valid email addresses')).toBe(true);
+  });
+
+  it('rejects recipients missing a top-level domain segment', () => {
+    expect(missingTopLevelDomainMessage.includes('valid email addresses')).toBe(true);
   });
 });

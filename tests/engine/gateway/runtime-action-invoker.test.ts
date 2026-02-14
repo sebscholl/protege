@@ -1,13 +1,27 @@
 import { createTransport } from 'nodemailer';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { createGatewayRuntimeActionInvoker } from '@engine/gateway/index';
+import {
+  buildEmailSendRequestFromAction,
+  createGatewayRuntimeActionInvoker,
+  resolveReplyFromAddress,
+  resolveReplySubject,
+} from '@engine/gateway/index';
 
 let unknownActionError = '';
 let missingRecipientError = '';
+let invalidRecipientError = '';
 let missingSubjectError = '';
 let missingTextError = '';
 let emailSendMessageId = '';
+let replyFromAddress = '';
+let replySubject = '';
+let newThreadReplySubject = '';
+let implicitReplyAllCcCount = -1;
+let explicitCcCount = -1;
+let lockedFromAddress = '';
+let defaultInReplyTo = '';
+let defaultReferencesCount = -1;
 
 beforeAll(async (): Promise<void> => {
   const streamTransport = createTransport({
@@ -65,6 +79,19 @@ beforeAll(async (): Promise<void> => {
     await invoke({
       action: 'email.send',
       payload: {
+        to: ['user'],
+        subject: 'Hello',
+        text: 'Body',
+      },
+    });
+  } catch (error) {
+    invalidRecipientError = (error as Error).message;
+  }
+
+  try {
+    await invoke({
+      action: 'email.send',
+      payload: {
         to: ['receiver@example.com'],
         text: 'Body',
       },
@@ -95,6 +122,173 @@ beforeAll(async (): Promise<void> => {
     },
   });
   emailSendMessageId = String(sent.messageId ?? '');
+
+  replyFromAddress = resolveReplyFromAddress({
+    message: {
+      personaId: 'persona-test',
+      messageId: '<inbound@example.com>',
+      threadId: 'thread-1',
+      from: [{ address: 'sender@example.com' }],
+      to: [{ address: 'agent@example.com' }],
+      cc: [],
+      bcc: [],
+      envelopeRcptTo: [{ address: 'persona@example.com' }],
+      subject: 'Hello',
+      text: 'Body',
+      references: [],
+      receivedAt: '2026-02-14T00:00:00.000Z',
+      rawMimePath: '/tmp/inbound.eml',
+      attachments: [],
+    },
+    defaultFromAddress: 'protege@localhost',
+  });
+  replySubject = resolveReplySubject({
+    message: {
+      personaId: 'persona-test',
+      messageId: '<inbound@example.com>',
+      threadId: 'thread-1',
+      from: [{ address: 'sender@example.com' }],
+      to: [{ address: 'agent@example.com' }],
+      cc: [],
+      bcc: [],
+      envelopeRcptTo: [{ address: 'persona@example.com' }],
+      subject: 'Manual Test',
+      text: 'Body',
+      references: [],
+      receivedAt: '2026-02-14T00:00:00.000Z',
+      rawMimePath: '/tmp/inbound.eml',
+      attachments: [],
+    },
+    inReplyTo: '<inbound@example.com>',
+    payloadSubject: 'Custom Subject',
+  });
+  newThreadReplySubject = resolveReplySubject({
+    message: {
+      personaId: 'persona-test',
+      messageId: '<inbound@example.com>',
+      threadId: 'thread-1',
+      from: [{ address: 'sender@example.com' }],
+      to: [{ address: 'agent@example.com' }],
+      cc: [],
+      bcc: [],
+      envelopeRcptTo: [{ address: 'persona@example.com' }],
+      subject: 'Manual Test',
+      text: 'Body',
+      references: [],
+      receivedAt: '2026-02-14T00:00:00.000Z',
+      rawMimePath: '/tmp/inbound.eml',
+      attachments: [],
+    },
+    inReplyTo: '<new-thread-anchor@example.com>',
+    payloadSubject: 'Custom Subject',
+  });
+
+  const noImplicitReplyAllRequest = buildEmailSendRequestFromAction({
+    message: {
+      personaId: 'persona-test',
+      messageId: '<inbound@example.com>',
+      threadId: 'thread-1',
+      from: [{ address: 'sender@example.com' }],
+      to: [{ address: 'agent@example.com' }],
+      cc: [{ address: 'patricia@example.com' }],
+      bcc: [],
+      envelopeRcptTo: [{ address: 'persona@example.com' }],
+      subject: 'Manual Test',
+      text: 'Body',
+      references: [],
+      receivedAt: '2026-02-14T00:00:00.000Z',
+      rawMimePath: '/tmp/inbound.eml',
+      attachments: [],
+    },
+    payload: {
+      to: ['sender@example.com'],
+      subject: 'Manual Test',
+      text: 'Reply body',
+    },
+    defaultFromAddress: 'protege@localhost',
+  });
+  implicitReplyAllCcCount = noImplicitReplyAllRequest.cc?.length ?? 0;
+
+  const explicitCcRequest = buildEmailSendRequestFromAction({
+    message: {
+      personaId: 'persona-test',
+      messageId: '<inbound@example.com>',
+      threadId: 'thread-1',
+      from: [{ address: 'sender@example.com' }],
+      to: [{ address: 'agent@example.com' }],
+      cc: [{ address: 'patricia@example.com' }],
+      bcc: [],
+      envelopeRcptTo: [{ address: 'persona@example.com' }],
+      subject: 'Manual Test',
+      text: 'Body',
+      references: [],
+      receivedAt: '2026-02-14T00:00:00.000Z',
+      rawMimePath: '/tmp/inbound.eml',
+      attachments: [],
+    },
+    payload: {
+      to: ['sender@example.com'],
+      cc: ['patricia@example.com'],
+      subject: 'Manual Test',
+      text: 'Reply body',
+    },
+    defaultFromAddress: 'protege@localhost',
+  });
+  explicitCcCount = explicitCcRequest.cc?.length ?? 0;
+
+  const lockedFromRequest = buildEmailSendRequestFromAction({
+    message: {
+      personaId: 'persona-test',
+      messageId: '<inbound@example.com>',
+      threadId: 'thread-1',
+      from: [{ address: 'sender@example.com' }],
+      to: [{ address: 'agent@example.com' }],
+      cc: [],
+      bcc: [],
+      envelopeRcptTo: [{ address: 'persona@example.com' }],
+      subject: 'Manual Test',
+      text: 'Body',
+      references: [],
+      receivedAt: '2026-02-14T00:00:00.000Z',
+      rawMimePath: '/tmp/inbound.eml',
+      attachments: [],
+    },
+    payload: {
+      to: ['sender@example.com'],
+      from: 'spoofed@example.com',
+      subject: 'Manual Test',
+      text: 'Reply body',
+    },
+    defaultFromAddress: 'protege@localhost',
+  });
+  lockedFromAddress = lockedFromRequest.from.address;
+
+  const defaultThreadingRequest = buildEmailSendRequestFromAction({
+    message: {
+      personaId: 'persona-test',
+      messageId: '<inbound@example.com>',
+      threadId: 'thread-1',
+      from: [{ address: 'sender@example.com' }],
+      to: [{ address: 'agent@example.com' }],
+      cc: [],
+      bcc: [],
+      envelopeRcptTo: [{ address: 'persona@example.com' }],
+      subject: 'Manual Test',
+      text: 'Body',
+      references: ['<root@example.com>', '<parent@example.com>'],
+      receivedAt: '2026-02-14T00:00:00.000Z',
+      rawMimePath: '/tmp/inbound.eml',
+      attachments: [],
+    },
+    payload: {
+      to: ['sender@example.com'],
+      subject: 'Manual Test',
+      text: 'Reply body',
+    },
+    defaultFromAddress: 'protege@localhost',
+  });
+  defaultInReplyTo = defaultThreadingRequest.inReplyTo;
+  defaultReferencesCount = defaultThreadingRequest.references.length;
 });
 
 describe('gateway runtime action invoker hardening', () => {
@@ -104,6 +298,10 @@ describe('gateway runtime action invoker hardening', () => {
 
   it('rejects email.send without recipients', () => {
     expect(missingRecipientError.includes('payload.to')).toBe(true);
+  });
+
+  it('rejects email.send recipients that are not concrete email addresses', () => {
+    expect(invalidRecipientError.includes('valid email addresses')).toBe(true);
   });
 
   it('rejects email.send without subject', () => {
@@ -116,5 +314,37 @@ describe('gateway runtime action invoker hardening', () => {
 
   it('sends email and returns message id for valid payloads', () => {
     expect(emailSendMessageId.length > 0).toBe(true);
+  });
+
+  it('uses inbound persona recipient address as canonical reply from-address', () => {
+    expect(replyFromAddress).toBe('persona@example.com');
+  });
+
+  it('normalizes threaded reply subjects from inbound subject context', () => {
+    expect(replySubject).toBe('Re: Manual Test');
+  });
+
+  it('preserves payload subject for non-threaded sends', () => {
+    expect(newThreadReplySubject).toBe('Custom Subject');
+  });
+
+  it('does not implicitly reply-all by copying inbound cc/bcc when payload omits them', () => {
+    expect(implicitReplyAllCcCount).toBe(0);
+  });
+
+  it('includes cc recipients only when explicitly requested by the tool payload', () => {
+    expect(explicitCcCount).toBe(1);
+  });
+
+  it('locks outbound from-address to inbound persona identity even if payload includes from', () => {
+    expect(lockedFromAddress).toBe('persona@example.com');
+  });
+
+  it('defaults in-reply-to to inbound message id when payload omits threading fields', () => {
+    expect(defaultInReplyTo).toBe('<inbound@example.com>');
+  });
+
+  it('defaults references to inbound reference chain when payload omits references', () => {
+    expect(defaultReferencesCount).toBe(2);
   });
 });

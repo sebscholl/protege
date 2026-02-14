@@ -76,7 +76,7 @@ export function createSendEmailTool(
   });
   return {
     name: 'send_email',
-    description: 'Send an outbound email message to one or more recipients.',
+    description: 'Send an outbound email message to one or more recipients. Use this whenever you want the user to receive your response.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -177,7 +177,7 @@ export function normalizeSendEmailInput(
     config: SendEmailToolConfig;
   },
 ): Record<string, unknown> {
-  const to = readRequiredStringArray({
+  const to = readRequiredEmailAddressArray({
     value: args.input.to,
     fieldName: 'to',
   });
@@ -200,8 +200,8 @@ export function normalizeSendEmailInput(
   return {
     to,
     from,
-    cc: readOptionalStringArray({ value: args.input.cc, fieldName: 'cc' }),
-    bcc: readOptionalStringArray({ value: args.input.bcc, fieldName: 'bcc' }),
+    cc: readOptionalEmailAddressArray({ value: args.input.cc, fieldName: 'cc' }),
+    bcc: readOptionalEmailAddressArray({ value: args.input.bcc, fieldName: 'bcc' }),
     subject,
     text,
     html: readOptionalString({ value: args.input.html }),
@@ -264,6 +264,27 @@ export function readRequiredStringArray(
 }
 
 /**
+ * Reads one required array of valid email addresses and raises validation errors when invalid.
+ */
+export function readRequiredEmailAddressArray(
+  args: {
+    value: unknown;
+    fieldName: string;
+  },
+): string[] {
+  const values = readRequiredStringArray({
+    value: args.value,
+    fieldName: args.fieldName,
+  });
+  const invalid = values.find((value) => !isEmailAddress({ value }));
+  if (invalid) {
+    throw new SendEmailToolInputError(`send_email input field "${args.fieldName}" must contain valid email addresses.`);
+  }
+
+  return values;
+}
+
+/**
  * Reads one optional array of non-empty strings and returns undefined when absent.
  */
 export function readOptionalStringArray(
@@ -280,6 +301,36 @@ export function readOptionalStringArray(
     value: args.value,
     fieldName: args.fieldName,
   });
+}
+
+/**
+ * Reads one optional array of valid email addresses and returns undefined when absent.
+ */
+export function readOptionalEmailAddressArray(
+  args: {
+    value: unknown;
+    fieldName: string;
+  },
+): string[] | undefined {
+  if (args.value === undefined) {
+    return undefined;
+  }
+
+  return readRequiredEmailAddressArray({
+    value: args.value,
+    fieldName: args.fieldName,
+  });
+}
+
+/**
+ * Returns true when one string resembles an email address.
+ */
+export function isEmailAddress(
+  args: {
+    value: string;
+  },
+): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(args.value);
 }
 
 /**

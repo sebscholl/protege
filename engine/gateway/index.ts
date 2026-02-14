@@ -1,4 +1,8 @@
-import type { GatewayTransportConfig, InboundNormalizedMessage } from '@engine/gateway/types';
+import type {
+  GatewayTransportConfig,
+  InboundNormalizedMessage,
+  OutboundReplyRequest,
+} from '@engine/gateway/types';
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -175,7 +179,7 @@ export function enqueueInboundProcessing(
 }
 
 /**
- * Handles one inbound message by running async harness inference and optional smtp reply.
+ * Handles one inbound message by running async harness inference and tool-driven actions.
  */
 export async function handleInboundForRuntime(
   args: {
@@ -185,7 +189,7 @@ export async function handleInboundForRuntime(
     defaultFromAddress: string;
   },
 ): Promise<void> {
-  const result = await runHarnessForPersistedInboundMessage({
+  await runHarnessForPersistedInboundMessage({
     message: args.message,
     defaultFromAddress: args.defaultFromAddress,
     invokeRuntimeAction: createGatewayRuntimeActionInvoker({
@@ -195,29 +199,6 @@ export async function handleInboundForRuntime(
       defaultFromAddress: args.defaultFromAddress,
     }),
     logger: args.logger,
-  });
-
-  if (result.invokedActions.includes('email.send')) {
-    return;
-  }
-
-  if (!args.transport || args.message.from.length === 0) {
-    return;
-  }
-
-  await sendGatewayReply({
-    transport: args.transport,
-    logger: args.logger,
-    request: {
-      to: [args.message.from[0]],
-      from: {
-        address: args.defaultFromAddress,
-      },
-      subject: buildReplySubject({ subject: args.message.subject }),
-      text: result.responseText,
-      inReplyTo: args.message.messageId,
-      references: args.message.references,
-    },
   });
 }
 
@@ -250,56 +231,129 @@ export function createGatewayRuntimeActionInvoker(
       throw new Error('Outbound transport is not configured for email.send.');
     }
 
-    const to = Array.isArray(runtimeArgs.payload.to)
-      ? runtimeArgs.payload.to.filter(
-          (item): item is string => typeof item === 'string' && item.trim().length > 0,
-        )
-      : [];
-    if (to.length === 0) {
-      throw new Error('email.send requires non-empty payload.to recipients.');
-    }
-    const subject = typeof runtimeArgs.payload.subject === 'string'
-      ? runtimeArgs.payload.subject
-      : '';
-    const text = typeof runtimeArgs.payload.text === 'string'
-      ? runtimeArgs.payload.text
-      : '';
-    if (subject.trim().length === 0) {
-      throw new Error('email.send requires non-empty payload.subject.');
-    }
-    if (text.trim().length === 0) {
-      throw new Error('email.send requires non-empty payload.text.');
-    }
-    const fromAddress = typeof runtimeArgs.payload.from === 'string'
-      ? runtimeArgs.payload.from
-      : args.defaultFromAddress;
-
+    const request = buildEmailSendRequestFromAction({
+      message: args.message,
+      payload: runtimeArgs.payload,
+      defaultFromAddress: args.defaultFromAddress,
+    });
     const info = await sendGatewayReply({
       transport: args.transport,
       logger: args.logger,
-      request: {
-        to: to.map((address) => ({ address })),
-        from: {
-          address: fromAddress,
-        },
-        cc: toAddresses({ value: runtimeArgs.payload.cc }),
-        bcc: toAddresses({ value: runtimeArgs.payload.bcc }),
-        subject,
-        text,
-        html: typeof runtimeArgs.payload.html === 'string'
-          ? runtimeArgs.payload.html
-          : undefined,
-        inReplyTo: typeof runtimeArgs.payload.inReplyTo === 'string'
-          ? runtimeArgs.payload.inReplyTo
-          : args.message.messageId,
-        references: toStringArray({ value: runtimeArgs.payload.references }) ?? args.message.references,
-        headers: toStringRecord({ value: runtimeArgs.payload.headers }),
-      },
+      request,
     });
     return {
       messageId: info.messageId ?? null,
     };
   };
+}
+
+/**
+ * Builds one outbound reply request from a runtime email.send action payload.
+ */
+export function buildEmailSendRequestFromAction(
+  args: {
+    message: InboundNormalizedMessage;
+    payload: Record<string, unknown>;
+    defaultFromAddress: string;
+  },
+): OutboundReplyRequest {
+  const to = Array.isArray(args.payload.to)
+    ? args.payload.to.filter(
+        (item): item is string => typeof item === 'string' && item.trim().length > 0,
+      )
+    : [];
+  if (to.length === 0) {
+    throw new Error('email.send requires non-empty payload.to recipients.');
+  }
+  if (to.some((address) => !isEmailAddress({ value: address }))) {
+    throw new Error('email.send requires payload.to recipients to be valid email addresses.');
+  }
+
+  const payloadSubject = typeof args.payload.subject === 'string'
+    ? args.payload.subject
+    : '';
+  if (payloadSubject.trim().length === 0) {
+    throw new Error('email.send requires non-empty payload.subject.');
+  }
+
+  const text = typeof args.payload.text === 'string'
+    ? args.payload.text
+    : '';
+  if (text.trim().length === 0) {
+    throw new Error('email.send requires non-empty payload.text.');
+  }
+
+  const inReplyTo = typeof args.payload.inReplyTo === 'string'
+    ? args.payload.inReplyTo
+    : args.message.messageId;
+  const subject = resolveReplySubject({
+    message: args.message,
+    inReplyTo,
+    payloadSubject,
+  });
+  const fromAddress = resolveReplyFromAddress({
+    message: args.message,
+    defaultFromAddress: args.defaultFromAddress,
+  });
+
+  return {
+    to: to.map((address) => ({ address })),
+    from: {
+      address: fromAddress,
+    },
+    cc: toAddresses({ value: args.payload.cc }),
+    bcc: toAddresses({ value: args.payload.bcc }),
+    subject,
+    text,
+    html: typeof args.payload.html === 'string'
+      ? args.payload.html
+      : undefined,
+    inReplyTo,
+    references: toStringArray({ value: args.payload.references }) ?? args.message.references,
+    headers: toStringRecord({ value: args.payload.headers }),
+  };
+}
+
+/**
+ * Resolves reply sender address using inbound persona destination as canonical identity.
+ */
+export function resolveReplyFromAddress(
+  args: {
+    message: InboundNormalizedMessage;
+    defaultFromAddress: string;
+  },
+): string {
+  return args.message.envelopeRcptTo[0]?.address
+    ?? args.message.to[0]?.address
+    ?? args.defaultFromAddress;
+}
+
+/**
+ * Resolves reply subject for threaded replies while preserving explicit new-thread subjects.
+ */
+export function resolveReplySubject(
+  args: {
+    message: InboundNormalizedMessage;
+    inReplyTo: string;
+    payloadSubject: string;
+  },
+): string {
+  if (args.inReplyTo === args.message.messageId) {
+    return buildReplySubject({ subject: args.message.subject });
+  }
+
+  return args.payloadSubject;
+}
+
+/**
+ * Returns true when one string resembles an email address.
+ */
+export function isEmailAddress(
+  args: {
+    value: string;
+  },
+): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(args.value);
 }
 
 /**
