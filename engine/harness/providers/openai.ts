@@ -73,12 +73,46 @@ export async function generateWithOpenAi(
     },
     body: JSON.stringify({
       model: parsedModel.modelName,
-      messages: args.request.messages.map((message) => ({
-        role: message.role === 'tool' ? 'assistant' : message.role,
-        content: message.parts
+      messages: args.request.messages.map((message) => {
+        const content = message.parts
           .filter((part) => part.type === 'text')
           .map((part) => part.text)
-          .join('\n\n'),
+          .join('\n\n');
+        if (message.role === 'tool') {
+          if (!message.toolCallId) {
+            throw new HarnessProviderError({
+              code: 'bad_request',
+              message: 'Tool result message is missing toolCallId.',
+            });
+          }
+
+          return {
+            role: 'tool',
+            content,
+            tool_call_id: message.toolCallId,
+          };
+        }
+
+        return {
+          role: message.role,
+          content: content.length > 0 ? content : null,
+          tool_calls: message.toolCalls?.map((toolCall) => ({
+            id: toolCall.id,
+            type: 'function',
+            function: {
+              name: toolCall.name,
+              arguments: JSON.stringify(toolCall.input),
+            },
+          })),
+        };
+      }),
+      tools: args.request.tools?.map((tool) => ({
+        type: 'function',
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.inputSchema,
+        },
       })),
       temperature: args.request.temperature,
       max_tokens: args.request.maxOutputTokens,
@@ -104,14 +138,70 @@ export async function generateWithOpenAi(
   }
 
   const text = extractOpenAiText({ response: parsed });
+  const toolCalls = extractOpenAiToolCalls({ response: parsed });
   const usageObject = extractOpenAiUsage({ response: parsed });
   return {
     text,
-    toolCalls: [],
+    toolCalls,
     finishReason: extractOpenAiFinishReason({ response: parsed }),
     usage: usageObject,
     rawProviderResponse: parsed,
   };
+}
+
+/**
+ * Extracts normalized tool-call payloads from one OpenAI chat-completions response.
+ */
+export function extractOpenAiToolCalls(
+  args: {
+    response: Record<string, unknown>;
+  },
+): Array<{
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+}> {
+  const choices = args.response.choices as Array<Record<string, unknown>> | undefined;
+  const firstChoice = choices?.[0];
+  const message = firstChoice?.message as Record<string, unknown> | undefined;
+  const toolCallsRaw = message?.tool_calls;
+  if (!Array.isArray(toolCallsRaw)) {
+    return [];
+  }
+
+  const output: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
+  for (const entry of toolCallsRaw) {
+    if (typeof entry !== 'object' || entry === null) {
+      continue;
+    }
+
+    const record = entry as Record<string, unknown>;
+    const id = typeof record.id === 'string' ? record.id : '';
+    const functionRecord = record.function as Record<string, unknown> | undefined;
+    const name = typeof functionRecord?.name === 'string' ? functionRecord.name : '';
+    const argumentsText = typeof functionRecord?.arguments === 'string' ? functionRecord.arguments : '{}';
+    if (id.length === 0 || name.length === 0) {
+      continue;
+    }
+
+    let parsedArguments: Record<string, unknown>;
+    try {
+      const parsed = JSON.parse(argumentsText) as unknown;
+      parsedArguments = typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : {};
+    } catch {
+      parsedArguments = {};
+    }
+
+    output.push({
+      id,
+      name,
+      input: parsedArguments,
+    });
+  }
+
+  return output;
 }
 
 /**

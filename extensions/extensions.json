@@ -1,4 +1,6 @@
 {
-  "tools": [],
+  "tools": [
+    "send-email"
+  ],
   "hooks": []
 }

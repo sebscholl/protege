@@ -42,6 +42,7 @@ export type HarnessProviderMessage = {
   role: HarnessProviderRole;
   parts: HarnessProviderMessagePart[];
   toolCallId?: string;
+  toolCalls?: HarnessProviderToolCall[];
 };
 
 /**

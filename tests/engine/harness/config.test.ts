@@ -29,7 +29,10 @@ beforeAll((): void => {
     whitelist: ['*@example.com'],
   }));
 
-  const parsed = readInferenceRuntimeConfig({ configPath });
+  const parsed = readInferenceRuntimeConfig({
+    configPath,
+    localConfigPath: join(tempRootPath, 'inference.missing.local.json'),
+  });
   parsedOpenAiApiKey = parsed.providers.openai?.apiKey ?? '';
   parsedOpenAiBaseUrl = parsed.providers.openai?.baseUrl ?? '';
 

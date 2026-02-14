@@ -20,6 +20,7 @@ const request: HarnessProviderGenerateRequest = {
 };
 
 let successText = '';
+let successToolCallName = '';
 let failureCode = '';
 let unsupportedProviderCode = '';
 
@@ -33,6 +34,21 @@ beforeAll(async (): Promise<void> => {
   });
   const success = await adapter.generate({ request });
   successText = success.text ?? '';
+
+  mswIntercept({ fixtureKey: 'openai/chat-completions/200-tool-call' });
+  const toolCallResponse = await adapter.generate({
+    request: {
+      ...request,
+      tools: [{
+        name: 'send_email',
+        description: 'Send outbound mail.',
+        inputSchema: {
+          type: 'object',
+        },
+      }],
+    },
+  });
+  successToolCallName = toolCallResponse.toolCalls[0]?.name ?? '';
 
   mswIntercept({ fixtureKey: 'openai/chat-completions/500' });
   try {
@@ -70,6 +86,10 @@ describe('openai provider adapter', () => {
 
   it('maps 5xx provider responses to provider_internal', () => {
     expect(failureCode).toBe('provider_internal');
+  });
+
+  it('parses function tool calls into normalized tool-call payloads', () => {
+    expect(successToolCallName).toBe('send_email');
   });
 
   it('rejects non-openai provider model ids', () => {

@@ -188,8 +188,18 @@ export async function handleInboundForRuntime(
   const result = await runHarnessForPersistedInboundMessage({
     message: args.message,
     defaultFromAddress: args.defaultFromAddress,
+    invokeRuntimeAction: createGatewayRuntimeActionInvoker({
+      message: args.message,
+      logger: args.logger,
+      transport: args.transport,
+      defaultFromAddress: args.defaultFromAddress,
+    }),
     logger: args.logger,
   });
+
+  if (result.invokedActions.includes('email.send')) {
+    return;
+  }
 
   if (!args.transport || args.message.from.length === 0) {
     return;
@@ -209,6 +219,136 @@ export async function handleInboundForRuntime(
       references: args.message.references,
     },
   });
+}
+
+/**
+ * Creates one runtime action invoker for harness tool side effects.
+ */
+export function createGatewayRuntimeActionInvoker(
+  args: {
+    message: InboundNormalizedMessage;
+    logger: ReturnType<typeof createGatewayLogger>;
+    transport?: ReturnType<typeof createOutboundTransport>;
+    defaultFromAddress: string;
+  },
+): (
+  runtimeArgs: {
+    action: string;
+    payload: Record<string, unknown>;
+  },
+) => Promise<Record<string, unknown>> {
+  return async (
+    runtimeArgs: {
+      action: string;
+      payload: Record<string, unknown>;
+    },
+  ): Promise<Record<string, unknown>> => {
+    if (runtimeArgs.action !== 'email.send') {
+      throw new Error(`Unsupported runtime action: ${runtimeArgs.action}`);
+    }
+    if (!args.transport) {
+      throw new Error('Outbound transport is not configured for email.send.');
+    }
+
+    const to = Array.isArray(runtimeArgs.payload.to)
+      ? runtimeArgs.payload.to.filter(
+          (item): item is string => typeof item === 'string' && item.trim().length > 0,
+        )
+      : [];
+    if (to.length === 0) {
+      throw new Error('email.send requires non-empty payload.to recipients.');
+    }
+    const subject = typeof runtimeArgs.payload.subject === 'string'
+      ? runtimeArgs.payload.subject
+      : '';
+    const text = typeof runtimeArgs.payload.text === 'string'
+      ? runtimeArgs.payload.text
+      : '';
+    const fromAddress = typeof runtimeArgs.payload.from === 'string'
+      ? runtimeArgs.payload.from
+      : args.defaultFromAddress;
+
+    const info = await sendGatewayReply({
+      transport: args.transport,
+      logger: args.logger,
+      request: {
+        to: to.map((address) => ({ address })),
+        from: {
+          address: fromAddress,
+        },
+        cc: toAddresses({ value: runtimeArgs.payload.cc }),
+        bcc: toAddresses({ value: runtimeArgs.payload.bcc }),
+        subject,
+        text,
+        html: typeof runtimeArgs.payload.html === 'string'
+          ? runtimeArgs.payload.html
+          : undefined,
+        inReplyTo: typeof runtimeArgs.payload.inReplyTo === 'string'
+          ? runtimeArgs.payload.inReplyTo
+          : args.message.messageId,
+        references: toStringArray({ value: runtimeArgs.payload.references }) ?? args.message.references,
+        headers: toStringRecord({ value: runtimeArgs.payload.headers }),
+      },
+    });
+    return {
+      messageId: info.messageId ?? null,
+    };
+  };
+}
+
+/**
+ * Converts unknown payload values into optional string arrays.
+ */
+export function toStringArray(
+  args: {
+    value: unknown;
+  },
+): string[] | undefined {
+  if (!Array.isArray(args.value)) {
+    return undefined;
+  }
+
+  const values = args.value.filter(
+    (item): item is string => typeof item === 'string' && item.trim().length > 0,
+  );
+  return values.length > 0 ? values : undefined;
+}
+
+/**
+ * Converts unknown array payload values to optional mail-address objects.
+ */
+export function toAddresses(
+  args: {
+    value: unknown;
+  },
+): Array<{ address: string }> | undefined {
+  const values = toStringArray({
+    value: args.value,
+  });
+  return values?.map((address) => ({ address }));
+}
+
+/**
+ * Converts unknown payload header objects into optional string records.
+ */
+export function toStringRecord(
+  args: {
+    value: unknown;
+  },
+): Record<string, string> | undefined {
+  if (typeof args.value !== 'object' || args.value === null || Array.isArray(args.value)) {
+    return undefined;
+  }
+
+  const record = args.value as Record<string, unknown>;
+  const output: Record<string, string> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (typeof value === 'string') {
+      output[key] = value;
+    }
+  }
+
+  return Object.keys(output).length > 0 ? output : undefined;
 }
 
 /**

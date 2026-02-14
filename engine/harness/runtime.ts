@@ -10,10 +10,13 @@ import { loadSystemPrompt, readInferenceRuntimeConfig } from '@engine/harness/co
 import type {
   HarnessProviderAdapter,
   HarnessProviderMessage,
+  HarnessProviderTool,
 } from '@engine/harness/provider-contract';
 import { HarnessProviderError } from '@engine/harness/provider-contract';
 import { createOpenAiProviderAdapter } from '@engine/harness/providers/openai';
 import { storeInboundMessage, storeOutboundMessage } from '@engine/harness/storage';
+import type { HarnessToolExecutionContext, HarnessToolRegistry } from '@engine/harness/tool-contract';
+import { executeRegisteredTool, loadToolRegistry } from '@engine/harness/tool-registry';
 import type { HarnessInput } from '@engine/harness/types';
 import { initializeDatabase } from '@engine/shared/database';
 import { resolveDefaultPersonaRoots, resolvePersonaMemoryPaths } from '@engine/shared/personas';
@@ -24,7 +27,18 @@ import { resolveDefaultPersonaRoots, resolvePersonaMemoryPaths } from '@engine/s
 export type HarnessRunResult = {
   responseText: string;
   responseMessageId: string;
+  invokedActions: string[];
 };
+
+/**
+ * Represents one runtime action invoker used by tools to perform side effects.
+ */
+export type HarnessRuntimeActionInvoker = (
+  args: {
+    action: string;
+    payload: Record<string, unknown>;
+  },
+) => Promise<Record<string, unknown>>;
 
 /**
  * Persists one inbound message into persona temporal storage.
@@ -65,6 +79,7 @@ export async function runHarnessForPersistedInboundMessage(
   args: {
     message: InboundNormalizedMessage;
     defaultFromAddress: string;
+    invokeRuntimeAction?: HarnessRuntimeActionInvoker;
     logger?: GatewayLogger;
   },
 ): Promise<HarnessRunResult> {
@@ -98,19 +113,26 @@ export async function runHarnessForPersistedInboundMessage(
       inferenceConfig,
       provider: inferenceConfig.provider,
     });
-    const response = await adapter.generate({
-      request: {
-        modelId,
-        messages: buildProviderMessages({
-          context,
-          systemPrompt: loadSystemPrompt(),
-        }),
-        temperature: inferenceConfig.temperature,
-        maxOutputTokens: inferenceConfig.maxOutputTokens,
-      },
+    const registry = await loadToolRegistry();
+    const providerMessages = buildProviderMessages({
+      context,
+      systemPrompt: loadSystemPrompt(),
+    });
+    const toolResult = await executeProviderToolLoop({
+      adapter,
+      modelId,
+      messages: providerMessages,
+      tools: buildProviderTools({ registry }),
+      temperature: inferenceConfig.temperature,
+      maxOutputTokens: inferenceConfig.maxOutputTokens,
+      toolContext: createToolExecutionContext({
+        invokeRuntimeAction: args.invokeRuntimeAction,
+        logger: args.logger,
+      }),
+      registry,
     });
 
-    const responseText = response.text?.trim() ?? '';
+    const responseText = toolResult.responseText.trim();
     if (responseText.length === 0) {
       throw new HarnessProviderError({
         code: 'response_parse_failed',
@@ -133,7 +155,7 @@ export async function runHarnessForPersistedInboundMessage(
         metadata: {
           provider: inferenceConfig.provider,
           model: inferenceConfig.model,
-          usage: response.usage ?? {},
+          usage: toolResult.usage ?? {},
         },
       },
     });
@@ -150,6 +172,7 @@ export async function runHarnessForPersistedInboundMessage(
     return {
       responseText,
       responseMessageId,
+      invokedActions: toolResult.invokedActions,
     };
   } finally {
     db.close();
@@ -163,6 +186,7 @@ export async function runHarnessForInboundMessage(
   args: {
     message: InboundNormalizedMessage;
     defaultFromAddress: string;
+    invokeRuntimeAction?: HarnessRuntimeActionInvoker;
     logger?: GatewayLogger;
   },
 ): Promise<HarnessRunResult> {
@@ -173,8 +197,155 @@ export async function runHarnessForInboundMessage(
   return runHarnessForPersistedInboundMessage({
     message: args.message,
     defaultFromAddress: args.defaultFromAddress,
+    invokeRuntimeAction: args.invokeRuntimeAction,
     logger: args.logger,
   });
+}
+
+/**
+ * Builds provider tool declarations from the loaded runtime registry.
+ */
+export function buildProviderTools(
+  args: {
+    registry: HarnessToolRegistry;
+  },
+): HarnessProviderTool[] {
+  return Object.values(args.registry).map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    inputSchema: tool.inputSchema,
+  }));
+}
+
+/**
+ * Represents one provider loop result with final text and invoked runtime actions.
+ */
+export type ProviderToolLoopResult = {
+  responseText: string;
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+  };
+  invokedActions: string[];
+};
+
+/**
+ * Executes one provider request loop with tool-calls until a terminal text response.
+ */
+export async function executeProviderToolLoop(
+  args: {
+    adapter: HarnessProviderAdapter;
+    modelId: `${'openai' | 'anthropic' | 'gemini' | 'grok'}/${string}`;
+    messages: HarnessProviderMessage[];
+    tools: HarnessProviderTool[];
+    temperature?: number;
+    maxOutputTokens?: number;
+    toolContext: HarnessToolExecutionContext;
+    registry: HarnessToolRegistry;
+    maxTurns?: number;
+  },
+): Promise<ProviderToolLoopResult> {
+  const maxTurns = args.maxTurns ?? 8;
+  const providerMessages = [...args.messages];
+  let usage: ProviderToolLoopResult['usage'];
+  for (let turn = 0; turn < maxTurns; turn += 1) {
+    const response = await args.adapter.generate({
+      request: {
+        modelId: args.modelId,
+        messages: providerMessages,
+        tools: args.tools,
+        temperature: args.temperature,
+        maxOutputTokens: args.maxOutputTokens,
+      },
+    });
+    usage = response.usage ?? usage;
+
+    if (response.toolCalls.length === 0) {
+      return {
+        responseText: response.text ?? '',
+        usage,
+        invokedActions: getInvokedActionNames({
+          toolContext: args.toolContext,
+        }),
+      };
+    }
+
+    providerMessages.push({
+      role: 'assistant',
+      parts: response.text ? [{ type: 'text', text: response.text }] : [],
+      toolCalls: response.toolCalls,
+    });
+    for (const toolCall of response.toolCalls) {
+      const toolResult = await executeRegisteredTool({
+        registry: args.registry,
+        name: toolCall.name,
+        input: toolCall.input,
+        context: args.toolContext,
+      });
+      providerMessages.push({
+        role: 'tool',
+        toolCallId: toolCall.id,
+        parts: [{
+          type: 'text',
+          text: JSON.stringify(toolResult),
+        }],
+      });
+    }
+  }
+
+  throw new HarnessProviderError({
+    code: 'response_parse_failed',
+    message: `Provider exceeded maximum tool loop turns (${maxTurns}).`,
+  });
+}
+
+/**
+ * Creates tool execution context and tracks action invocations across one run.
+ */
+export function createToolExecutionContext(
+  args: {
+    invokeRuntimeAction?: HarnessRuntimeActionInvoker;
+    logger?: GatewayLogger;
+  },
+): HarnessToolExecutionContext {
+  const invokedActions: string[] = [];
+  const context: HarnessToolExecutionContext = {
+    runtime: {
+      invoke: async (
+        invokeArgs: {
+          action: string;
+          payload: Record<string, unknown>;
+        },
+      ): Promise<Record<string, unknown>> => {
+        invokedActions.push(invokeArgs.action);
+        if (!args.invokeRuntimeAction) {
+          throw new Error(`Runtime action is not configured: ${invokeArgs.action}`);
+        }
+
+        return args.invokeRuntimeAction(invokeArgs);
+      },
+    },
+    logger: args.logger,
+  };
+  Object.assign(context, {
+    __invokedActions: invokedActions,
+  });
+  return context;
+}
+
+/**
+ * Returns tracked runtime action names from one tool execution context.
+ */
+export function getInvokedActionNames(
+  args: {
+    toolContext: HarnessToolExecutionContext;
+  },
+): string[] {
+  const contextRecord = args.toolContext as HarnessToolExecutionContext & {
+    __invokedActions?: string[];
+  };
+  return contextRecord.__invokedActions ?? [];
 }
 
 /**
