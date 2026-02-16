@@ -25,14 +25,15 @@ Behavioral posture:
 Before proposing or making implementation changes, load context in this order:
 
 1. `docs/protege-implementation-plan-v3.md`
-2. `docs/adr/README.md`
-3. All accepted ADRs referenced by `docs/adr/README.md`
-4. `docs/conventions/README.md`
-5. `docs/conventions/testing.md`
-6. `docs/conventions/network-testing.md`
-7. `docs/conventions/code-style.md`
-8. `docs/conventions/documentation.md`
-9. `docs/conventions/enforcement.md`
+2. `docs/status.md`
+3. `docs/adr/README.md`
+4. All accepted ADRs referenced by `docs/adr/README.md`
+5. `docs/conventions/README.md`
+6. `docs/conventions/testing.md`
+7. `docs/conventions/network-testing.md`
+8. `docs/conventions/code-style.md`
+9. `docs/conventions/documentation.md`
+10. `docs/conventions/enforcement.md`
 
 If instructions conflict, priority is:
 
@@ -48,6 +49,7 @@ Use these as canonical references:
    - `docs/protege-final-specification-v1.1.md`
    - `docs/protege-development-sequencing-v2.md`
    - `docs/protege-implementation-plan-v3.md`
+   - `docs/status.md` (live completion tracker)
 2. Architecture decisions:
    - `docs/adr/`
 3. Engineering conventions:

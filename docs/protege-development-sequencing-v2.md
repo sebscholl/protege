@@ -2,6 +2,8 @@
 
 This document outlines the recommended order of development for Protege, designed to build and test components incrementally. The sequence prioritizes proving out the core email protocol first, ensuring the Harness is designed around real email objects from day one.
 
+For current completion state against this sequence, see `docs/status.md`.
+
 ## Milestone 1: The Gateway (Prove Email Works)
 
 **Goal:** Create a functioning local mail server that can receive an email and send a correctly threaded reply. This milestone proves the email protocol handling is solid before any AI is introduced.

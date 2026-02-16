@@ -2,6 +2,8 @@
 
 This version freezes the architecture decisions made during discovery.
 
+Implementation progress is tracked in `docs/status.md`.
+
 ## Frozen Product Decisions
 
 1. Primary v1 user: anyone with basic terminal competency.
