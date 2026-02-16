@@ -1,5 +1,7 @@
 # Development Guide
 
+> `codex resume 019c583c-aba2-79c1-b212-a892fd9009aa`
+
 This document tracks local development workflows and manual verification commands.
 
 ## Mailpit (Outbound Sink) Setup
