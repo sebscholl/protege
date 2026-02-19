@@ -1,0 +1,149 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { runCli } from '@engine/cli/index';
+import { createPersona } from '@engine/shared/personas';
+
+let tempRootPath = '';
+let previousCwd = '';
+let healthyStatus = '';
+let healthyChecksCount = 0;
+let unhealthyStatus = '';
+let unhealthyExitCode = -1;
+let doctorText = '';
+
+/**
+ * Captures stdout text while executing one async CLI call.
+ */
+async function captureStdout(
+  args: {
+    run: () => Promise<void>;
+  },
+): Promise<string> {
+  const originalWrite = process.stdout.write.bind(process.stdout);
+  const chunks: string[] = [];
+  process.stdout.write = ((chunk: string | Uint8Array): boolean => {
+    chunks.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'));
+    return true;
+  }) as typeof process.stdout.write;
+  try {
+    await args.run();
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+
+  return chunks.join('');
+}
+
+beforeAll(async (): Promise<void> => {
+  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-doctor-'));
+  previousCwd = process.cwd();
+  process.chdir(tempRootPath);
+
+  mkdirSync(join(tempRootPath, 'config'), { recursive: true });
+  mkdirSync(join(tempRootPath, 'extensions'), { recursive: true });
+  mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
+
+  writeFileSync(join(tempRootPath, 'config', 'gateway.json'), JSON.stringify({
+    mode: 'dev',
+    host: '127.0.0.1',
+    port: 2525,
+    defaultFromAddress: 'protege@localhost',
+    relay: {
+      enabled: true,
+      relayWsUrl: 'ws://relay.test/ws',
+      reconnectBaseDelayMs: 100,
+      reconnectMaxDelayMs: 1000,
+      heartbeatTimeoutMs: 5000,
+    },
+  }, null, 2));
+  writeFileSync(join(tempRootPath, 'config', 'inference.json'), JSON.stringify({
+    provider: 'openai',
+    model: 'gpt-4.1',
+    providers: {
+      openai: {
+        api_key: 'test-key',
+      },
+    },
+    recursion_depth: 3,
+    whitelist: ['*@example.com'],
+  }, null, 2));
+  writeFileSync(join(tempRootPath, 'extensions', 'extensions.json'), JSON.stringify({
+    tools: ['send-email'],
+    hooks: [],
+  }, null, 2));
+  createPersona({
+    setActive: true,
+  });
+
+  process.exitCode = 0;
+  const healthyJson = JSON.parse((await captureStdout({
+    run: async (): Promise<void> => runCli({
+      argv: ['doctor', '--json'],
+    }),
+  })).trim()) as {
+    status: string;
+    checks: Array<Record<string, unknown>>;
+  };
+  healthyStatus = healthyJson.status;
+  healthyChecksCount = healthyJson.checks.length;
+
+  doctorText = await captureStdout({
+    run: async (): Promise<void> => runCli({
+      argv: ['doctor'],
+    }),
+  });
+
+  writeFileSync(join(tempRootPath, 'config', 'inference.json'), JSON.stringify({
+    provider: 'openai',
+    model: 'gpt-4.1',
+    providers: {
+      openai: {
+        api_key: '',
+      },
+    },
+    recursion_depth: 3,
+    whitelist: ['*@example.com'],
+  }, null, 2));
+  process.exitCode = 0;
+  const unhealthyJson = JSON.parse((await captureStdout({
+    run: async (): Promise<void> => runCli({
+      argv: ['doctor', '--json'],
+    }),
+  })).trim()) as {
+    status: string;
+  };
+  unhealthyStatus = unhealthyJson.status;
+  unhealthyExitCode = process.exitCode ?? 0;
+});
+
+afterAll((): void => {
+  process.exitCode = 0;
+  process.chdir(previousCwd);
+  rmSync(tempRootPath, { recursive: true, force: true });
+});
+
+describe('doctor cli command', () => {
+  it('returns healthy status when core config and persona setup are valid', () => {
+    expect(healthyStatus).toBe('healthy');
+  });
+
+  it('includes expected doctor check entries in json output', () => {
+    expect(healthyChecksCount).toBe(8);
+  });
+
+  it('prints human-readable status lines without --json', () => {
+    expect(doctorText.includes('status:')).toBe(true);
+  });
+
+  it('returns unhealthy status when selected provider credentials are missing', () => {
+    expect(unhealthyStatus).toBe('unhealthy');
+  });
+
+  it('sets non-zero exit code when doctor reports unhealthy', () => {
+    expect(unhealthyExitCode).toBe(1);
+  });
+});

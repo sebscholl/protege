@@ -35,10 +35,14 @@ Completed:
 4. Tool registry + tool execution loop.
 5. `send_email` tool integrated through runtime actions.
 6. Default same-thread reply behavior (`reply_current`) with explicit `threadingMode: "new_thread"` escape hatch.
+7. Operator CLI diagnostics commands:
+   - `protege status`
+   - `protege logs`
+   - `protege doctor`
 
 Remaining:
 
-1. TUI commands planned for v1 (`chat`, `status`, `logs`, `doctor`) are not fully implemented.
+1. TUI chat command (`protege chat`) is not fully implemented.
 
 ## Milestone 3: Relay and Public Access
 

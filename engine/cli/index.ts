@@ -6,7 +6,10 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { readGatewayRuntimeConfig, resolveDefaultGatewayConfigPath, startGatewayRuntime } from '@engine/gateway/index';
+import { runDoctorCommand } from '@engine/cli/doctor';
+import { runLogsCommand } from '@engine/cli/logs';
 import { parseRelayBootstrapArgs, runRelayBootstrap } from '@engine/cli/relay-bootstrap';
+import { runStatusCommand } from '@engine/cli/status';
 import {
   createPersona,
   deletePersona,
@@ -42,7 +45,22 @@ export async function runCli(
     return;
   }
 
-  throw new Error('Usage: protege <gateway|persona|relay> ...');
+  if (area === 'status') {
+    runStatusCommand({ argv: rest });
+    return;
+  }
+
+  if (area === 'logs') {
+    runLogsCommand({ argv: rest });
+    return;
+  }
+
+  if (area === 'doctor') {
+    runDoctorCommand({ argv: rest });
+    return;
+  }
+
+  throw new Error('Usage: protege <gateway|persona|relay|status|logs|doctor> ...');
 }
 
 /**
