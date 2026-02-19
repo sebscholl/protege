@@ -1,9 +1,31 @@
 {
   "name": "protege",
   "version": "0.1.0",
-  "private": true,
+  "description": "Email-native AI agent CLI focused on simplicity, interoperability, and self-sovereignty.",
+  "private": false,
   "type": "module",
+  "bin": {
+    "protege": "dist/main.js"
+  },
+  "files": [
+    "dist/",
+    "config/gateway.example.json",
+    "config/inference.json",
+    "config/inference.local.example.json",
+    "config/system-prompt.md",
+    "config/system.json",
+    "extensions/extensions.json",
+    "extensions/tools/README.md",
+    "extensions/hooks/README.md",
+    "personas/README.md",
+    "memory/README.md",
+    "guide/",
+    ".env.example",
+    "README.md"
+  ],
   "scripts": {
+    "build": "tsup",
+    "prepack": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
@@ -24,7 +46,9 @@
     "relay:server:logs": "bash relay/deploy/scripts/server-logs.sh",
     "relay:server:health": "bash relay/deploy/scripts/server-health.sh",
     "persona:create": "tsx engine/cli/index.ts persona create --set-active",
-    "persona:list": "tsx engine/cli/index.ts persona list"
+    "persona:list": "tsx engine/cli/index.ts persona list",
+    "cli": "tsx engine/cli/index.ts",
+    "init": "tsx engine/cli/index.ts init"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
@@ -37,6 +61,7 @@
     "eslint": "^9.20.1",
     "msw": "^2.7.3",
     "prettier": "^3.5.1",
+    "tsup": "^8.5.0",
     "tsx": "^4.21.0",
     "typescript": "^5.7.3",
     "vite": "^6.2.0",

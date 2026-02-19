@@ -10,6 +10,7 @@ This file tracks implementation progress against `docs/protege-development-seque
 2. Milestone 2: Mostly complete
 3. Milestone 3: Complete (relay-first flow operational)
 4. Milestone 4: In progress (early)
+5. CLI packaging for npm distribution: In progress
 
 ## Milestone 1: Gateway
 
@@ -39,6 +40,8 @@ Completed:
    - `protege status`
    - `protege logs`
    - `protege doctor`
+8. Project scaffolding command:
+   - `protege init`
 
 Remaining:
 

@@ -14,15 +14,15 @@ Core agent logic and memory still run locally in your Protege runtime.
 
 1. Configure relay websocket endpoint:
 ```bash
-tsx engine/cli/index.ts relay bootstrap --relay-ws-url wss://relay.example.com/ws
+protege relay bootstrap --relay-ws-url wss://relay.example.com/ws
 ```
 2. Start gateway:
 ```bash
-tsx engine/cli/index.ts gateway start
+protege gateway start
 ```
 3. Verify status:
 ```bash
-tsx engine/cli/index.ts status
+protege status
 ```
 
 ## Relay Deployment

@@ -4,15 +4,15 @@
 
 1. Ensure gateway process is running:
 ```bash
-tsx engine/cli/index.ts gateway start
+protege gateway start
 ```
 2. Re-check:
 ```bash
-tsx engine/cli/index.ts status
+protege status
 ```
 3. If stale pid state exists:
 ```bash
-tsx engine/cli/index.ts gateway stop
+protege gateway stop
 ```
 Then start again.
 
@@ -22,14 +22,14 @@ Then start again.
 2. Start gateway to generate runtime events.
 3. Retry:
 ```bash
-tsx engine/cli/index.ts logs --tail 50
+protege logs --tail 50
 ```
 
 ## `doctor` Returns `unhealthy`
 
 Run:
 ```bash
-tsx engine/cli/index.ts doctor --json
+protege doctor --json
 ```
 Inspect failed checks and follow each check's `hint`.
 
@@ -44,7 +44,7 @@ Common failures:
 
 1. Check local runtime logs:
 ```bash
-tsx engine/cli/index.ts logs --scope gateway --tail 200
+protege logs --scope gateway --tail 200
 ```
 2. Check relay server logs via deployment scripts.
 3. Verify SPF/PTR configuration for relay sender domain/IPs.

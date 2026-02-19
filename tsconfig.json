@@ -19,5 +19,5 @@
     },
     "types": ["node", "vitest/globals"]
   },
-  "include": ["engine", "relay", "extensions", "tests", "vitest.config.ts"]
+  "include": ["engine", "relay", "extensions", "tests", "vitest.config.ts", "tsup.config.ts"]
 }

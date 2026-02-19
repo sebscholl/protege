@@ -142,7 +142,7 @@ sqlite3 memory/{persona_id}/temporal.db \
 Bootstrap relay mode config and persona:
 
 ```sh
-tsx engine/cli/index.ts relay bootstrap --relay-ws-url ws://127.0.0.1:8080/ws
+protege relay bootstrap --relay-ws-url ws://127.0.0.1:8080/ws
 ```
 
 Start relay:

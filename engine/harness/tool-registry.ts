@@ -8,6 +8,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { tool as sendEmailTool } from '@extensions/tools/send-email/index';
+
 /**
  * Represents one manifest entry for enabling a tool extension by name.
  */
@@ -142,7 +144,16 @@ export async function loadToolDefinition(
     toolName: string;
   },
 ): Promise<HarnessToolDefinition> {
-  const modulePath = join(process.cwd(), 'extensions', 'tools', args.toolName, 'index.ts');
+  const builtInToolDefinition = readBuiltInToolDefinition({
+    toolName: args.toolName,
+  });
+  if (builtInToolDefinition) {
+    return builtInToolDefinition;
+  }
+
+  const modulePath = resolveToolModulePath({
+    toolName: args.toolName,
+  });
   if (!existsSync(modulePath)) {
     throw new Error(`Tool module not found: ${modulePath}`);
   }
@@ -155,6 +166,38 @@ export async function loadToolDefinition(
   }
 
   return candidate;
+}
+
+/**
+ * Resolves one tool module path from workspace extension directories using js/ts fallback.
+ */
+export function resolveToolModulePath(
+  args: {
+    toolName: string;
+  },
+): string {
+  const baseDirPath = join(process.cwd(), 'extensions', 'tools', args.toolName);
+  const jsModulePath = join(baseDirPath, 'index.js');
+  if (existsSync(jsModulePath)) {
+    return jsModulePath;
+  }
+
+  return join(baseDirPath, 'index.ts');
+}
+
+/**
+ * Returns a built-in tool definition when one is bundled in core runtime.
+ */
+export function readBuiltInToolDefinition(
+  args: {
+    toolName: string;
+  },
+): HarnessToolDefinition | undefined {
+  if (args.toolName === 'send-email') {
+    return sendEmailTool;
+  }
+
+  return undefined;
 }
 
 /**

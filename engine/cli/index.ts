@@ -2,11 +2,12 @@ import type { PersonaMetadata } from '@engine/shared/personas';
 
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { readGatewayRuntimeConfig, resolveDefaultGatewayConfigPath, startGatewayRuntime } from '@engine/gateway/index';
 import { runDoctorCommand } from '@engine/cli/doctor';
+import { runInitCommand } from '@engine/cli/init';
 import { runLogsCommand } from '@engine/cli/logs';
 import { parseRelayBootstrapArgs, runRelayBootstrap } from '@engine/cli/relay-bootstrap';
 import { runStatusCommand } from '@engine/cli/status';
@@ -29,6 +30,15 @@ export async function runCli(
   },
 ): Promise<void> {
   const [area, ...rest] = args.argv;
+  if (!area || area === '-h' || area === '--help' || area === 'help') {
+    process.stdout.write(`${getCliUsageText()}\n`);
+    return;
+  }
+
+  if (area === '-v' || area === '--version' || area === 'version') {
+    process.stdout.write(`${readPackageVersion()}\n`);
+    return;
+  }
 
   if (area === 'gateway') {
     await runGatewayCli({ argv: rest });
@@ -60,7 +70,54 @@ export async function runCli(
     return;
   }
 
-  throw new Error('Usage: protege <gateway|persona|relay|status|logs|doctor> ...');
+  if (area === 'init') {
+    writeCliJson({ value: runInitCommand({ argv: rest }) });
+    return;
+  }
+
+  throw new Error(getCliUsageText());
+}
+
+/**
+ * Returns top-level CLI usage text shown for help and unknown command errors.
+ */
+export function getCliUsageText(): string {
+  return 'Usage: protege <gateway|persona|relay|status|logs|doctor|init> ...';
+}
+
+/**
+ * Reads package version text from repository root package.json.
+ */
+export function readPackageVersion(): string {
+  const packagePath = resolveCliPackageJsonPath();
+
+  const rawText = readFileSync(packagePath, 'utf8');
+  const parsed = JSON.parse(rawText) as {
+    version?: unknown;
+  };
+  return typeof parsed.version === 'string' && parsed.version.trim().length > 0
+    ? parsed.version
+    : '0.0.0';
+}
+
+/**
+ * Resolves the package.json path for the installed Protege CLI distribution.
+ */
+export function resolveCliPackageJsonPath(): string {
+  let currentDirPath = dirname(fileURLToPath(import.meta.url));
+  for (let depth = 0; depth < 8; depth += 1) {
+    const candidatePath = join(currentDirPath, 'package.json');
+    if (existsSync(candidatePath)) {
+      return candidatePath;
+    }
+    const nextDirPath = dirname(currentDirPath);
+    if (nextDirPath === currentDirPath) {
+      break;
+    }
+    currentDirPath = nextDirPath;
+  }
+
+  throw new Error('Unable to resolve package.json for CLI version output.');
 }
 
 /**
@@ -308,28 +365,4 @@ export function listGatewayStartProcessIds(): number[] {
   } catch {
     return [];
   }
-}
-
-/**
- * Executes CLI using process arguments when run as node entrypoint.
- */
-async function runProcessCli(): Promise<void> {
-  await runCli({
-    argv: process.argv.slice(2),
-  });
-}
-
-/**
- * Returns true when this module is executing as the direct process entrypoint.
- */
-export function isCliEntrypoint(): boolean {
-  if (!process.argv[1]) {
-    return false;
-  }
-
-  return fileURLToPath(import.meta.url) === process.argv[1];
-}
-
-if (isCliEntrypoint()) {
-  void runProcessCli();
 }
