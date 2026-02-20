@@ -8,4 +8,5 @@ This directory is intentionally separate from `docs/`, which is reserved for int
 
 1. `guide/cli.md`: CLI command reference and examples.
 2. `guide/relay.md`: Relay setup and operational usage.
-3. `guide/troubleshooting.md`: Common issues and quick fixes.
+3. `guide/chat.md`: Terminal inbox/chat usage, modes, and keybindings.
+4. `guide/troubleshooting.md`: Common issues and quick fixes.

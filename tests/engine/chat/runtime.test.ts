@@ -8,7 +8,13 @@ import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { buildStatusLine, createChatRuntimeActionInvoker, resolvePersonaBySelector } from '@engine/chat/runtime';
+import {
+  buildStatusLine,
+  createChatRuntimeActionInvoker,
+  resolvePersonaBySelector,
+  scrollThreadBoxToBottom,
+  resolveThreadScrollDelta,
+} from '@engine/chat/runtime';
 import { createPersona } from '@engine/shared/personas';
 import { initializeDatabase } from '@engine/shared/database';
 
@@ -21,6 +27,10 @@ let outboundSender = '';
 let unsupportedActionError = '';
 let createdPersonaId = '';
 let statusLine = '';
+let scrollUpDelta = 0;
+let scrollPageDownDelta = 0;
+let scrollUnknownDelta: number | undefined;
+let capturedScrollPercent = -1;
 
 const inboundMessage: InboundNormalizedMessage = {
   personaId: 'persona-test',
@@ -113,6 +123,18 @@ beforeAll(async (): Promise<void> => {
     lastBinding: 'ctrl+enter',
     lastRawKey: 'name=enter full=C-m ctrl=1 meta=0 seq="\\r"',
   });
+  scrollUpDelta = resolveThreadScrollDelta({ binding: 'up' }) ?? 0;
+  scrollPageDownDelta = resolveThreadScrollDelta({ binding: 'pagedown' }) ?? 0;
+  scrollUnknownDelta = resolveThreadScrollDelta({ binding: 'x' });
+  scrollThreadBoxToBottom({
+    threadBox: {
+      setScrollPerc: (
+        percent: number,
+      ): void => {
+        capturedScrollPercent = percent;
+      },
+    },
+  });
 });
 
 afterAll((): void => {
@@ -144,5 +166,21 @@ describe('chat runtime helper behavior', () => {
 
   it('renders latest key binding context in status line', () => {
     expect(statusLine).toContain('key=ctrl+enter');
+  });
+
+  it('maps up key to negative scroll delta', () => {
+    expect(scrollUpDelta).toBe(-1);
+  });
+
+  it('maps pagedown key to positive scroll delta', () => {
+    expect(scrollPageDownDelta).toBe(8);
+  });
+
+  it('returns undefined for non-scroll bindings', () => {
+    expect(scrollUnknownDelta).toBe(undefined);
+  });
+
+  it('sets thread scroll percentage to 100 for bottom anchoring', () => {
+    expect(capturedScrollPercent).toBe(100);
   });
 });

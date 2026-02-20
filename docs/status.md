@@ -1,6 +1,6 @@
 # Project Status
 
-Last Updated: 2026-02-19
+Last Updated: 2026-02-20
 
 This file tracks implementation progress against `docs/protege-development-sequencing-v2.md` and `docs/protege-implementation-plan-v3.md`.
 
@@ -45,7 +45,7 @@ Completed:
 
 Remaining:
 
-1. TUI chat command (`protege chat`) is partially implemented (Phases A-C complete; Phases D-E in progress; Phase F in progress).
+1. Chat UX polish (advanced navigation/search, richer compose ergonomics).
 
 Planning updates:
 
@@ -58,7 +58,15 @@ Planning updates:
 7. Chat Phase C implemented: headless controller state machine with keymap-driven actions and compose safety guards.
 8. Chat Phase D foundations implemented: inbox/thread view-model render helpers with explicit read-only/writable banner semantics.
 9. Chat Phase E foundations implemented: local synthetic thread/message write services for `user@localhost` flow.
-10. `protege chat` command and initial neo-blessed runtime wiring added (persona-scoped inbox/thread flow).
+10. `protege chat` command and neo-blessed runtime wiring added (persona-scoped inbox/thread flow).
+11. Chat send path stabilized:
+   - default send binding moved to `Ctrl+S` with `Ctrl+Enter` legacy fallback
+   - local `user@localhost` send path validated
+   - OpenAI null-content request bug fixed
+12. Chat rendering behavior improved:
+   - mode and key status visibility
+   - console log suppression in TUI surface (file logging retained)
+   - thread scroll support + auto-scroll to bottom on open and submit
 
 ## Milestone 3: Relay and Public Access
 

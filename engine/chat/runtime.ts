@@ -41,6 +41,7 @@ export async function startChatRuntime(
     logsDirPath: globalConfig.logsDirPath,
     scope: 'chat',
     consoleLogFormat: globalConfig.consoleLogFormat,
+    emitToConsole: false,
   });
   const personaMemoryPaths = resolvePersonaMemoryPaths({
     personaId: persona.personaId,
@@ -107,6 +108,7 @@ export async function startChatRuntime(
   let state = createInitialChatSessionState({
     defaultDisplayMode: globalConfig.chat.defaultDisplayMode,
   });
+  let shouldScrollThreadToBottom = false;
   let summaries = listChatThreadSummaries({
     db,
     personaMailboxIdentity,
@@ -124,6 +126,7 @@ export async function startChatRuntime(
       });
       state = transition.state;
       selectedInboxIndex = summaries.findIndex((item) => item.threadId === thread.threadId);
+      shouldScrollThreadToBottom = true;
     }
   }
 
@@ -214,6 +217,12 @@ export async function startChatRuntime(
         lastRawKey,
       }),
     );
+    if (shouldScrollThreadToBottom) {
+      scrollThreadBoxToBottom({
+        threadBox,
+      });
+      shouldScrollThreadToBottom = false;
+    }
     screen.render();
   }
 
@@ -247,6 +256,8 @@ export async function startChatRuntime(
       personaMailboxIdentity,
       text: effect.draft,
     });
+    shouldScrollThreadToBottom = true;
+    render();
     const references = readChatThreadDetail({
       db,
       threadId: effect.threadId,
@@ -282,6 +293,7 @@ export async function startChatRuntime(
         logger,
       });
       statusMessage = 'Sent';
+      shouldScrollThreadToBottom = true;
     } catch (error) {
       statusMessage = `Send failed: ${(error as Error).message}`;
       logger.error({
@@ -359,6 +371,7 @@ export async function startChatRuntime(
             },
           });
           state = transition.state;
+          shouldScrollThreadToBottom = true;
           const shouldExit = await runEffects(transition.effects);
           if (shouldExit) {
             return;
@@ -382,10 +395,22 @@ export async function startChatRuntime(
           },
         });
         state = transition.state;
+        shouldScrollThreadToBottom = true;
         const shouldExit = await runEffects(transition.effects);
         if (shouldExit) {
           return;
         }
+        render();
+        return;
+      }
+    }
+
+    if (state.view === 'thread') {
+      const scrollDelta = resolveThreadScrollDelta({
+        binding: normalized.binding,
+      });
+      if (typeof scrollDelta === 'number') {
+        threadBox.scroll(scrollDelta);
         render();
         return;
       }
@@ -439,6 +464,43 @@ export function buildStatusLine(
   const keyInfo = ` key=${args.lastBinding.trim().length > 0 ? args.lastBinding : '<none>'}`;
   const rawInfo = args.lastRawKey.trim().length > 0 ? ` raw(${args.lastRawKey})` : '';
   return `${prefix}${keyInfo}${rawInfo} | ${message}`;
+}
+
+/**
+ * Resolves one thread-view key binding into a scroll delta.
+ */
+export function resolveThreadScrollDelta(
+  args: {
+    binding: string;
+  },
+): number | undefined {
+  if (args.binding === 'up') {
+    return -1;
+  }
+  if (args.binding === 'down') {
+    return 1;
+  }
+  if (args.binding === 'pageup' || args.binding === 'ctrl+u') {
+    return -8;
+  }
+  if (args.binding === 'pagedown' || args.binding === 'ctrl+d') {
+    return 8;
+  }
+
+  return undefined;
+}
+
+/**
+ * Scrolls one thread box to its latest content position.
+ */
+export function scrollThreadBoxToBottom(
+  args: {
+    threadBox: {
+      setScrollPerc: (percent: number) => void;
+    };
+  },
+): void {
+  args.threadBox.setScrollPerc(100);
 }
 
 /**

@@ -98,6 +98,8 @@ Chat v1 behavior:
 3. Send in writable local threads using `Ctrl+S` (`Ctrl+Enter` remains accepted as a legacy fallback).
 4. Toggle light/verbose display mode with `Ctrl+V`.
 
+For full chat usage, modes, scroll behavior, and keybindings, see `guide/chat.md`.
+
 ## Init
 
 1. Initialize in current directory:

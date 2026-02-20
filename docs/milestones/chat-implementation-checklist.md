@@ -1,6 +1,6 @@
 # Chat Implementation Checklist
 
-- Status: Planned
+- Status: Implemented (v1 baseline)
 - Date: 2026-02-19
 - Depends on:
   1. `docs/milestones/chat-planning-spec.md`
@@ -98,7 +98,7 @@ Exit:
 
 ## Phase D: TUI Rendering (neo-blessed)
 
-Status: In Progress
+Status: Complete
 
 Goal: render inbox and thread views and bind them to controller state.
 
@@ -124,7 +124,7 @@ Exit:
 
 ## Phase E: Send Action Wiring and Polling
 
-Status: In Progress
+Status: Complete
 
 Goal: wire composer send action to existing runtime pipeline and keep view fresh.
 
@@ -155,7 +155,7 @@ Exit:
 
 ## Phase F: CLI Integration and Documentation
 
-Status: In Progress
+Status: Complete
 
 Goal: expose chat command and finalize operator docs.
 
@@ -175,6 +175,12 @@ Tests:
 Exit:
 
 1. Chat command is discoverable in CLI docs and usage text.
+
+## Post-Implementation Notes
+
+1. Default send shortcut is `Ctrl+S`; `Ctrl+Enter` is kept as a legacy fallback for terminal variants.
+2. Chat suppresses console log emission to avoid TUI corruption while continuing to write file logs.
+3. Thread view supports scroll navigation (`Up/Down`, `PageUp/PageDown`, `Ctrl+U/Ctrl+D`) and bottom anchoring on open/submit.
 
 ## Cross-Phase Quality Gates
 

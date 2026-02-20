@@ -10,6 +10,7 @@ export type UnifiedLoggerConfig = {
   logsDirPath: string;
   scope: string;
   consoleLogFormat?: 'json' | 'pretty';
+  emitToConsole?: boolean;
 };
 
 /**
@@ -20,6 +21,7 @@ export function createUnifiedLogger(
 ): GatewayLogger {
   const logFilePath = join(args.logsDirPath, 'protege.log');
   const consoleLogFormat = args.consoleLogFormat ?? 'json';
+  const emitToConsole = args.emitToConsole ?? true;
   mkdirSync(args.logsDirPath, { recursive: true });
 
   return {
@@ -40,10 +42,12 @@ export function createUnifiedLogger(
         logFilePath,
         line: JSON.stringify(payload),
       });
-      process.stdout.write(`${formatConsoleLine({
-        payload,
-        consoleLogFormat,
-      })}\n`);
+      if (emitToConsole) {
+        process.stdout.write(`${formatConsoleLine({
+          payload,
+          consoleLogFormat,
+        })}\n`);
+      }
     },
     error: (
       logArgs: {
@@ -62,10 +66,12 @@ export function createUnifiedLogger(
         logFilePath,
         line: JSON.stringify(payload),
       });
-      process.stderr.write(`${formatConsoleLine({
-        payload,
-        consoleLogFormat,
-      })}\n`);
+      if (emitToConsole) {
+        process.stderr.write(`${formatConsoleLine({
+          payload,
+          consoleLogFormat,
+        })}\n`);
+      }
     },
   };
 }

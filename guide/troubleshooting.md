@@ -71,3 +71,17 @@ protege chat --persona <persona_id_or_prefix>
 1. Chat v1 treats existing threads as read-only by design.
 2. Create a local writable thread from inbox with `Ctrl+N`.
 3. Send with `Ctrl+S` in that writable local thread (`Ctrl+Enter` is also accepted as a fallback on terminals that emit it distinctly).
+
+## Chat `Ctrl+Enter` Does Not Trigger Send
+
+1. Terminal apps can emit `Ctrl+Enter` inconsistently.
+2. Use `Ctrl+S` as the primary send shortcut.
+3. Keep `Ctrl+Enter` only as an optional fallback when your terminal reports it distinctly.
+
+## Chat UI Looks Corrupted While Running
+
+1. Confirm you are on a recent build where chat runtime logs are suppressed from console output.
+2. Use file logs for runtime details:
+```bash
+protege logs --scope chat --tail 200
+```
