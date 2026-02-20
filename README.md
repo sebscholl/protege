@@ -59,6 +59,7 @@ protege doctor
 6. `protege status [--json]`
 7. `protege logs [--follow] [--tail <n>] [--scope <scope>] [--json]`
 8. `protege doctor [--json]`
+9. `protege chat --persona <persona_id_or_prefix> [--thread <thread_id>]`
 
 ## User Guides
 

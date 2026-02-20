@@ -14,6 +14,9 @@ Accepted ADRs:
 10. `0010-async-inbound-ack-and-harness-queue.md`
 11. `0011-tool-implementation-isolation.md`
 12. `0012-email-send-defaults-to-current-thread.md`
+13. `0013-chat-tui-is-email-native-two-view-client.md`
+14. `0014-chat-keybindings-ctrl-only-configured-in-system-json.md`
+15. `0015-chat-v1-read-only-existing-threads-and-local-synthetic-writes.md`
 
 Notes:
 

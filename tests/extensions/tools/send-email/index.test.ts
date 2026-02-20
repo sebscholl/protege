@@ -16,6 +16,7 @@ let configDefaultFromAddress = '';
 let plusAddressAccepted = false;
 let subdomainAddressAccepted = false;
 let mixedCaseAddressAccepted = false;
+let localhostAddressAccepted = false;
 let invalidAddressMessage = '';
 let whitespaceAddressMessage = '';
 let missingTopLevelDomainMessage = '';
@@ -166,6 +167,24 @@ beforeAll(async (): Promise<void> => {
   try {
     await tool.execute({
       input: {
+        to: ['user@localhost'],
+        subject: 'Localhost accepted',
+        text: 'Hello.',
+      },
+      context: {
+        runtime: {
+          invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'ok-4' }),
+        },
+      },
+    });
+    localhostAddressAccepted = true;
+  } catch {
+    localhostAddressAccepted = false;
+  }
+
+  try {
+    await tool.execute({
+      input: {
         to: ['invalid-address'],
         subject: 'Invalid',
         text: 'Hello.',
@@ -302,6 +321,10 @@ describe('send-email tool extension', () => {
 
   it('accepts mixed-case recipient addresses', () => {
     expect(mixedCaseAddressAccepted).toBe(true);
+  });
+
+  it('accepts localhost recipient addresses for local chat flows', () => {
+    expect(localhostAddressAccepted).toBe(true);
   });
 
   it('rejects malformed recipients without an at-sign/domain format', () => {

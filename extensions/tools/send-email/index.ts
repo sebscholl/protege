@@ -354,7 +354,7 @@ export function isEmailAddress(
     value: string;
   },
 ): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(args.value);
+  return /^[^\s@]+@(?:[^\s@]+\.[^\s@]+|localhost)$/.test(args.value);
 }
 
 /**

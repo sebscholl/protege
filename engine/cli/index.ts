@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { readGatewayRuntimeConfig, resolveDefaultGatewayConfigPath, startGatewayRuntime } from '@engine/gateway/index';
+import { runChatCommand } from '@engine/cli/chat';
 import { runDoctorCommand } from '@engine/cli/doctor';
 import { runInitCommand } from '@engine/cli/init';
 import { runLogsCommand } from '@engine/cli/logs';
@@ -75,6 +76,11 @@ export async function runCli(
     return;
   }
 
+  if (area === 'chat') {
+    await runChatCommand({ argv: rest });
+    return;
+  }
+
   throw new Error(getCliUsageText());
 }
 
@@ -82,7 +88,7 @@ export async function runCli(
  * Returns top-level CLI usage text shown for help and unknown command errors.
  */
 export function getCliUsageText(): string {
-  return 'Usage: protege <gateway|persona|relay|status|logs|doctor|init> ...';
+  return 'Usage: protege <gateway|persona|relay|status|logs|doctor|init|chat> ...';
 }
 
 /**

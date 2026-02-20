@@ -80,6 +80,24 @@ protege persona delete <persona_id>
 protege relay bootstrap --relay-ws-url wss://relay.example.com/ws
 ```
 
+## Chat
+
+1. Start chat for one persona:
+```bash
+protege chat --persona <persona_id_or_prefix>
+```
+2. Start chat and open one specific thread:
+```bash
+protege chat --persona <persona_id_or_prefix> --thread <thread_id>
+```
+
+Chat v1 behavior:
+
+1. Existing threads are read-only.
+2. Create writable local chat threads from inbox using `Ctrl+N`.
+3. Send in writable local threads using `Ctrl+S` (`Ctrl+Enter` remains accepted as a legacy fallback).
+4. Toggle light/verbose display mode with `Ctrl+V`.
+
 ## Init
 
 1. Initialize in current directory:

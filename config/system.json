@@ -1,4 +1,20 @@
 {
   "logs_dir_path": "tmp/logs",
-  "console_log_format": "pretty"
+  "console_log_format": "pretty",
+  "chat": {
+    "default_display_mode": "light",
+    "poll_interval_ms": 1500,
+    "keymap": {
+      "send": "ctrl+s",
+      "refresh": "ctrl+r",
+      "toggle_display_mode": "ctrl+v",
+      "quit": "ctrl+q",
+      "move_selection_up": "up",
+      "move_selection_down": "down",
+      "open_thread": "enter",
+      "back_to_inbox": "esc",
+      "new_local_thread": "ctrl+n",
+      "enter_compose_mode": "i"
+    }
+  }
 }

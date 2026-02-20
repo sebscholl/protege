@@ -1,11 +1,14 @@
 import type { InboundNormalizedMessage } from '@engine/gateway/types';
 
+import { existsSync } from 'node:fs';
+
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
   buildInboundRoutingContextNote,
   buildProviderMessages,
   createProviderAdapter,
+  resolveMigrationsDirPath,
   toHarnessInput,
 } from '@engine/harness/runtime';
 import { HarnessProviderError } from '@engine/harness/provider-contract';
@@ -34,6 +37,7 @@ let routingContextIncluded = false;
 let routingContextHasAllKeys = false;
 let routingContextIsEmptyWithoutMetadata = false;
 let unsupportedProviderCode = '';
+let migrationsDirExists = false;
 
 beforeAll((): void => {
   harnessInputSender = toHarnessInput({ message: inboundMessage }).sender;
@@ -131,6 +135,8 @@ beforeAll((): void => {
   } catch (error) {
     unsupportedProviderCode = (error as HarnessProviderError).code;
   }
+
+  migrationsDirExists = existsSync(resolveMigrationsDirPath());
 });
 
 describe('harness runtime helpers', () => {
@@ -160,5 +166,9 @@ describe('harness runtime helpers', () => {
 
   it('raises unsupported_provider for unimplemented providers', () => {
     expect(unsupportedProviderCode).toBe('unsupported_provider');
+  });
+
+  it('resolves one existing migrations directory path', () => {
+    expect(migrationsDirExists).toBe(true);
   });
 });

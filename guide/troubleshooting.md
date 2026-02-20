@@ -54,3 +54,20 @@ protege logs --scope gateway --tail 200
 1. Default behavior uses same-thread reply mode.
 2. Ensure tool calls are not intentionally using `threadingMode: "new_thread"`.
 3. Confirm outbound headers include expected `In-Reply-To` and `References` chain.
+
+## Chat Says Persona Not Found
+
+1. List personas:
+```bash
+protege persona list
+```
+2. Retry chat using full `persona_id` or an unambiguous prefix:
+```bash
+protege chat --persona <persona_id_or_prefix>
+```
+
+## Chat Send Does Nothing in Existing Threads
+
+1. Chat v1 treats existing threads as read-only by design.
+2. Create a local writable thread from inbox with `Ctrl+N`.
+3. Send with `Ctrl+S` in that writable local thread (`Ctrl+Enter` is also accepted as a fallback on terminals that emit it distinctly).

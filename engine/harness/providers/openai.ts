@@ -2,6 +2,7 @@ import type {
   HarnessProviderAdapter,
   HarnessProviderGenerateRequest,
   HarnessProviderGenerateResponse,
+  HarnessProviderMessage,
 } from '@engine/harness/provider-contract';
 
 import {
@@ -15,6 +16,23 @@ import {
 export type OpenAiAdapterConfig = {
   apiKey: string;
   baseUrl?: string;
+};
+
+/**
+ * Represents one serialized OpenAI chat-completions message payload.
+ */
+export type OpenAiChatMessagePayload = {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string;
+  tool_call_id?: string;
+  tool_calls?: Array<{
+    id: string;
+    type: 'function';
+    function: {
+      name: string;
+      arguments: string;
+    };
+  }>;
 };
 
 /**
@@ -73,39 +91,9 @@ export async function generateWithOpenAi(
     },
     body: JSON.stringify({
       model: parsedModel.modelName,
-      messages: args.request.messages.map((message) => {
-        const content = message.parts
-          .filter((part) => part.type === 'text')
-          .map((part) => part.text)
-          .join('\n\n');
-        if (message.role === 'tool') {
-          if (!message.toolCallId) {
-            throw new HarnessProviderError({
-              code: 'bad_request',
-              message: 'Tool result message is missing toolCallId.',
-            });
-          }
-
-          return {
-            role: 'tool',
-            content,
-            tool_call_id: message.toolCallId,
-          };
-        }
-
-        return {
-          role: message.role,
-          content: content.length > 0 ? content : null,
-          tool_calls: message.toolCalls?.map((toolCall) => ({
-            id: toolCall.id,
-            type: 'function',
-            function: {
-              name: toolCall.name,
-              arguments: JSON.stringify(toolCall.input),
-            },
-          })),
-        };
-      }),
+      messages: args.request.messages.map((message) => buildOpenAiChatMessage({
+        message,
+      })),
       tools: args.request.tools?.map((tool) => ({
         type: 'function',
         function: {
@@ -146,6 +134,47 @@ export async function generateWithOpenAi(
     finishReason: extractOpenAiFinishReason({ response: parsed }),
     usage: usageObject,
     rawProviderResponse: parsed,
+  };
+}
+
+/**
+ * Serializes one normalized harness message into an OpenAI chat-completions message payload.
+ */
+export function buildOpenAiChatMessage(
+  args: {
+    message: HarnessProviderMessage;
+  },
+): OpenAiChatMessagePayload {
+  const content = args.message.parts
+    .filter((part) => part.type === 'text')
+    .map((part) => part.text)
+    .join('\n\n');
+  if (args.message.role === 'tool') {
+    if (!args.message.toolCallId) {
+      throw new HarnessProviderError({
+        code: 'bad_request',
+        message: 'Tool result message is missing toolCallId.',
+      });
+    }
+
+    return {
+      role: 'tool',
+      content,
+      tool_call_id: args.message.toolCallId,
+    };
+  }
+
+  return {
+    role: args.message.role,
+    content,
+    tool_calls: args.message.toolCalls?.map((toolCall) => ({
+      id: toolCall.id,
+      type: 'function',
+      function: {
+        name: toolCall.name,
+        arguments: JSON.stringify(toolCall.input),
+      },
+    })),
   };
 }
 

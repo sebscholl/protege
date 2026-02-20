@@ -2,6 +2,8 @@ import type { InboundNormalizedMessage } from '@engine/gateway/types';
 import type { GatewayLogger } from '@engine/gateway/types';
 import type { ProtegeDatabase } from '@engine/shared/database';
 
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
@@ -615,7 +617,18 @@ export function createProviderAdapter(
  * Resolves migrations directory path independent of process working directory.
  */
 export function resolveMigrationsDirPath(): string {
-  return fileURLToPath(new URL('../shared/migrations', import.meta.url));
+  const candidates = [
+    fileURLToPath(new URL('../shared/migrations', import.meta.url)),
+    fileURLToPath(new URL('../engine/shared/migrations', import.meta.url)),
+    join(process.cwd(), 'engine', 'shared', 'migrations'),
+    join(process.cwd(), 'shared', 'migrations'),
+  ];
+  const resolved = candidates.find((candidate) => existsSync(candidate));
+  if (!resolved) {
+    throw new Error(`Could not locate migrations directory. Tried: ${candidates.join(', ')}`);
+  }
+
+  return resolved;
 }
 
 /**

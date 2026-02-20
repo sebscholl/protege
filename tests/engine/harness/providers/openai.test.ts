@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { HarnessProviderError } from '@engine/harness/provider-contract';
 import {
+  buildOpenAiChatMessage,
   createOpenAiProviderAdapter,
   generateWithOpenAi,
 } from '@engine/harness/providers/openai';
@@ -24,6 +25,7 @@ let successToolCallName = '';
 let failureCode = '';
 let unsupportedProviderCode = '';
 let invalidToolArgumentsCode = '';
+let emptyAssistantContent = '__unset__';
 
 beforeAll(async (): Promise<void> => {
   mswIntercept({ fixtureKey: 'openai/chat-completions/200' });
@@ -96,6 +98,13 @@ beforeAll(async (): Promise<void> => {
   } catch (error) {
     invalidToolArgumentsCode = (error as HarnessProviderError).code;
   }
+
+  emptyAssistantContent = buildOpenAiChatMessage({
+    message: {
+      role: 'assistant',
+      parts: [],
+    },
+  }).content;
 });
 
 describe('openai provider adapter', () => {
@@ -117,5 +126,9 @@ describe('openai provider adapter', () => {
 
   it('rejects non-openai provider model ids', () => {
     expect(unsupportedProviderCode).toBe('unsupported_provider');
+  });
+
+  it('serializes empty non-tool message content as empty string', () => {
+    expect(emptyAssistantContent).toBe('');
   });
 });

@@ -61,3 +61,19 @@ System config includes unified runtime logging path:
 
 1. `logs_dir_path`
 2. `console_log_format` (`json` or `pretty`)
+
+System config also includes chat session defaults:
+
+1. `chat.default_display_mode` (`light` or `verbose`)
+2. `chat.poll_interval_ms` (positive integer)
+3. `chat.keymap` required bindings:
+   - `send`
+   - `refresh`
+   - `toggle_display_mode`
+   - `quit`
+   - `move_selection_up`
+   - `move_selection_down`
+   - `open_thread`
+   - `back_to_inbox`
+   - `new_local_thread`
+   - `enter_compose_mode`
