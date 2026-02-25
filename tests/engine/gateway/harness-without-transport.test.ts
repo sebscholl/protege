@@ -20,6 +20,14 @@ beforeAll(async (): Promise<void> => {
   process.chdir(tempRootPath);
 
   mkdirSync(join(tempRootPath, 'config'), { recursive: true });
+  mkdirSync(join(tempRootPath, 'personas', 'persona-test'), { recursive: true });
+  writeFileSync(join(tempRootPath, 'personas', 'persona-test', 'persona.json'), JSON.stringify({
+    personaId: 'persona-test',
+    publicKeyBase32: 'fixture',
+    emailLocalPart: 'fixture',
+    emailAddress: 'fixture@localhost',
+    createdAt: '2026-02-14T00:00:00.000Z',
+  }));
   writeFileSync(join(tempRootPath, 'config', 'inference.json'), JSON.stringify({
     provider: 'openai',
     model: 'gpt-4.1',

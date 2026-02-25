@@ -25,10 +25,12 @@ import { createUnifiedLogger } from '@engine/shared/logger';
 import {
   extractEmailLocalPart,
   listPersonas,
+  readPersonaMetadata,
   resolvePersonaConfigDirPath,
   resolveDefaultPersonaRoots,
   resolvePersonaByEmailLocalPart,
   resolvePersonaMemoryPaths,
+  updatePersonaEmailAddress,
 } from '@engine/shared/personas';
 import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
 
@@ -122,6 +124,12 @@ export async function startGatewayRuntime(
   const transport = args.config.transport
     ? createOutboundTransport({ config: args.config.transport })
     : undefined;
+  if (args.config.relay?.enabled) {
+    reconcilePersonaMailboxDomains({
+      mailDomain: args.config.mailDomain,
+      logger,
+    });
+  }
   let inboundConfig: ReturnType<typeof createGatewayInboundProcessingConfig> | undefined;
   const relayClientsByPersonaId = startGatewayRelayClients({
     relayConfig: args.config.relay,
@@ -189,6 +197,48 @@ export async function startGatewayRuntime(
   await startInboundServer({
     config: inboundConfig,
   });
+}
+
+/**
+ * Reconciles persona mailbox domains to configured gateway mail domain for relay-mode deliverability.
+ */
+export function reconcilePersonaMailboxDomains(
+  args: {
+    mailDomain: string;
+    logger?: {
+      info: (args: { event: string; context: Record<string, unknown> }) => void;
+    };
+  },
+): number {
+  const personas = listPersonas({
+    roots: resolveDefaultPersonaRoots(),
+  });
+  let updatedCount = 0;
+  for (const persona of personas) {
+    const domain = readEmailDomain({
+      emailAddress: persona.emailAddress,
+    });
+    if (domain === args.mailDomain) {
+      continue;
+    }
+
+    updatePersonaEmailAddress({
+      personaId: persona.personaId,
+      emailAddress: `${persona.emailLocalPart}@${args.mailDomain}`,
+      roots: resolveDefaultPersonaRoots(),
+    });
+    updatedCount += 1;
+    args.logger?.info({
+      event: 'gateway.persona.email_domain_reconciled',
+      context: {
+        personaId: persona.personaId,
+        previousEmailAddress: persona.emailAddress,
+        reconciledEmailAddress: `${persona.emailLocalPart}@${args.mailDomain}`,
+      },
+    });
+  }
+
+  return updatedCount;
 }
 
 /**
@@ -526,14 +576,15 @@ export async function handleInboundForRuntime(
     correlationId?: string;
   },
 ): Promise<void> {
-  const derivedSender = args.message.envelopeRcptTo[0]?.address
-    ?? args.message.to[0]?.address
-    ?? `unknown@${args.mailDomain}`;
+  const personaSenderAddress = resolvePersonaSenderAddress({
+    message: args.message,
+  });
   await runHarnessForPersistedInboundMessage({
     message: args.message,
-    senderAddress: derivedSender,
+    senderAddress: personaSenderAddress,
     invokeRuntimeAction: createGatewayRuntimeActionInvoker({
       message: args.message,
+      personaSenderAddress,
       logger: args.logger,
       transport: args.transport,
       relayClientsByPersonaId: args.relayClientsByPersonaId,
@@ -550,6 +601,7 @@ export async function handleInboundForRuntime(
 export function createGatewayRuntimeActionInvoker(
   args: {
     message: InboundNormalizedMessage;
+    personaSenderAddress?: string;
     logger: ReturnType<typeof createGatewayLogger>;
     transport?: ReturnType<typeof createOutboundTransport>;
     relayClientsByPersonaId?: Map<string, RelayClientController>;
@@ -579,6 +631,8 @@ export function createGatewayRuntimeActionInvoker(
     }
     const request = buildEmailSendRequestFromAction({
       message: args.message,
+      personaSenderAddress: args.personaSenderAddress
+        ?? resolvePersonaSenderAddress({ message: args.message }),
       payload: runtimeArgs.payload,
     });
     let messageId: string | null = null;
@@ -627,6 +681,7 @@ export function createGatewayRuntimeActionInvoker(
 export function buildEmailSendRequestFromAction(
   args: {
     message: InboundNormalizedMessage;
+    personaSenderAddress: string;
     payload: Record<string, unknown>;
   },
 ): OutboundReplyRequest {
@@ -668,7 +723,7 @@ export function buildEmailSendRequestFromAction(
     payloadSubject,
   });
   const fromAddress = resolveReplyFromAddress({
-    message: args.message,
+    personaSenderAddress: args.personaSenderAddress,
   });
 
   return {
@@ -714,16 +769,14 @@ export function readEmailSendThreadingMode(
  */
 export function resolveReplyFromAddress(
   args: {
-    message: InboundNormalizedMessage;
+    personaSenderAddress: string;
   },
 ): string {
-  const resolvedAddress = args.message.envelopeRcptTo[0]?.address
-    ?? args.message.to[0]?.address;
-  if (!resolvedAddress || !isEmailAddress({ value: resolvedAddress })) {
+  if (!isEmailAddress({ value: args.personaSenderAddress })) {
     throw new Error('Unable to resolve persona sender address for email.send runtime action.');
   }
 
-  return resolvedAddress;
+  return args.personaSenderAddress;
 }
 
 /**
@@ -751,7 +804,46 @@ export function isEmailAddress(
     value: string;
   },
 ): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(args.value);
+  return /^[^\s@]+@[^\s@]+$/.test(args.value);
+}
+
+/**
+ * Reads one domain from email address text.
+ */
+export function readEmailDomain(
+  args: {
+    emailAddress: string;
+  },
+): string {
+  const atIndex = args.emailAddress.lastIndexOf('@');
+  if (atIndex < 0 || atIndex === args.emailAddress.length - 1) {
+    return '';
+  }
+
+  return args.emailAddress.slice(atIndex + 1).toLowerCase();
+}
+
+/**
+ * Resolves canonical outbound sender identity from persona metadata.
+ */
+export function resolvePersonaSenderAddress(
+  args: {
+    message: InboundNormalizedMessage;
+  },
+): string {
+  if (!args.message.personaId) {
+    throw new Error('Unable to resolve persona sender address for email.send runtime action.');
+  }
+
+  const persona = readPersonaMetadata({
+    personaId: args.message.personaId,
+    roots: resolveDefaultPersonaRoots(),
+  });
+  if (!isEmailAddress({ value: persona.emailAddress })) {
+    throw new Error('Unable to resolve persona sender address for email.send runtime action.');
+  }
+
+  return persona.emailAddress;
 }
 
 /**

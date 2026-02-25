@@ -55,6 +55,7 @@ beforeAll(async (): Promise<void> => {
       error: (): void => undefined,
     },
     transport: streamTransport,
+    personaSenderAddress: 'persona@example.com',
   });
 
   try {
@@ -127,22 +128,7 @@ beforeAll(async (): Promise<void> => {
   emailSendMessageId = String(sent.messageId ?? '');
 
   replyFromAddress = resolveReplyFromAddress({
-    message: {
-      personaId: 'persona-test',
-      messageId: '<inbound@example.com>',
-      threadId: 'thread-1',
-      from: [{ address: 'sender@example.com' }],
-      to: [{ address: 'agent@example.com' }],
-      cc: [],
-      bcc: [],
-      envelopeRcptTo: [{ address: 'persona@example.com' }],
-      subject: 'Hello',
-      text: 'Body',
-      references: [],
-      receivedAt: '2026-02-14T00:00:00.000Z',
-      rawMimePath: '/tmp/inbound.eml',
-      attachments: [],
-    },
+    personaSenderAddress: 'persona@example.com',
   });
   replySubject = resolveReplySubject({
     message: {
@@ -207,6 +193,7 @@ beforeAll(async (): Promise<void> => {
       subject: 'Manual Test',
       text: 'Reply body',
     },
+    personaSenderAddress: 'persona@example.com',
   });
   implicitReplyAllCcCount = noImplicitReplyAllRequest.cc?.length ?? 0;
 
@@ -233,6 +220,7 @@ beforeAll(async (): Promise<void> => {
       subject: 'Manual Test',
       text: 'Reply body',
     },
+    personaSenderAddress: 'persona@example.com',
   });
   explicitCcCount = explicitCcRequest.cc?.length ?? 0;
 
@@ -259,6 +247,7 @@ beforeAll(async (): Promise<void> => {
       subject: 'Manual Test',
       text: 'Reply body',
     },
+    personaSenderAddress: 'persona@example.com',
   });
   lockedFromAddress = lockedFromRequest.from.address;
 
@@ -284,6 +273,7 @@ beforeAll(async (): Promise<void> => {
       subject: 'Manual Test',
       text: 'Reply body',
     },
+    personaSenderAddress: 'persona@example.com',
   });
   defaultInReplyTo = defaultThreadingRequest.inReplyTo;
   defaultReferencesCount = defaultThreadingRequest.references.length;
@@ -312,6 +302,7 @@ beforeAll(async (): Promise<void> => {
       references: ['<different-root@example.com>'],
       text: 'Reply body',
     },
+    personaSenderAddress: 'persona@example.com',
   });
   forcedReplyModeInReplyTo = forcedReplyModeRequest.inReplyTo;
   forcedReplyModeSubject = forcedReplyModeRequest.subject;
@@ -341,6 +332,7 @@ beforeAll(async (): Promise<void> => {
       references: ['<new-thread-root@example.com>'],
       text: 'Reply body',
     },
+    personaSenderAddress: 'persona@example.com',
   });
   newThreadModeInReplyTo = newThreadModeRequest.inReplyTo;
   newThreadModeSubject = newThreadModeRequest.subject;

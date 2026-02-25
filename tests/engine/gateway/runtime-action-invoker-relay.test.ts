@@ -46,6 +46,7 @@ beforeAll(async (): Promise<void> => {
         },
       ],
     ]),
+    personaSenderAddress: 'persona@example.com',
   });
 
   const result = await invoke({
