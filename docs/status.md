@@ -93,13 +93,24 @@ Completed:
 
 1. Extension isolation boundary and manifest/registry flow.
 2. First production tool: `send_email`.
+3. Scheduler foundations:
+   - responsibility file contract + frontmatter parser
+   - file->DB index sync/reconcile flow
+   - scheduler storage and run-record APIs
+   - scheduler schema migration (`responsibilities` index + `responsibility_runs`)
 
 Remaining:
 
 1. First-party `web_search` and `web_fetch` tools.
-2. Scheduler responsibilities (`engine/scheduler` runtime + storage + tools).
+2. Scheduler responsibilities runtime (`engine/scheduler` cron trigger + runner + failure alert path).
 3. Security/Ops completion (whitelist, recursion controls audit, terminal-failure notification flow).
 4. Hooks runtime and dispatch (`extensions/hooks`).
+
+Planning updates:
+
+1. Scheduler milestone plan created: `docs/milestones/scheduler-plan.md`.
+2. File-first responsibility model + DB runtime index frozen via ADR-0016.
+3. Scheduler v1 run policy frozen via ADR-0017 (new thread per run, no retry, owner failure alert).
 
 ## ADR Coverage
 
@@ -111,3 +122,5 @@ Recent status-aligned ADRs:
 4. `docs/adr/0013-chat-tui-is-email-native-two-view-client.md`
 5. `docs/adr/0014-chat-keybindings-ctrl-only-configured-in-system-json.md`
 6. `docs/adr/0015-chat-v1-read-only-existing-threads-and-local-synthetic-writes.md`
+7. `docs/adr/0016-responsibilities-file-first-with-db-index.md`
+8. `docs/adr/0017-scheduler-v1-run-policy.md`

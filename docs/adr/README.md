@@ -17,6 +17,8 @@ Accepted ADRs:
 13. `0013-chat-tui-is-email-native-two-view-client.md`
 14. `0014-chat-keybindings-ctrl-only-configured-in-system-json.md`
 15. `0015-chat-v1-read-only-existing-threads-and-local-synthetic-writes.md`
+16. `0016-responsibilities-file-first-with-db-index.md`
+17. `0017-scheduler-v1-run-policy.md`
 
 Notes:
 

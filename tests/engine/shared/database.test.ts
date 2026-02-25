@@ -36,8 +36,8 @@ describe('shared database bootstrap', () => {
     expect(existsSync(databasePath)).toBe(true);
   });
 
-  it('creates core threads, messages, and responsibilities tables', () => {
-    expect(['threads', 'messages', 'responsibilities'].every((name) => tableNames.includes(name))).toBe(true);
+  it('creates core threads, messages, responsibilities, and run tables', () => {
+    expect(['threads', 'messages', 'responsibilities', 'responsibility_runs'].every((name) => tableNames.includes(name))).toBe(true);
   });
 
   it('creates the messages fts table for search', () => {
