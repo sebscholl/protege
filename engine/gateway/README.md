@@ -22,10 +22,16 @@ Responsible for SMTP parsing/sending and relay tunneling behavior.
 5. Harness inference is enqueued asynchronously after inbound persistence to avoid long-running SMTP transactions.
 6. If inbound recipient routing does not resolve to a known persona, SMTP ingestion is rejected.
 7. Outbound SMTP delivery is tool-driven (`email.send`) rather than implicit fallback replies.
-8. Outbound replies include deterministic threading headers when outbound transport is configured.
-9. Outbound sender identity is locked to the addressed persona identity for reply consistency.
-10. Threaded replies normalize subject to `Re: <inbound-subject>` by default.
-11. Runtime action `email.send` defaults to `reply_current` threading; explicit `threadingMode: "new_thread"` is required to start a separate thread.
+8. Local workspace file actions are runtime-addressable for tool execution:
+   - `file.read`
+   - `file.write`
+   - `file.edit`
+   - `file.glob`
+   - `file.search`
+9. Outbound replies include deterministic threading headers when outbound transport is configured.
+10. Outbound sender identity is locked to the addressed persona identity for reply consistency.
+11. Threaded replies normalize subject to `Re: <inbound-subject>` by default.
+12. Runtime action `email.send` defaults to `reply_current` threading; explicit `threadingMode: "new_thread"` is required to start a separate thread.
 
 ## Relay Client Notes (M3.5 In Progress)
 

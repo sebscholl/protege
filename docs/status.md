@@ -97,6 +97,8 @@ Completed:
    - `read_file`
    - `write_file`
    - `edit_file`
+   - `glob`
+   - `search`
 3. Scheduler foundations:
    - responsibility file contract + frontmatter parser
    - file->DB index sync/reconcile flow
@@ -146,3 +148,6 @@ Recent status-aligned ADRs:
 7. `docs/adr/0016-responsibilities-file-first-with-db-index.md`
 8. `docs/adr/0017-scheduler-v1-run-policy.md`
 9. `docs/adr/0018-scheduler-runtime-owned-by-gateway.md`
+10. `docs/adr/0019-persona-owned-sender-identity-and-no-active-persona.md`
+11. `docs/adr/0020-core-file-tools-v1-simple-literal-reliable-semantics.md`
+12. `docs/adr/0021-glob-and-search-tools-v1.md`

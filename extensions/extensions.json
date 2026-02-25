@@ -1,5 +1,7 @@
 {
   "tools": [
+    "glob",
+    "search",
     "read-file",
     "write-file",
     "edit-file",

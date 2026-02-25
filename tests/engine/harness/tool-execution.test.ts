@@ -10,6 +10,7 @@ let sentMessageId = '';
 let toolNotFoundMessage = '';
 let sentMessageSource = '';
 let readFileContent = '';
+let globPathsCount = -1;
 
 beforeAll(async (): Promise<void> => {
   const registry = await loadToolRegistry();
@@ -87,6 +88,32 @@ beforeAll(async (): Promise<void> => {
   });
   readFileContent = String(readResult.content ?? '');
 
+  const globResult = await executeRegisteredTool({
+    registry,
+    name: 'glob',
+    input: {
+      pattern: '**/*.md',
+    },
+    context: {
+      runtime: {
+        invoke: async (
+          args: {
+            action: string;
+            payload: Record<string, unknown>;
+          },
+        ): Promise<Record<string, unknown>> => {
+          if (args.action !== 'file.glob') {
+            throw new Error(`Unsupported action: ${args.action}`);
+          }
+          return {
+            paths: [String(args.payload.pattern ?? '')],
+          };
+        },
+      },
+    },
+  });
+  globPathsCount = Array.isArray(globResult.paths) ? globResult.paths.length : -1;
+
   try {
     await executeRegisteredTool({
       registry,
@@ -114,6 +141,10 @@ describe('harness tool execution', () => {
 
   it('executes read_file via runtime file.read payload fields', () => {
     expect(readFileContent).toBe('read:README.md');
+  });
+
+  it('executes glob via runtime file.glob payload fields', () => {
+    expect(globPathsCount).toBe(1);
   });
 
   it('throws for unknown tool names', () => {

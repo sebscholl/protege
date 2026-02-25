@@ -26,6 +26,14 @@ afterAll((): void => {
 });
 
 describe('harness tool registry', () => {
+  it('loads glob from extensions manifest', () => {
+    expect(toolNames.includes('glob')).toBe(true);
+  });
+
+  it('loads search from extensions manifest', () => {
+    expect(toolNames.includes('search')).toBe(true);
+  });
+
   it('loads read_file from extensions manifest', () => {
     expect(toolNames.includes('read_file')).toBe(true);
   });

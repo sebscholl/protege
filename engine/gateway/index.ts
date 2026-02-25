@@ -6,6 +6,7 @@ import type {
 } from '@engine/gateway/types';
 import type { SMTPServerDataStream, SMTPServerSession } from 'smtp-server';
 
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { Readable } from 'node:stream';
@@ -660,6 +661,16 @@ export function createGatewayRuntimeActionInvoker(
         payload: runtimeArgs.payload,
       });
     }
+    if (runtimeArgs.action === 'file.glob') {
+      return runGlobRuntimeAction({
+        payload: runtimeArgs.payload,
+      });
+    }
+    if (runtimeArgs.action === 'file.search') {
+      return runSearchRuntimeAction({
+        payload: runtimeArgs.payload,
+      });
+    }
     if (runtimeArgs.action !== 'email.send') {
       throw new Error(`Unsupported runtime action: ${runtimeArgs.action}`);
     }
@@ -804,6 +815,191 @@ export function runEditFileRuntimeAction(
 }
 
 /**
+ * Runs one file.glob runtime action and returns matching workspace-relative paths.
+ */
+export function runGlobRuntimeAction(
+  args: {
+    payload: Record<string, unknown>;
+    execFileSyncFn?: typeof execFileSync;
+  },
+): Record<string, unknown> {
+  const pattern = readRequiredRuntimeString({
+    payload: args.payload,
+    fieldName: 'pattern',
+    actionName: 'file.glob',
+  });
+  const targetCwd = args.payload.cwd === undefined
+    ? process.cwd()
+    : readRequiredRuntimePath({
+      payload: args.payload,
+      fieldName: 'cwd',
+      actionName: 'file.glob',
+    });
+  const maxResults = readOptionalRuntimePositiveInteger({
+    payload: args.payload,
+    fieldName: 'maxResults',
+    actionName: 'file.glob',
+  }) ?? 100;
+  const output = runRipgrepCommand({
+    args: ['--files', '-g', pattern],
+    cwd: targetCwd,
+    execFileSyncFn: args.execFileSyncFn,
+    actionName: 'file.glob',
+  });
+  const workspaceRoot = process.cwd();
+  const paths = output
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => relative(workspaceRoot, resolve(targetCwd, line)));
+  const limitedPaths = paths.slice(0, maxResults);
+  return {
+    paths: limitedPaths,
+    truncated: paths.length > limitedPaths.length,
+    totalMatches: paths.length,
+  };
+}
+
+/**
+ * Runs one file.search runtime action and returns line/column matches.
+ */
+export function runSearchRuntimeAction(
+  args: {
+    payload: Record<string, unknown>;
+    execFileSyncFn?: typeof execFileSync;
+  },
+): Record<string, unknown> {
+  const query = readRequiredRuntimeString({
+    payload: args.payload,
+    fieldName: 'query',
+    actionName: 'file.search',
+  });
+  const searchRoot = args.payload.path === undefined
+    ? process.cwd()
+    : readRequiredRuntimePath({
+      payload: args.payload,
+      fieldName: 'path',
+      actionName: 'file.search',
+    });
+  const isRegex = readOptionalRuntimeBoolean({
+    payload: args.payload,
+    fieldName: 'isRegex',
+    actionName: 'file.search',
+  }) ?? false;
+  const maxResults = readOptionalRuntimePositiveInteger({
+    payload: args.payload,
+    fieldName: 'maxResults',
+    actionName: 'file.search',
+  }) ?? 200;
+  const ripgrepArgs = [
+    '-n',
+    '--column',
+    '--no-heading',
+    ...(isRegex ? [] : ['--fixed-strings']),
+    query,
+    '.',
+  ];
+  const output = runRipgrepCommand({
+    args: ripgrepArgs,
+    cwd: searchRoot,
+    execFileSyncFn: args.execFileSyncFn,
+    actionName: 'file.search',
+    allowNoMatches: true,
+  });
+  const workspaceRoot = process.cwd();
+  const matches = output
+    .split('\n')
+    .map((line) => parseRipgrepMatchLine({
+      line,
+      cwd: searchRoot,
+      workspaceRoot,
+    }))
+    .filter((match): match is {
+      path: string;
+      line: number;
+      column: number;
+      preview: string;
+    } => match !== undefined)
+    .slice(0, maxResults);
+  return {
+    matches,
+  };
+}
+
+/**
+ * Runs one ripgrep command and returns UTF-8 stdout with actionable error mapping.
+ */
+export function runRipgrepCommand(
+  args: {
+    args: string[];
+    cwd: string;
+    actionName: string;
+    allowNoMatches?: boolean;
+    execFileSyncFn?: typeof execFileSync;
+  },
+): string {
+  const execSync = args.execFileSyncFn ?? execFileSync;
+  try {
+    return execSync('rg', args.args, {
+      cwd: args.cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }) as string;
+  } catch (error) {
+    const errorRecord = error as {
+      status?: number;
+      stderr?: string | Buffer;
+      message?: string;
+    };
+    const status = errorRecord.status ?? null;
+    if (args.allowNoMatches && status === 1) {
+      return '';
+    }
+
+    const stderr = typeof errorRecord.stderr === 'string'
+      ? errorRecord.stderr
+      : Buffer.isBuffer(errorRecord.stderr)
+        ? errorRecord.stderr.toString('utf8')
+        : '';
+    throw new Error(`${args.actionName} failed: ${stderr.trim() || errorRecord.message || 'unknown error'}`);
+  }
+}
+
+/**
+ * Parses one ripgrep match line into structured path/line/column payload fields.
+ */
+export function parseRipgrepMatchLine(
+  args: {
+    line: string;
+    cwd: string;
+    workspaceRoot: string;
+  },
+): {
+  path: string;
+  line: number;
+  column: number;
+  preview: string;
+} | undefined {
+  const trimmed = args.line.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  const match = trimmed.match(/^(.*?):(\d+):(\d+):(.*)$/);
+  if (!match) {
+    return undefined;
+  }
+
+  const [, rawPath, rawLine, rawColumn, preview] = match;
+  return {
+    path: relative(args.workspaceRoot, resolve(args.cwd, rawPath)),
+    line: Number(rawLine),
+    column: Number(rawColumn),
+    preview,
+  };
+}
+
+/**
  * Reads one required runtime path and resolves it within workspace root.
  */
 export function readRequiredRuntimePath(
@@ -876,6 +1072,27 @@ export function readOptionalRuntimeBoolean(
   }
   if (typeof value !== 'boolean') {
     throw new Error(`${args.actionName} payload.${args.fieldName} must be a boolean.`);
+  }
+
+  return value;
+}
+
+/**
+ * Reads one optional positive integer runtime payload value.
+ */
+export function readOptionalRuntimePositiveInteger(
+  args: {
+    payload: Record<string, unknown>;
+    fieldName: string;
+    actionName: string;
+  },
+): number | undefined {
+  const value = args.payload[args.fieldName];
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+    throw new Error(`${args.actionName} payload.${args.fieldName} must be a positive integer.`);
   }
 
   return value;

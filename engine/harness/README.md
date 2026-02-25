@@ -37,4 +37,4 @@ The harness loads enabled tools from `extensions/extensions.json`, validates the
 Tools execute through a uniform runtime API:
 
 1. `context.runtime.invoke({ action, payload })`
-2. Core runtime maps actions (for example `email.send`) to concrete side effects.
+2. Core runtime maps actions (for example `email.send`, `file.read`, `file.search`) to concrete side effects.

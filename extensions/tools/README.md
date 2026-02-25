@@ -25,9 +25,11 @@ Each tool must be implemented as:
 
 ## Current Tools
 
-1. `read-file`: Reads full UTF-8 file content through `read_file`.
-2. `write-file`: Creates or overwrites UTF-8 file content through `write_file`.
-3. `edit-file`: Applies literal text replacement edits through `edit_file`.
-4. `send-email`: Sends outbound email via generic runtime action invocation.
+1. `glob`: Finds files by glob pattern through `file.glob`.
+2. `search`: Finds text matches by query through `file.search`.
+3. `read-file`: Reads full UTF-8 file content through `read_file`.
+4. `write-file`: Creates or overwrites UTF-8 file content through `write_file`.
+5. `edit-file`: Applies literal text replacement edits through `edit_file`.
+6. `send-email`: Sends outbound email via generic runtime action invocation.
 
 Each tool lives in its own directory with `index.ts`, `config.json`, and `README.md`.

@@ -9,7 +9,9 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { tool as editFileTool } from '@extensions/tools/edit-file/index';
+import { tool as globTool } from '@extensions/tools/glob/index';
 import { tool as readFileTool } from '@extensions/tools/read-file/index';
+import { tool as searchTool } from '@extensions/tools/search/index';
 import { tool as sendEmailTool } from '@extensions/tools/send-email/index';
 import { tool as writeFileTool } from '@extensions/tools/write-file/index';
 
@@ -196,6 +198,12 @@ export function readBuiltInToolDefinition(
     toolName: string;
   },
 ): HarnessToolDefinition | undefined {
+  if (args.toolName === 'glob') {
+    return globTool;
+  }
+  if (args.toolName === 'search') {
+    return searchTool;
+  }
   if (args.toolName === 'read-file') {
     return readFileTool;
   }
