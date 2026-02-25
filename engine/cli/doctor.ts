@@ -364,7 +364,7 @@ export function checkExtensionsManifestReadable(): DoctorCheckResult {
 }
 
 /**
- * Verifies scheduler admin contact email is configured and valid for failure alerts.
+ * Verifies global admin contact email is configured and valid for runtime failure alerts.
  */
 export function checkAdminContactEmailConfigured(): DoctorCheckResult {
   const configPath = resolveDefaultGlobalConfigPath();
@@ -372,8 +372,8 @@ export function checkAdminContactEmailConfigured(): DoctorCheckResult {
     return {
       id: 'scheduler.admin_contact_email_configured',
       status: 'warn',
-      message: 'system config not found; scheduler failure alerts are disabled.',
-      hint: 'Create config/system.json with scheduler.admin_contact_email.',
+      message: 'system config not found; runtime failure alerts are disabled.',
+      hint: 'Create config/system.json with admin_contact_email.',
     };
   }
 
@@ -390,7 +390,7 @@ export function checkAdminContactEmailConfigured(): DoctorCheckResult {
       return {
         id: 'scheduler.admin_contact_email_configured',
         status: 'warn',
-        message: 'admin_contact_email is missing; scheduler failure alerts will be logged only.',
+        message: 'admin_contact_email is missing; runtime failure alerts will be logged only.',
         hint: 'Set admin_contact_email in config/system.json.',
       };
     }
@@ -406,7 +406,7 @@ export function checkAdminContactEmailConfigured(): DoctorCheckResult {
     return {
       id: 'scheduler.admin_contact_email_configured',
       status: 'pass',
-      message: 'scheduler admin contact email is configured.',
+      message: 'runtime admin contact email is configured.',
     };
   } catch (error) {
     return {

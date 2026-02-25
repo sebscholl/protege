@@ -8,16 +8,19 @@ import {
   createGatewayInboundProcessingConfig,
   isEmailAddress,
   reconcilePersonaMailboxDomains,
+  sendGatewayFailureAlert,
 } from '@engine/gateway/index';
 import { createPersona, readPersonaMetadata } from '@engine/shared/personas';
 
 let relayClientMapIsPreserved = false;
 let localhostAddressValid = false;
 let relayDomainReconciled = false;
+let gatewayAlertSent = false;
+let gatewayAlertSkippedWithoutAdminContact = false;
 let tempRootPath = '';
 let previousCwd = '';
 
-beforeAll((): void => {
+beforeAll(async (): Promise<void> => {
   previousCwd = process.cwd();
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-gateway-index-'));
   process.chdir(tempRootPath);
@@ -86,6 +89,73 @@ beforeAll((): void => {
   relayDomainReconciled = readPersonaMetadata({
     personaId: persona.personaId,
   }).emailAddress.endsWith('@mail.protege.bot');
+
+  let alertInvokeCount = 0;
+  await sendGatewayFailureAlert({
+    logger: {
+      info: (): void => undefined,
+      error: (): void => undefined,
+    },
+    message: {
+      personaId: persona.personaId,
+      messageId: '<inbound@example.com>',
+      threadId: 'thread-1',
+      from: [{ address: 'sender@example.com' }],
+      to: [{ address: persona.emailAddress }],
+      cc: [],
+      bcc: [],
+      envelopeRcptTo: [{ address: persona.emailAddress }],
+      subject: 'subject',
+      text: 'body',
+      html: undefined,
+      references: [],
+      receivedAt: new Date().toISOString(),
+      rawMimePath: '/tmp/inbound.eml',
+      attachments: [],
+    },
+    errorMessage: 'tool failed',
+    adminContactEmail: 'ops@example.com',
+    invokeRuntimeAction: async (): Promise<Record<string, unknown>> => {
+      alertInvokeCount += 1;
+      return {
+        messageId: '<alert@example.com>',
+      };
+    },
+  });
+  gatewayAlertSent = alertInvokeCount === 1;
+
+  alertInvokeCount = 0;
+  await sendGatewayFailureAlert({
+    logger: {
+      info: (): void => undefined,
+      error: (): void => undefined,
+    },
+    message: {
+      personaId: persona.personaId,
+      messageId: '<inbound@example.com>',
+      threadId: 'thread-1',
+      from: [{ address: 'sender@example.com' }],
+      to: [{ address: persona.emailAddress }],
+      cc: [],
+      bcc: [],
+      envelopeRcptTo: [{ address: persona.emailAddress }],
+      subject: 'subject',
+      text: 'body',
+      html: undefined,
+      references: [],
+      receivedAt: new Date().toISOString(),
+      rawMimePath: '/tmp/inbound.eml',
+      attachments: [],
+    },
+    errorMessage: 'tool failed',
+    invokeRuntimeAction: async (): Promise<Record<string, unknown>> => {
+      alertInvokeCount += 1;
+      return {
+        messageId: '<alert@example.com>',
+      };
+    },
+  });
+  gatewayAlertSkippedWithoutAdminContact = alertInvokeCount === 0;
 });
 
 describe('gateway inbound config relay wiring', () => {
@@ -99,6 +169,14 @@ describe('gateway inbound config relay wiring', () => {
 
   it('reconciles persona mailbox domains to configured relay mail domain', () => {
     expect(relayDomainReconciled).toBe(true);
+  });
+
+  it('sends gateway failure alerts when admin contact email is configured', () => {
+    expect(gatewayAlertSent).toBe(true);
+  });
+
+  it('skips gateway failure alerts when admin contact email is absent', () => {
+    expect(gatewayAlertSkippedWithoutAdminContact).toBe(true);
   });
 });
 

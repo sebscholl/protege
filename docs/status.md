@@ -106,6 +106,8 @@ Completed:
 5. Scheduler operator command surface:
    - `protege scheduler sync`
 6. Scheduler relay-capable runtime action path integrated for tool-driven email sends.
+7. Global runtime failure alert path hardened:
+   - `admin_contact_email` now drives both scheduler failure alerts and gateway terminal inbound-failure alerts.
 
 Remaining:
 

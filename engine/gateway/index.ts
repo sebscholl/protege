@@ -1,5 +1,6 @@
 import type {
   GatewayTransportConfig,
+  GatewayLogger,
   InboundNormalizedMessage,
   OutboundReplyRequest,
 } from '@engine/gateway/types';
@@ -15,6 +16,7 @@ import { applyRelayTunnelFrame, createRelayTunnelAssemblyState } from '@engine/g
 import { startRelayClient } from '@engine/gateway/relay-client';
 import type { RelayClientController } from '@engine/gateway/relay-client';
 import { buildReplySubject } from '@engine/gateway/threading';
+import type { HarnessRuntimeActionInvoker } from '@engine/harness/runtime';
 import {
   persistInboundMessageForRuntime,
   runHarnessForPersistedInboundMessage,
@@ -170,6 +172,7 @@ export async function startGatewayRuntime(
     logger,
     transport,
     relayClientsByPersonaId,
+    adminContactEmail: globalConfig.adminContactEmail,
   });
   if (relayClientsByPersonaId.size > 0) {
     logger.info({
@@ -254,6 +257,7 @@ export function createGatewayInboundProcessingConfig(
     logger: ReturnType<typeof createUnifiedLogger>;
     transport?: ReturnType<typeof createOutboundTransport>;
     relayClientsByPersonaId?: Map<string, RelayClientController>;
+    adminContactEmail?: string;
   },
 ): {
   host: string;
@@ -318,6 +322,7 @@ export function createGatewayInboundProcessingConfig(
         transport: args.transport,
         relayClientsByPersonaId: args.relayClientsByPersonaId,
         mailDomain: args.runtimeConfig.mailDomain,
+        adminContactEmail: args.adminContactEmail,
         correlationId,
       });
     },
@@ -531,6 +536,7 @@ export function enqueueInboundProcessing(
     transport?: ReturnType<typeof createOutboundTransport>;
     relayClientsByPersonaId?: Map<string, RelayClientController>;
     mailDomain: string;
+    adminContactEmail?: string;
     correlationId?: string;
   },
 ): void {
@@ -552,7 +558,7 @@ export function enqueueInboundProcessing(
       relayClientsByPersonaId: args.relayClientsByPersonaId,
       mailDomain: args.mailDomain,
       correlationId: args.correlationId,
-    }).catch((error: Error) => {
+    }).catch(async (error: Error) => {
       args.logger.error({
         event: 'gateway.error',
         context: {
@@ -562,6 +568,15 @@ export function enqueueInboundProcessing(
           threadId: args.message.threadId,
           messageId: args.message.messageId,
         },
+      });
+      await sendGatewayFailureAlert({
+        logger: args.logger,
+        message: args.message,
+        errorMessage: error.message,
+        transport: args.transport,
+        relayClientsByPersonaId: args.relayClientsByPersonaId,
+        adminContactEmail: args.adminContactEmail,
+        correlationId: args.correlationId,
       });
     });
   });
@@ -677,6 +692,94 @@ export function createGatewayRuntimeActionInvoker(
       messageId,
     };
   };
+}
+
+/**
+ * Sends one admin-facing failure alert email for terminal gateway inbound processing errors.
+ */
+export async function sendGatewayFailureAlert(
+  args: {
+    logger: GatewayLogger;
+    message: InboundNormalizedMessage;
+    errorMessage: string;
+    adminContactEmail?: string;
+    transport?: ReturnType<typeof createOutboundTransport>;
+    relayClientsByPersonaId?: Map<string, RelayClientController>;
+    correlationId?: string;
+    invokeRuntimeAction?: HarnessRuntimeActionInvoker;
+  },
+): Promise<void> {
+  if (!args.adminContactEmail) {
+    args.logger.error({
+      event: 'gateway.alert.skipped_missing_admin_contact',
+      context: {
+        correlationId: args.correlationId ?? null,
+        personaId: args.message.personaId ?? null,
+        threadId: args.message.threadId,
+        messageId: args.message.messageId,
+      },
+    });
+    return;
+  }
+
+  if (!args.message.personaId) {
+    args.logger.error({
+      event: 'gateway.alert.skipped_missing_persona',
+      context: {
+        correlationId: args.correlationId ?? null,
+        threadId: args.message.threadId,
+        messageId: args.message.messageId,
+      },
+    });
+    return;
+  }
+
+  const invoker = args.invokeRuntimeAction ?? createGatewayRuntimeActionInvoker({
+    message: args.message,
+    logger: args.logger,
+    transport: args.transport,
+    relayClientsByPersonaId: args.relayClientsByPersonaId,
+    correlationId: args.correlationId,
+  });
+  try {
+    const result = await invoker({
+      action: 'email.send',
+      payload: {
+        to: [args.adminContactEmail],
+        subject: 'Protege Gateway Failure Alert',
+        text: [
+          'Protege gateway encountered a terminal inbound processing failure.',
+          `personaId: ${args.message.personaId}`,
+          `threadId: ${args.message.threadId}`,
+          `messageId: ${args.message.messageId}`,
+          `error: ${args.errorMessage}`,
+        ].join('\n'),
+      },
+    });
+    args.logger.info({
+      event: 'gateway.alert.sent',
+      context: {
+        correlationId: args.correlationId ?? null,
+        personaId: args.message.personaId,
+        threadId: args.message.threadId,
+        messageId: args.message.messageId,
+        alertMessageId: typeof result.messageId === 'string'
+          ? result.messageId
+          : null,
+      },
+    });
+  } catch (error) {
+    args.logger.error({
+      event: 'gateway.alert.failed',
+      context: {
+        correlationId: args.correlationId ?? null,
+        personaId: args.message.personaId,
+        threadId: args.message.threadId,
+        messageId: args.message.messageId,
+        message: error instanceof Error ? error.message : String(error),
+      },
+    });
+  }
 }
 
 /**

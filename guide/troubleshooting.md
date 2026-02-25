@@ -112,7 +112,7 @@ protege gateway start
 protege logs --scope scheduler --tail 200
 ```
 
-## Scheduler Failure Alerts Are Not Sent
+## Runtime Failure Alerts Are Not Sent
 
 1. Set `admin_contact_email` in `config/system.json`.
 2. Ensure it is a valid email address.
@@ -121,6 +121,9 @@ protege logs --scope scheduler --tail 200
 protege doctor --json
 ```
 4. Check `scheduler.admin_contact_email_configured` result.
+5. Confirm logs include either:
+   - `gateway.alert.sent` / `scheduler.alert.sent`, or
+   - explicit skip/failure events with context.
 
 ## Scheduler Appears Backlogged
 
