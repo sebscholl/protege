@@ -23,6 +23,10 @@ import { startSchedulerRuntime } from '@engine/scheduler/runtime';
 import { parseRelayTunnelFrame } from '@relay/src/tunnel';
 import { createUnifiedLogger } from '@engine/shared/logger';
 import {
+  isValidEmailAddress,
+  readEmailAddressDomain,
+} from '@engine/shared/email';
+import {
   extractEmailLocalPart,
   listPersonas,
   readPersonaMetadata,
@@ -804,7 +808,10 @@ export function isEmailAddress(
     value: string;
   },
 ): boolean {
-  return /^[^\s@]+@[^\s@]+$/.test(args.value);
+  return isValidEmailAddress({
+    value: args.value,
+    allowLocalhost: true,
+  });
 }
 
 /**
@@ -815,12 +822,9 @@ export function readEmailDomain(
     emailAddress: string;
   },
 ): string {
-  const atIndex = args.emailAddress.lastIndexOf('@');
-  if (atIndex < 0 || atIndex === args.emailAddress.length - 1) {
-    return '';
-  }
-
-  return args.emailAddress.slice(atIndex + 1).toLowerCase();
+  return readEmailAddressDomain({
+    emailAddress: args.emailAddress,
+  });
 }
 
 /**

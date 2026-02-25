@@ -4,7 +4,7 @@ import type { SchedulerResponsibility } from '@engine/scheduler/storage';
 
 import { createRequire } from 'node:module';
 
-import { enqueueResponsibilityRun, listEnabledResponsibilitiesByPersona } from '@engine/scheduler/storage';
+import { enqueueResponsibilityRunIfIdle, listEnabledResponsibilitiesByPersona } from '@engine/scheduler/storage';
 
 /**
  * Represents one scheduled task handle returned by one cron provider.
@@ -49,7 +49,10 @@ export type ResponsibilityEnqueueFn = (
     responsibility: SchedulerResponsibility;
     triggeredAt: string;
   },
-) => void;
+) => {
+  enqueued: boolean;
+  runId?: string;
+};
 
 /**
  * Starts cron scheduling for one persona and enqueues run rows on matching ticks.
@@ -110,18 +113,30 @@ export function startPersonaSchedulerCron(
         expression: responsibility.schedule,
         onTick: () => {
           const triggeredAt = now();
-          enqueueFn({
+          const enqueueResult = enqueueFn({
             responsibility,
             triggeredAt,
           });
-          args.logger?.info({
-            event: 'scheduler.cron.enqueued',
-            context: {
-              personaId: args.personaId,
-              responsibilityId: responsibility.id,
-              triggeredAt,
-            },
-          });
+          if (enqueueResult.enqueued) {
+            args.logger?.info({
+              event: 'scheduler.cron.enqueued',
+              context: {
+                personaId: args.personaId,
+                responsibilityId: responsibility.id,
+                triggeredAt,
+                runId: enqueueResult.runId ?? null,
+              },
+            });
+          } else {
+            args.logger?.info({
+              event: 'scheduler.cron.skipped_overlap',
+              context: {
+                personaId: args.personaId,
+                responsibilityId: responsibility.id,
+                triggeredAt,
+              },
+            });
+          }
         },
       });
       tasks.push(task);
@@ -148,8 +163,8 @@ export function createDefaultEnqueueFn(
       responsibility: SchedulerResponsibility;
       triggeredAt: string;
     },
-  ): void => {
-    enqueueResponsibilityRun({
+  ): { enqueued: boolean; runId?: string } => {
+    return enqueueResponsibilityRunIfIdle({
       db: args.db,
       run: {
         responsibilityId: enqueueArgs.responsibility.id,

@@ -7,8 +7,10 @@ Shared helper utilities for test setup that are reused across multiple test suit
 Helpers in this directory should stay deterministic and avoid hidden global state.
 
 Current helper groups:
+- `async.ts`: async polling/wait utilities for integration and e2e tests.
 - `email-fixtures.ts`: SMTP fixture streams and session doubles.
 - `gateway-inbound.ts`: inbound gateway config/logger builders.
 - `json.ts`: JSON-safe record casting for fixture-backed response payloads.
 - `relay-crypto.ts`: shared relay key encoding helpers for tests.
 - `relay-socket-doubles.ts`: reusable websocket/auth socket doubles for relay tests.
+- `stdout.ts`: stdout capture utility for CLI output assertions.

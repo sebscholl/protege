@@ -8,7 +8,7 @@ import {
   resolveDefaultPersonaRoots,
   resolvePersonaMemoryDirPath,
 } from '@engine/shared/personas';
-import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
+import { readGlobalRuntimeConfig, resolveDefaultGlobalConfigPath } from '@engine/shared/runtime-config';
 
 /**
  * Represents one doctor check outcome item.
@@ -55,6 +55,7 @@ export function runDoctorChecks(): DoctorReport {
   checks.push(checkProviderConfigPresent());
   checks.push(checkRelayConfigValidWhenEnabled());
   checks.push(checkExtensionsManifestReadable());
+  checks.push(checkAdminContactEmailConfigured());
   return {
     status: summarizeDoctorStatus({
       checks,
@@ -358,6 +359,61 @@ export function checkExtensionsManifestReadable(): DoctorCheckResult {
       status: 'fail',
       message: (error as Error).message,
       hint: 'Fix extensions/extensions.json syntax.',
+    };
+  }
+}
+
+/**
+ * Verifies scheduler admin contact email is configured and valid for failure alerts.
+ */
+export function checkAdminContactEmailConfigured(): DoctorCheckResult {
+  const configPath = resolveDefaultGlobalConfigPath();
+  if (!existsSync(configPath)) {
+    return {
+      id: 'scheduler.admin_contact_email_configured',
+      status: 'warn',
+      message: 'system config not found; scheduler failure alerts are disabled.',
+      hint: 'Create config/system.json with scheduler.admin_contact_email.',
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(configPath, 'utf8')) as Record<string, unknown>;
+    const topLevelValue = parsed.admin_contact_email;
+    const scheduler = parsed.scheduler;
+    const schedulerValue = scheduler && typeof scheduler === 'object' && !Array.isArray(scheduler)
+      ? (scheduler as Record<string, unknown>).admin_contact_email
+      : undefined;
+    const value = topLevelValue ?? schedulerValue;
+
+    if (value === undefined || (typeof value === 'string' && value.trim().length === 0)) {
+      return {
+        id: 'scheduler.admin_contact_email_configured',
+        status: 'warn',
+        message: 'admin_contact_email is missing; scheduler failure alerts will be logged only.',
+        hint: 'Set admin_contact_email in config/system.json.',
+      };
+    }
+    if (typeof value !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+      return {
+        id: 'scheduler.admin_contact_email_configured',
+        status: 'fail',
+        message: 'admin_contact_email is invalid.',
+        hint: 'Set admin_contact_email to a valid email address.',
+      };
+    }
+
+    return {
+      id: 'scheduler.admin_contact_email_configured',
+      status: 'pass',
+      message: 'scheduler admin contact email is configured.',
+    };
+  } catch (error) {
+    return {
+      id: 'scheduler.admin_contact_email_configured',
+      status: 'fail',
+      message: (error as Error).message,
+      hint: 'Fix config/system.json syntax.',
     };
   }
 }

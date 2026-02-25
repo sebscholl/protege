@@ -111,3 +111,21 @@ protege gateway start
 ```bash
 protege logs --scope scheduler --tail 200
 ```
+
+## Scheduler Failure Alerts Are Not Sent
+
+1. Set `admin_contact_email` in `config/system.json`.
+2. Ensure it is a valid email address.
+3. Run:
+```bash
+protege doctor --json
+```
+4. Check `scheduler.admin_contact_email_configured` result.
+
+## Scheduler Appears Backlogged
+
+1. Scheduler now enforces bounded concurrency.
+2. Check `config/system.json`:
+   - `scheduler.max_global_concurrent_runs`
+   - `scheduler.max_per_persona_concurrent_runs`
+3. Increase limits carefully if runs are consistently queued.

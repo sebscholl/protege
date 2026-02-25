@@ -1,6 +1,7 @@
 import { syncPersonaResponsibilities } from '@engine/scheduler/sync';
 import { initializeDatabase } from '@engine/shared/database';
 import { resolveMigrationsDirPath } from '@engine/harness/runtime';
+import { resolvePersonaBySelector } from '@engine/shared/persona-selector';
 import {
   listPersonas,
   resolvePersonaMemoryPaths,
@@ -152,24 +153,15 @@ export function resolvePersonaForScheduler(
     throw new Error('Scheduler sync selector is required when --persona is provided.');
   }
 
-  const selector = args.selector.trim().toLowerCase();
-  const exact = personas.find((persona) => persona.personaId === selector || persona.emailLocalPart === selector);
-  if (exact) {
-    return {
-      personaId: exact.personaId,
-    };
-  }
+  const persona = resolvePersonaBySelector({
+    selector: args.selector,
+    personas,
+    ambiguousSelectorMessage: ({
+      selector,
+    }): string => `Ambiguous persona selector "${selector}". Use a longer prefix.`,
+  });
 
-  const byPrefix = personas.filter((persona) => persona.personaId.startsWith(selector));
-  if (byPrefix.length === 1) {
-    return {
-      personaId: byPrefix[0].personaId,
-    };
-  }
-
-  if (byPrefix.length > 1) {
-    throw new Error(`Ambiguous persona selector "${args.selector}". Use a longer prefix.`);
-  }
-
-  throw new Error(`Persona not found for selector "${args.selector}".`);
+  return {
+    personaId: persona.personaId,
+  };
 }

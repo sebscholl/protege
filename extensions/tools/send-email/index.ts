@@ -6,6 +6,8 @@ import type {
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { isValidEmailAddress } from '@engine/shared/email';
+
 /**
  * Represents the accepted input payload schema for send_email execution.
  */
@@ -337,7 +339,10 @@ export function isEmailAddress(
     value: string;
   },
 ): boolean {
-  return /^[^\s@]+@(?:[^\s@]+\.[^\s@]+|localhost)$/.test(args.value);
+  return isValidEmailAddress({
+    value: args.value,
+    allowLocalhost: true,
+  });
 }
 
 /**

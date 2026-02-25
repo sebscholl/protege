@@ -11,6 +11,8 @@ import {
   claimNextQueuedRun,
   disableResponsibility,
   enqueueResponsibilityRun,
+  enqueueResponsibilityRunIfIdle,
+  hasQueuedRunForPersona,
   listEnabledResponsibilitiesByPersona,
   listResponsibilitiesByPersona,
   listResponsibilityRunsByPersona,
@@ -26,6 +28,9 @@ let enabledResponsibilityCount = 0;
 let claimedRunStatus = '';
 let succeededRunStatus = '';
 let failedRunStatus = '';
+let overlapFirstEnqueued = false;
+let overlapSecondEnqueued = true;
+let personaHasQueuedAfterOverlap = false;
 
 beforeAll((): void => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-scheduler-storage-'));
@@ -124,6 +129,31 @@ beforeAll((): void => {
   });
   succeededRunStatus = runs.find((run) => run.id === 'run-1')?.status ?? '';
   failedRunStatus = runs.find((run) => run.id === 'run-2')?.status ?? '';
+
+  const firstOverlapRun = enqueueResponsibilityRunIfIdle({
+    db: db as ProtegeDatabase,
+    run: {
+      responsibilityId: 'resp-1',
+      personaId: 'persona-a',
+      triggeredAt: '2026-02-20T13:00:00.000Z',
+    },
+    runId: 'run-overlap-1',
+  });
+  const secondOverlapRun = enqueueResponsibilityRunIfIdle({
+    db: db as ProtegeDatabase,
+    run: {
+      responsibilityId: 'resp-1',
+      personaId: 'persona-a',
+      triggeredAt: '2026-02-20T13:00:01.000Z',
+    },
+    runId: 'run-overlap-2',
+  });
+  overlapFirstEnqueued = firstOverlapRun.enqueued;
+  overlapSecondEnqueued = secondOverlapRun.enqueued;
+  personaHasQueuedAfterOverlap = hasQueuedRunForPersona({
+    db: db as ProtegeDatabase,
+    personaId: 'persona-a',
+  });
 });
 
 afterAll((): void => {
@@ -151,5 +181,16 @@ describe('scheduler storage', () => {
   it('stores failed run status after terminal errors', () => {
     expect(failedRunStatus).toBe('failed');
   });
-});
 
+  it('enqueues when no open run exists for one responsibility', () => {
+    expect(overlapFirstEnqueued).toBe(true);
+  });
+
+  it('skips enqueue when responsibility already has open queued/running run', () => {
+    expect(overlapSecondEnqueued).toBe(false);
+  });
+
+  it('detects queued runs for one persona', () => {
+    expect(personaHasQueuedAfterOverlap).toBe(true);
+  });
+});

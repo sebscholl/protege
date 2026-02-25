@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { runCli, stopGatewayCommand } from '@engine/cli/index';
+import { captureStdout } from '@tests/helpers/stdout';
 
 const PID_PATH = join(process.cwd(), 'tmp', 'gateway.pid');
 
@@ -12,29 +13,6 @@ const PID_PATH = join(process.cwd(), 'tmp', 'gateway.pid');
  */
 function ensureRuntimeDirectory(): void {
   mkdirSync(join(process.cwd(), 'tmp'), { recursive: true });
-}
-
-/**
- * Captures stdout output for one async command execution.
- */
-async function captureStdout(
-  args: {
-    run: () => Promise<void>;
-  },
-): Promise<string> {
-  const originalWrite = process.stdout.write.bind(process.stdout);
-  const chunks: string[] = [];
-  process.stdout.write = ((chunk: string | Uint8Array): boolean => {
-    chunks.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'));
-    return true;
-  }) as typeof process.stdout.write;
-  try {
-    await args.run();
-  } finally {
-    process.stdout.write = originalWrite;
-  }
-
-  return chunks.join('');
 }
 
 describe('gateway cli lifecycle behavior', () => {

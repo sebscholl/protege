@@ -1,6 +1,7 @@
 {
   "logs_dir_path": "tmp/logs",
   "console_log_format": "pretty",
+  "admin_contact_email": "",
   "chat": {
     "default_display_mode": "light",
     "poll_interval_ms": 1500,
@@ -16,5 +17,10 @@
       "new_local_thread": "ctrl+n",
       "enter_compose_mode": "i"
     }
+  },
+  "scheduler": {
+    "poll_interval_ms": 1000,
+    "max_global_concurrent_runs": 4,
+    "max_per_persona_concurrent_runs": 2
   }
 }

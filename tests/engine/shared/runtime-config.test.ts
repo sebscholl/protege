@@ -9,12 +9,20 @@ import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
 let tempRootPath = '';
 let parsedLogsDirPath = '';
 let parsedConsoleFormat = '';
+let parsedGlobalAdminContactEmail = '';
 let parsedChatDisplayMode = '';
 let parsedChatPollIntervalMs = 0;
 let parsedChatSendBinding = '';
+let parsedSchedulerPollIntervalMs = 0;
+let parsedSchedulerMaxGlobalConcurrentRuns = 0;
+let parsedSchedulerMaxPerPersonaConcurrentRuns = 0;
+let parsedSchedulerAdminContactEmail = '';
 let defaultChatDisplayMode = '';
 let defaultChatPollIntervalMs = 0;
 let defaultChatSendBinding = '';
+let defaultSchedulerPollIntervalMs = 0;
+let defaultSchedulerMaxGlobalConcurrentRuns = 0;
+let defaultSchedulerMaxPerPersonaConcurrentRuns = 0;
 let invalidModeError = '';
 let missingActionError = '';
 let duplicateBindingError = '';
@@ -26,6 +34,7 @@ beforeAll((): void => {
   writeFileSync(validConfigPath, JSON.stringify({
     logs_dir_path: 'tmp/logs',
     console_log_format: 'pretty',
+    admin_contact_email: 'global-alerts@example.com',
     chat: {
       default_display_mode: 'verbose',
       poll_interval_ms: 900,
@@ -42,14 +51,25 @@ beforeAll((): void => {
         enter_compose_mode: 'i',
       },
     },
+    scheduler: {
+      poll_interval_ms: 1000,
+      max_global_concurrent_runs: 6,
+      max_per_persona_concurrent_runs: 3,
+      admin_contact_email: 'alerts@example.com',
+    },
   }));
 
   const parsed = readGlobalRuntimeConfig({ configPath: validConfigPath });
   parsedLogsDirPath = parsed.logsDirPath;
   parsedConsoleFormat = parsed.consoleLogFormat;
+  parsedGlobalAdminContactEmail = parsed.adminContactEmail ?? '';
   parsedChatDisplayMode = parsed.chat.defaultDisplayMode;
   parsedChatPollIntervalMs = parsed.chat.pollIntervalMs;
   parsedChatSendBinding = parsed.chat.keymap.send;
+  parsedSchedulerPollIntervalMs = parsed.scheduler.pollIntervalMs;
+  parsedSchedulerMaxGlobalConcurrentRuns = parsed.scheduler.maxGlobalConcurrentRuns;
+  parsedSchedulerMaxPerPersonaConcurrentRuns = parsed.scheduler.maxPerPersonaConcurrentRuns;
+  parsedSchedulerAdminContactEmail = parsed.scheduler.adminContactEmail ?? '';
 
   const defaultConfigPath = join(tempRootPath, 'default-system.json');
   writeFileSync(defaultConfigPath, JSON.stringify({
@@ -60,6 +80,9 @@ beforeAll((): void => {
   defaultChatDisplayMode = defaultParsed.chat.defaultDisplayMode;
   defaultChatPollIntervalMs = defaultParsed.chat.pollIntervalMs;
   defaultChatSendBinding = defaultParsed.chat.keymap.send;
+  defaultSchedulerPollIntervalMs = defaultParsed.scheduler.pollIntervalMs;
+  defaultSchedulerMaxGlobalConcurrentRuns = defaultParsed.scheduler.maxGlobalConcurrentRuns;
+  defaultSchedulerMaxPerPersonaConcurrentRuns = defaultParsed.scheduler.maxPerPersonaConcurrentRuns;
 
   const invalidModePath = join(tempRootPath, 'invalid-mode-system.json');
   writeFileSync(invalidModePath, JSON.stringify({
@@ -164,6 +187,10 @@ describe('global runtime config', () => {
   it('parses configured pretty console log format', () => {
     expect(parsedConsoleFormat).toBe('pretty');
   });
+
+  it('parses configured global admin contact email', () => {
+    expect(parsedGlobalAdminContactEmail).toBe('global-alerts@example.com');
+  });
 });
 
 describe('chat runtime config parsing', () => {
@@ -189,6 +216,36 @@ describe('chat runtime config parsing', () => {
 
   it('applies default key bindings when chat config is absent', () => {
     expect(defaultChatSendBinding).toBe('ctrl+s');
+  });
+});
+
+describe('scheduler runtime config parsing', () => {
+  it('parses configured scheduler poll interval', () => {
+    expect(parsedSchedulerPollIntervalMs).toBe(1000);
+  });
+
+  it('parses configured scheduler max global concurrency', () => {
+    expect(parsedSchedulerMaxGlobalConcurrentRuns).toBe(6);
+  });
+
+  it('parses configured scheduler max per-persona concurrency', () => {
+    expect(parsedSchedulerMaxPerPersonaConcurrentRuns).toBe(3);
+  });
+
+  it('parses configured scheduler admin contact email', () => {
+    expect(parsedSchedulerAdminContactEmail).toBe('alerts@example.com');
+  });
+
+  it('applies default scheduler poll interval when scheduler config is absent', () => {
+    expect(defaultSchedulerPollIntervalMs).toBe(1000);
+  });
+
+  it('applies default scheduler global concurrency when scheduler config is absent', () => {
+    expect(defaultSchedulerMaxGlobalConcurrentRuns).toBe(4);
+  });
+
+  it('applies default scheduler per-persona concurrency when scheduler config is absent', () => {
+    expect(defaultSchedulerMaxPerPersonaConcurrentRuns).toBe(2);
   });
 });
 

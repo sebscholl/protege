@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runCli } from '@engine/cli/index';
+import { captureStdout } from '@tests/helpers/stdout';
 
 let tempRootPath = '';
 let previousCwd = '';
@@ -15,29 +16,6 @@ let forceCreatedCount = 0;
 let gatewayConfigExists = false;
 let toolsReadmeExists = false;
 let sentinelPreserved = false;
-
-/**
- * Captures stdout output for one async command invocation.
- */
-async function captureStdout(
-  args: {
-    run: () => Promise<void>;
-  },
-): Promise<string> {
-  const originalWrite = process.stdout.write.bind(process.stdout);
-  const chunks: string[] = [];
-  process.stdout.write = ((chunk: string | Uint8Array): boolean => {
-    chunks.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'));
-    return true;
-  }) as typeof process.stdout.write;
-  try {
-    await args.run();
-  } finally {
-    process.stdout.write = originalWrite;
-  }
-
-  return chunks.join('');
-}
 
 beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-init-'));

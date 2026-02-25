@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runCli } from '@engine/cli/index';
 import { createPersona } from '@engine/shared/personas';
+import { captureStdout } from '@tests/helpers/stdout';
 
 let tempRootPath = '';
 let previousCwd = '';
@@ -14,29 +15,6 @@ let healthyChecksCount = 0;
 let unhealthyStatus = '';
 let unhealthyExitCode = -1;
 let doctorText = '';
-
-/**
- * Captures stdout text while executing one async CLI call.
- */
-async function captureStdout(
-  args: {
-    run: () => Promise<void>;
-  },
-): Promise<string> {
-  const originalWrite = process.stdout.write.bind(process.stdout);
-  const chunks: string[] = [];
-  process.stdout.write = ((chunk: string | Uint8Array): boolean => {
-    chunks.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'));
-    return true;
-  }) as typeof process.stdout.write;
-  try {
-    await args.run();
-  } finally {
-    process.stdout.write = originalWrite;
-  }
-
-  return chunks.join('');
-}
 
 beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-doctor-'));
@@ -74,6 +52,11 @@ beforeAll(async (): Promise<void> => {
   writeFileSync(join(tempRootPath, 'extensions', 'extensions.json'), JSON.stringify({
     tools: ['send-email'],
     hooks: [],
+  }, null, 2));
+  writeFileSync(join(tempRootPath, 'config', 'system.json'), JSON.stringify({
+    logs_dir_path: join(tempRootPath, 'tmp', 'logs'),
+    console_log_format: 'json',
+    admin_contact_email: 'ops@example.com',
   }, null, 2));
   createPersona({});
 
@@ -130,7 +113,7 @@ describe('doctor cli command', () => {
   });
 
   it('includes expected doctor check entries in json output', () => {
-    expect(healthyChecksCount).toBe(7);
+    expect(healthyChecksCount).toBe(8);
   });
 
   it('prints human-readable status lines without --json', () => {

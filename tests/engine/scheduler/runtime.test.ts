@@ -14,6 +14,9 @@ let schedulerCycleContinuesAfterPersonaFailure = false;
 let schedulerStopClosesPersonaResources = false;
 let tempRootPath = '';
 let schedulerAlertFromPersonaIdentity = false;
+let observedMaxInFlight = 0;
+let personaARuns = 0;
+let personaBRuns = 0;
 
 /**
  * Creates one no-op gateway logger for scheduler runtime tests.
@@ -71,6 +74,10 @@ beforeAll(async (): Promise<void> => {
   await runSchedulerCycle({
     personaStates: [stateA, stateB],
     logger: createSilentLogger(),
+    maxGlobalConcurrentRuns: 2,
+    maxPerPersonaConcurrentRuns: 1,
+    adminContactEmail: undefined,
+    hasQueuedRunForPersonaFn: (): boolean => false,
   });
   schedulerCycleContinuesAfterPersonaFailure = true;
 
@@ -120,6 +127,48 @@ beforeAll(async (): Promise<void> => {
     roots,
   });
   schedulerAlertFromPersonaIdentity = alertMessage.envelopeRcptTo[0]?.address.endsWith('@mail.protege.bot') === true;
+
+  const queueByPersonaId = new Map<string, number>([
+    ['persona-a', 2],
+    ['persona-b', 2],
+  ]);
+  let inFlight = 0;
+  await runSchedulerCycle({
+    personaStates: [stateA, stateB],
+    logger: createSilentLogger(),
+    maxGlobalConcurrentRuns: 2,
+    maxPerPersonaConcurrentRuns: 1,
+    adminContactEmail: undefined,
+    hasQueuedRunForPersonaFn: (
+      hasQueuedArgs: {
+        db: ProtegeDatabase;
+        personaId: string;
+      },
+    ): boolean => (queueByPersonaId.get(hasQueuedArgs.personaId) ?? 0) > 0,
+    runNextQueuedResponsibilityFn: async (
+      runNextArgs: {
+        db: ProtegeDatabase;
+        personaId?: string;
+      },
+    ) => {
+      const personaId = runNextArgs.personaId ?? 'unknown';
+      queueByPersonaId.set(personaId, Math.max(0, (queueByPersonaId.get(personaId) ?? 0) - 1));
+      inFlight += 1;
+      observedMaxInFlight = Math.max(observedMaxInFlight, inFlight);
+      if (personaId === 'persona-a') {
+        personaARuns += 1;
+      } else if (personaId === 'persona-b') {
+        personaBRuns += 1;
+      }
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 5);
+      });
+      inFlight -= 1;
+      return {
+        status: 'succeeded',
+      };
+    },
+  });
 });
 
 afterAll((): void => {
@@ -143,5 +192,19 @@ describe('scheduler runtime stop behavior', () => {
 describe('scheduler failure alert identity', () => {
   it('builds failure-alert synthetic inbound messages with persona mailbox identity', () => {
     expect(schedulerAlertFromPersonaIdentity).toBe(true);
+  });
+});
+
+describe('scheduler runtime parallel dispatch controls', () => {
+  it('enforces max global in-flight scheduler run concurrency', () => {
+    expect(observedMaxInFlight).toBe(2);
+  });
+
+  it('dispatches runs for persona-a under per-persona cap control', () => {
+    expect(personaARuns).toBe(2);
+  });
+
+  it('dispatches runs for persona-b under per-persona cap control', () => {
+    expect(personaBRuns).toBe(2);
   });
 });

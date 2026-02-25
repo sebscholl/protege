@@ -14,6 +14,7 @@ import { parseRelayTunnelFrame } from '@relay/src/tunnel';
 import { createUnifiedLogger } from '@engine/shared/logger';
 import { createPersona } from '@engine/shared/personas';
 import { toJsonRecord } from '@tests/helpers/json';
+import { waitForCondition } from '@tests/helpers/async';
 import { loadNetworkFixture } from '@tests/network/index';
 import { networkServer } from '@tests/network/server';
 
@@ -25,30 +26,6 @@ let temporalInboundCount = 0;
 let temporalOutboundCount = 0;
 let correlatedLogFound = false;
 let correlationIdPropagated = false;
-
-/**
- * Waits for one predicate to pass within timeout or throws when timeout elapses.
- */
-async function waitForCondition(
-  args: {
-    timeoutMs: number;
-    intervalMs: number;
-    predicate: () => boolean;
-  },
-): Promise<void> {
-  const startedAt = Date.now();
-  while (Date.now() - startedAt <= args.timeoutMs) {
-    if (args.predicate()) {
-      return;
-    }
-
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, args.intervalMs);
-    });
-  }
-
-  throw new Error('Timed out waiting for e2e relay roundtrip condition.');
-}
 
 beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-e2e-relay-roundtrip-'));
@@ -163,6 +140,7 @@ beforeAll(async (): Promise<void> => {
     timeoutMs: 5_000,
     intervalMs: 25,
     predicate: (): boolean => relayFrames.length >= 3,
+    timeoutMessage: 'Timed out waiting for e2e relay roundtrip condition.',
   });
 
   outboundRelayFrameTypes = relayFrames.map((frame): string => {

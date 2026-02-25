@@ -6,6 +6,7 @@ import {
   resolveReconnectDelayMs,
   startRelayClient,
 } from '@engine/gateway/relay-client';
+import { waitForCondition } from '@tests/helpers/async';
 
 type ScheduledTimer = {
   id: ReturnType<typeof setTimeout>;
@@ -44,30 +45,6 @@ let binaryIgnoredBeforeAuth = true;
 let blobDeliveredAfterAuth = false;
 let binaryMessageCount = 0;
 let bufferControlMessageAccepted = false;
-
-/**
- * Waits until one predicate returns true or throws after one bounded timeout.
- */
-async function waitForCondition(
-  args: {
-    timeoutMs: number;
-    intervalMs: number;
-    predicate: () => boolean;
-  },
-): Promise<void> {
-  const startedAt = Date.now();
-  while (Date.now() - startedAt <= args.timeoutMs) {
-    if (args.predicate()) {
-      return;
-    }
-
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, args.intervalMs);
-    });
-  }
-
-  throw new Error('Timed out waiting for relay client test condition.');
-}
 
 /**
  * Creates one manual clock with inspectable timeout scheduling.
@@ -281,6 +258,7 @@ beforeAll(async (): Promise<void> => {
       timeoutMs: 250,
       intervalMs: 5,
       predicate: (): boolean => binaryMessageCount >= 2,
+      timeoutMessage: 'Timed out waiting for relay client test condition.',
     });
   } else {
     blobDeliveredAfterAuth = true;

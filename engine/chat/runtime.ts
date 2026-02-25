@@ -15,6 +15,7 @@ import { resolveMigrationsDirPath, runHarnessForPersistedInboundMessage } from '
 import { storeOutboundMessage } from '@engine/harness/storage';
 import { initializeDatabase } from '@engine/shared/database';
 import { createUnifiedLogger } from '@engine/shared/logger';
+import { resolvePersonaBySelector as resolvePersonaBySelectorShared } from '@engine/shared/persona-selector';
 import { listPersonas, resolvePersonaMemoryPaths } from '@engine/shared/personas';
 import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
 
@@ -511,22 +512,20 @@ export function resolvePersonaBySelector(
     selector: string;
   },
 ): ReturnType<typeof listPersonas>[number] {
-  const personas = listPersonas();
-  const selector = args.selector.trim().toLowerCase();
-  const exact = personas.find((persona) => persona.personaId === selector || persona.emailLocalPart === selector);
-  if (exact) {
-    return exact;
-  }
-
-  const byPrefix = personas.filter((persona) => persona.personaId.startsWith(selector));
-  if (byPrefix.length === 1) {
-    return byPrefix[0];
-  }
-  if (byPrefix.length > 1) {
-    throw new Error(`Ambiguous persona selector "${args.selector}". Use a longer persona id prefix.`);
-  }
-
-  throw new Error(`Persona not found for selector "${args.selector}".`);
+  return resolvePersonaBySelectorShared({
+    selector: args.selector,
+    personas: listPersonas(),
+    ambiguousSelectorMessage: (
+      selectorArgs: {
+        selector: string;
+      },
+    ): string => `Ambiguous persona selector "${selectorArgs.selector}". Use a longer persona id prefix.`,
+    personaNotFoundMessage: (
+      selectorArgs: {
+        selector: string;
+      },
+    ): string => `Persona not found for selector "${selectorArgs.selector}".`,
+  });
 }
 
 /**

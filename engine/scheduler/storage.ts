@@ -241,6 +241,86 @@ export function enqueueResponsibilityRun(
 }
 
 /**
+ * Enqueues one responsibility run only when no queued/running run exists for the same responsibility.
+ */
+export function enqueueResponsibilityRunIfIdle(
+  args: {
+    db: ProtegeDatabase;
+    run: {
+      responsibilityId: string;
+      personaId: string;
+      triggeredAt?: string;
+      promptPathAtRun?: string;
+      promptHashAtRun?: string;
+      promptSnapshot?: string;
+    };
+    runId?: string;
+  },
+): {
+  enqueued: boolean;
+  runId?: string;
+} {
+  const runId = args.runId ?? randomUUID();
+  const result = args.db.prepare(`
+    INSERT INTO responsibility_runs (
+      id,
+      responsibility_id,
+      persona_id,
+      status,
+      triggered_at,
+      prompt_path_at_run,
+      prompt_hash_at_run,
+      prompt_snapshot
+    )
+    SELECT ?, ?, ?, 'queued', ?, ?, ?, ?
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM responsibility_runs
+      WHERE responsibility_id = ?
+        AND status IN ('queued', 'running')
+    )
+  `).run(
+    runId,
+    args.run.responsibilityId,
+    args.run.personaId,
+    args.run.triggeredAt ?? new Date().toISOString(),
+    args.run.promptPathAtRun ?? null,
+    args.run.promptHashAtRun ?? null,
+    args.run.promptSnapshot ?? null,
+    args.run.responsibilityId,
+  );
+  if (result.changes === 1) {
+    return {
+      enqueued: true,
+      runId,
+    };
+  }
+
+  return {
+    enqueued: false,
+  };
+}
+
+/**
+ * Returns true when at least one queued run exists for one persona.
+ */
+export function hasQueuedRunForPersona(
+  args: {
+    db: ProtegeDatabase;
+    personaId: string;
+  },
+): boolean {
+  const row = args.db.prepare(`
+    SELECT 1 AS exists_flag
+    FROM responsibility_runs
+    WHERE persona_id = ?
+      AND status = 'queued'
+    LIMIT 1
+  `).get(args.personaId) as { exists_flag?: number } | undefined;
+  return row?.exists_flag === 1;
+}
+
+/**
  * Claims the oldest queued run and marks it running.
  */
 export function claimNextQueuedRun(

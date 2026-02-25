@@ -3,6 +3,9 @@ import { join } from 'node:path';
 
 const DEFAULT_LOGS_DIR_PATH = join(process.cwd(), 'tmp', 'logs');
 const DEFAULT_POLL_INTERVAL_MS = 1500;
+const DEFAULT_SCHEDULER_POLL_INTERVAL_MS = 1000;
+const DEFAULT_SCHEDULER_MAX_GLOBAL_CONCURRENT_RUNS = 4;
+const DEFAULT_SCHEDULER_MAX_PER_PERSONA_CONCURRENT_RUNS = 2;
 
 /**
  * Represents supported chat display modes.
@@ -44,7 +47,19 @@ export type ChatRuntimeConfig = {
 export type GlobalRuntimeConfig = {
   logsDirPath: string;
   consoleLogFormat: 'json' | 'pretty';
+  adminContactEmail?: string;
   chat: ChatRuntimeConfig;
+  scheduler: SchedulerRuntimeSettings;
+};
+
+/**
+ * Represents scheduler runtime configuration loaded from `config/system.json`.
+ */
+export type SchedulerRuntimeSettings = {
+  pollIntervalMs: number;
+  maxGlobalConcurrentRuns: number;
+  maxPerPersonaConcurrentRuns: number;
+  adminContactEmail?: string;
 };
 
 /**
@@ -97,6 +112,7 @@ export function readGlobalRuntimeConfig(
       logsDirPath: DEFAULT_LOGS_DIR_PATH,
       consoleLogFormat: 'json',
       chat: getDefaultChatRuntimeConfig(),
+      scheduler: getDefaultSchedulerRuntimeSettings(),
     };
   }
 
@@ -108,10 +124,67 @@ export function readGlobalRuntimeConfig(
   const chat = parseChatRuntimeConfig({
     value: parsed.chat,
   });
+  const globalAdminContactEmail = parseOptionalAdminContactEmail({
+    value: parsed.admin_contact_email,
+  });
+  const scheduler = parseSchedulerRuntimeSettings({
+    value: parsed.scheduler,
+    globalAdminContactEmail,
+  });
   return {
     logsDirPath,
     consoleLogFormat,
+    adminContactEmail: globalAdminContactEmail ?? scheduler.adminContactEmail,
     chat,
+    scheduler,
+  };
+}
+
+/**
+ * Returns default scheduler runtime configuration values.
+ */
+export function getDefaultSchedulerRuntimeSettings(): SchedulerRuntimeSettings {
+  return {
+    pollIntervalMs: DEFAULT_SCHEDULER_POLL_INTERVAL_MS,
+    maxGlobalConcurrentRuns: DEFAULT_SCHEDULER_MAX_GLOBAL_CONCURRENT_RUNS,
+    maxPerPersonaConcurrentRuns: DEFAULT_SCHEDULER_MAX_PER_PERSONA_CONCURRENT_RUNS,
+    adminContactEmail: undefined,
+  };
+}
+
+/**
+ * Parses and validates scheduler runtime config from unknown input value.
+ */
+export function parseSchedulerRuntimeSettings(
+  args: {
+    value: unknown;
+    globalAdminContactEmail?: string;
+  },
+): SchedulerRuntimeSettings {
+  const defaults = getDefaultSchedulerRuntimeSettings();
+  if (!isRecord(args.value)) {
+    return defaults;
+  }
+
+  return {
+    pollIntervalMs: parsePositiveIntWithDefault({
+      value: args.value.poll_interval_ms,
+      defaultValue: defaults.pollIntervalMs,
+      fieldName: 'scheduler.poll_interval_ms',
+    }),
+    maxGlobalConcurrentRuns: parsePositiveIntWithDefault({
+      value: args.value.max_global_concurrent_runs,
+      defaultValue: defaults.maxGlobalConcurrentRuns,
+      fieldName: 'scheduler.max_global_concurrent_runs',
+    }),
+    maxPerPersonaConcurrentRuns: parsePositiveIntWithDefault({
+      value: args.value.max_per_persona_concurrent_runs,
+      defaultValue: defaults.maxPerPersonaConcurrentRuns,
+      fieldName: 'scheduler.max_per_persona_concurrent_runs',
+    }),
+    adminContactEmail: parseOptionalAdminContactEmail({
+      value: args.value.admin_contact_email,
+    }) ?? args.globalAdminContactEmail,
   };
 }
 
@@ -177,6 +250,45 @@ export function parsePollIntervalMs(
 
   if (typeof args.value !== 'number' || !Number.isInteger(args.value) || args.value <= 0) {
     throw new Error('Invalid chat.poll_interval_ms. Expected a positive integer.');
+  }
+
+  return args.value;
+}
+
+/**
+ * Parses one optional admin contact email and returns undefined when absent/invalid.
+ */
+export function parseOptionalAdminContactEmail(
+  args: {
+    value: unknown;
+  },
+): string | undefined {
+  if (typeof args.value !== 'string') {
+    return undefined;
+  }
+  const trimmed = args.value.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) ? trimmed : undefined;
+}
+
+/**
+ * Parses positive integer values with a default fallback and a field-level error on invalid types.
+ */
+export function parsePositiveIntWithDefault(
+  args: {
+    value: unknown;
+    defaultValue: number;
+    fieldName: string;
+  },
+): number {
+  if (args.value === undefined) {
+    return args.defaultValue;
+  }
+  if (typeof args.value !== 'number' || !Number.isInteger(args.value) || args.value <= 0) {
+    throw new Error(`Invalid ${args.fieldName}. Expected a positive integer.`);
   }
 
   return args.value;

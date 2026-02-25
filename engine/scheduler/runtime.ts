@@ -16,6 +16,7 @@ import { listPersonas, readPersonaMetadata, resolvePersonaMemoryPaths } from '@e
 import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
 import { startPersonaSchedulerCron } from '@engine/scheduler/cron';
 import { runNextQueuedResponsibility } from '@engine/scheduler/runner';
+import { hasQueuedRunForPersona } from '@engine/scheduler/storage';
 import { syncPersonaResponsibilities } from '@engine/scheduler/sync';
 import { resolveMigrationsDirPath } from '@engine/harness/runtime';
 
@@ -26,7 +27,9 @@ export type SchedulerRuntimeConfig = {
   roots?: PersonaRoots;
   personaIds?: string[];
   pollIntervalMs?: number;
-  ownerAlertAddress?: string;
+  maxGlobalConcurrentRuns?: number;
+  maxPerPersonaConcurrentRuns?: number;
+  adminContactEmail?: string;
 };
 
 /**
@@ -68,6 +71,7 @@ export function startSchedulerRuntime(
   const logger = args.dependencies?.logger ?? createSchedulerLogger();
   const transport = args.dependencies?.transport;
   const relayClientsByPersonaId = args.dependencies?.relayClientsByPersonaId;
+  const globalConfig = readGlobalRuntimeConfig();
   const personaIds = resolveSchedulerPersonaIds({
     explicitPersonaIds: args.config.personaIds,
     roots: args.config.roots,
@@ -77,7 +81,12 @@ export function startSchedulerRuntime(
     roots: args.config.roots,
     logger,
   }));
-  const pollIntervalMs = args.config.pollIntervalMs ?? DEFAULT_SCHEDULER_POLL_INTERVAL_MS;
+  const pollIntervalMs = args.config.pollIntervalMs ?? globalConfig.scheduler.pollIntervalMs ?? DEFAULT_SCHEDULER_POLL_INTERVAL_MS;
+  const maxGlobalConcurrentRuns = args.config.maxGlobalConcurrentRuns ?? globalConfig.scheduler.maxGlobalConcurrentRuns;
+  const maxPerPersonaConcurrentRuns = args.config.maxPerPersonaConcurrentRuns ?? globalConfig.scheduler.maxPerPersonaConcurrentRuns;
+  const adminContactEmail = args.config.adminContactEmail
+    ?? globalConfig.adminContactEmail
+    ?? globalConfig.scheduler.adminContactEmail;
   let disposed = false;
   let processing = false;
   const timer = setInterval(() => {
@@ -92,7 +101,9 @@ export function startSchedulerRuntime(
       logger,
       transport,
       relayClientsByPersonaId,
-      ownerAlertAddress: args.config.ownerAlertAddress,
+      maxGlobalConcurrentRuns,
+      maxPerPersonaConcurrentRuns,
+      adminContactEmail,
     }).finally(() => {
       processing = false;
     });
@@ -125,56 +136,92 @@ export async function runSchedulerCycle(
     logger: GatewayLogger;
     transport?: Transporter;
     relayClientsByPersonaId?: Map<string, RelayClientController>;
-    ownerAlertAddress?: string;
+    maxGlobalConcurrentRuns: number;
+    maxPerPersonaConcurrentRuns: number;
+    adminContactEmail?: string;
+    hasQueuedRunForPersonaFn?: typeof hasQueuedRunForPersona;
+    runNextQueuedResponsibilityFn?: typeof runNextQueuedResponsibility;
   },
 ): Promise<void> {
-  for (const personaState of args.personaStates) {
-    try {
-      await runNextQueuedResponsibility({
-        db: personaState.db,
-        personaId: personaState.personaId,
-        roots: args.roots,
+  const hasQueuedFn = args.hasQueuedRunForPersonaFn ?? hasQueuedRunForPersona;
+  const runNextFn = args.runNextQueuedResponsibilityFn ?? runNextQueuedResponsibility;
+  const inFlightByPersona = new Map<string, number>();
+  const inFlightRuns = new Set<Promise<void>>();
+
+  const tryDispatchRun = (
+    personaState: SchedulerPersonaState,
+  ): boolean => {
+    const globalInFlightCount = inFlightRuns.size;
+    const personaInFlightCount = inFlightByPersona.get(personaState.personaId) ?? 0;
+    if (globalInFlightCount >= args.maxGlobalConcurrentRuns) {
+      return false;
+    }
+    if (personaInFlightCount >= args.maxPerPersonaConcurrentRuns) {
+      return false;
+    }
+    if (!hasQueuedFn({
+      db: personaState.db,
+      personaId: personaState.personaId,
+    })) {
+      return false;
+    }
+
+    const runPromise = runNextFn({
+      db: personaState.db,
+      personaId: personaState.personaId,
+      roots: args.roots,
+      logger: args.logger,
+      createRuntimeActionInvoker: (
+        invokerArgs: {
+          message: InboundNormalizedMessage;
+        },
+      ): HarnessRuntimeActionInvoker => createGatewayRuntimeActionInvoker({
+        message: invokerArgs.message,
         logger: args.logger,
-        createRuntimeActionInvoker: (
-          invokerArgs: {
-            message: InboundNormalizedMessage;
-          },
-        ): HarnessRuntimeActionInvoker => createGatewayRuntimeActionInvoker({
-          message: invokerArgs.message,
+        transport: args.transport,
+        relayClientsByPersonaId: args.relayClientsByPersonaId,
+        correlationId: `scheduler:${invokerArgs.message.threadId}`,
+      }),
+      sendFailureAlert: async (
+        failureArgs: {
+          run: {
+            id: string;
+            responsibilityId: string;
+          };
+          responsibility?: {
+            name: string;
+            personaId: string;
+          };
+          errorMessage: string;
+        },
+      ): Promise<void> => {
+        const failurePersonaId = failureArgs.responsibility?.personaId ?? personaState.personaId;
+        if (!args.adminContactEmail) {
+          args.logger.error({
+            event: 'scheduler.alert.skipped_missing_admin_contact',
+            context: {
+              personaId: failurePersonaId,
+              runId: failureArgs.run.id,
+              responsibilityId: failureArgs.run.responsibilityId,
+            },
+          });
+          return;
+        }
+
+        await sendSchedulerFailureAlert({
           logger: args.logger,
           transport: args.transport,
           relayClientsByPersonaId: args.relayClientsByPersonaId,
-          correlationId: `scheduler:${invokerArgs.message.threadId}`,
-        }),
-        sendFailureAlert: async (
-          failureArgs: {
-            run: {
-              id: string;
-              responsibilityId: string;
-            };
-            responsibility?: {
-              name: string;
-              personaId: string;
-            };
-            errorMessage: string;
-          },
-        ): Promise<void> => {
-          const failurePersonaId = failureArgs.responsibility?.personaId ?? personaState.personaId;
-          await sendSchedulerFailureAlert({
-            logger: args.logger,
-            transport: args.transport,
-            relayClientsByPersonaId: args.relayClientsByPersonaId,
-            ownerAlertAddress: args.ownerAlertAddress,
-            personaId: failurePersonaId,
-            runId: failureArgs.run.id,
-            responsibilityId: failureArgs.run.responsibilityId,
-            responsibilityName: failureArgs.responsibility?.name ?? 'unknown',
-            errorMessage: failureArgs.errorMessage,
-            roots: args.roots,
-          });
-        },
-      });
-    } catch (error) {
+          adminContactEmail: args.adminContactEmail,
+          personaId: failurePersonaId,
+          runId: failureArgs.run.id,
+          responsibilityId: failureArgs.run.responsibilityId,
+          responsibilityName: failureArgs.responsibility?.name ?? 'unknown',
+          errorMessage: failureArgs.errorMessage,
+          roots: args.roots,
+        });
+      },
+    }).then((): void => undefined).catch((error: unknown): void => {
       args.logger.error({
         event: 'scheduler.cycle.persona_failed',
         context: {
@@ -182,6 +229,28 @@ export async function runSchedulerCycle(
           message: error instanceof Error ? error.message : String(error),
         },
       });
+    }).finally((): void => {
+      inFlightRuns.delete(runPromise);
+      inFlightByPersona.set(personaState.personaId, Math.max(0, (inFlightByPersona.get(personaState.personaId) ?? 1) - 1));
+    });
+
+    inFlightRuns.add(runPromise);
+    inFlightByPersona.set(personaState.personaId, personaInFlightCount + 1);
+    return true;
+  };
+
+  while (true) {
+    let dispatched = false;
+    for (const personaState of args.personaStates) {
+      if (tryDispatchRun(personaState)) {
+        dispatched = true;
+      }
+    }
+    if (inFlightRuns.size === 0 && !dispatched) {
+      return;
+    }
+    if (inFlightRuns.size > 0 && (inFlightRuns.size >= args.maxGlobalConcurrentRuns || !dispatched)) {
+      await Promise.race(inFlightRuns);
     }
   }
 }
@@ -281,7 +350,7 @@ export async function sendSchedulerFailureAlert(
     logger: GatewayLogger;
     transport?: Transporter;
     relayClientsByPersonaId?: Map<string, RelayClientController>;
-    ownerAlertAddress?: string;
+    adminContactEmail: string;
     personaId: string;
     runId: string;
     responsibilityId: string;
@@ -308,7 +377,7 @@ export async function sendSchedulerFailureAlert(
   await invokeRuntimeAction({
     action: 'email.send',
     payload: {
-      to: [args.ownerAlertAddress ?? alertMessage.from[0].address],
+      to: [args.adminContactEmail],
       subject: alertMessage.subject,
       text: alertMessage.text,
       threadingMode: 'new_thread',

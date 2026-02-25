@@ -16,6 +16,7 @@ let db: ProtegeDatabase | undefined;
 let scheduleInvocationCount = 0;
 let enqueuedRunCount = 0;
 let stoppedTaskCount = 0;
+let overlapPrevented = false;
 
 /**
  * Creates one deterministic fake scheduler task handle.
@@ -89,10 +90,12 @@ beforeAll((): void => {
     now: (): string => '2026-02-20T10:00:00.000Z',
   });
   callbacks[0]?.();
+  callbacks[0]?.();
   enqueuedRunCount = listResponsibilityRunsByPersona({
     db: db as ProtegeDatabase,
     personaId: 'persona-a',
   }).length;
+  overlapPrevented = enqueuedRunCount === 1;
   controller.stop();
 });
 
@@ -113,5 +116,8 @@ describe('scheduler cron trigger', () => {
   it('stops registered schedule tasks on controller stop', () => {
     expect(stoppedTaskCount).toBe(1);
   });
-});
 
+  it('prevents overlap by skipping enqueue when prior run remains open', () => {
+    expect(overlapPrevented).toBe(true);
+  });
+});
