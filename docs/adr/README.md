@@ -23,6 +23,7 @@ Accepted ADRs:
 19. `0019-persona-owned-sender-identity-and-no-active-persona.md`
 20. `0020-core-file-tools-v1-simple-literal-reliable-semantics.md`
 21. `0021-glob-and-search-tools-v1.md`
+22. `0022-shell-tool-v1.md`
 
 Notes:
 

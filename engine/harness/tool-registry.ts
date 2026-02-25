@@ -13,6 +13,7 @@ import { tool as globTool } from '@extensions/tools/glob/index';
 import { tool as readFileTool } from '@extensions/tools/read-file/index';
 import { tool as searchTool } from '@extensions/tools/search/index';
 import { tool as sendEmailTool } from '@extensions/tools/send-email/index';
+import { tool as shellTool } from '@extensions/tools/shell/index';
 import { tool as writeFileTool } from '@extensions/tools/write-file/index';
 
 /**
@@ -198,6 +199,9 @@ export function readBuiltInToolDefinition(
     toolName: string;
   },
 ): HarnessToolDefinition | undefined {
+  if (args.toolName === 'shell') {
+    return shellTool;
+  }
   if (args.toolName === 'glob') {
     return globTool;
   }

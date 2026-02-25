@@ -99,6 +99,7 @@ Completed:
    - `edit_file`
    - `glob`
    - `search`
+   - `shell`
 3. Scheduler foundations:
    - responsibility file contract + frontmatter parser
    - file->DB index sync/reconcile flow
@@ -151,3 +152,4 @@ Recent status-aligned ADRs:
 10. `docs/adr/0019-persona-owned-sender-identity-and-no-active-persona.md`
 11. `docs/adr/0020-core-file-tools-v1-simple-literal-reliable-semantics.md`
 12. `docs/adr/0021-glob-and-search-tools-v1.md`
+13. `docs/adr/0022-shell-tool-v1.md`

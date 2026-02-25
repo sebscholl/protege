@@ -28,10 +28,12 @@ Responsible for SMTP parsing/sending and relay tunneling behavior.
    - `file.edit`
    - `file.glob`
    - `file.search`
-9. Outbound replies include deterministic threading headers when outbound transport is configured.
-10. Outbound sender identity is locked to the addressed persona identity for reply consistency.
-11. Threaded replies normalize subject to `Re: <inbound-subject>` by default.
-12. Runtime action `email.send` defaults to `reply_current` threading; explicit `threadingMode: "new_thread"` is required to start a separate thread.
+9. Shell command execution is runtime-addressable for tool execution:
+   - `shell.exec`
+10. Outbound replies include deterministic threading headers when outbound transport is configured.
+11. Outbound sender identity is locked to the addressed persona identity for reply consistency.
+12. Threaded replies normalize subject to `Re: <inbound-subject>` by default.
+13. Runtime action `email.send` defaults to `reply_current` threading; explicit `threadingMode: "new_thread"` is required to start a separate thread.
 
 ## Relay Client Notes (M3.5 In Progress)
 

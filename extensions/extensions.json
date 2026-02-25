@@ -1,5 +1,6 @@
 {
   "tools": [
+    "shell",
     "glob",
     "search",
     "read-file",

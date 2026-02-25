@@ -11,6 +11,7 @@ let toolNotFoundMessage = '';
 let sentMessageSource = '';
 let readFileContent = '';
 let globPathsCount = -1;
+let shellExitCode = -1;
 
 beforeAll(async (): Promise<void> => {
   const registry = await loadToolRegistry();
@@ -114,6 +115,36 @@ beforeAll(async (): Promise<void> => {
   });
   globPathsCount = Array.isArray(globResult.paths) ? globResult.paths.length : -1;
 
+  const shellResult = await executeRegisteredTool({
+    registry,
+    name: 'shell',
+    input: {
+      command: 'pwd',
+    },
+    context: {
+      runtime: {
+        invoke: async (
+          args: {
+            action: string;
+            payload: Record<string, unknown>;
+          },
+        ): Promise<Record<string, unknown>> => {
+          if (args.action !== 'shell.exec') {
+            throw new Error(`Unsupported action: ${args.action}`);
+          }
+          return {
+            exitCode: Number((args.payload.command as string).length > 0 ? 0 : 1),
+            stdout: '/tmp',
+            stderr: '',
+            timedOut: false,
+            durationMs: 1,
+          };
+        },
+      },
+    },
+  });
+  shellExitCode = Number(shellResult.exitCode ?? -1);
+
   try {
     await executeRegisteredTool({
       registry,
@@ -145,6 +176,10 @@ describe('harness tool execution', () => {
 
   it('executes glob via runtime file.glob payload fields', () => {
     expect(globPathsCount).toBe(1);
+  });
+
+  it('executes shell via runtime shell.exec payload fields', () => {
+    expect(shellExitCode).toBe(0);
   });
 
   it('throws for unknown tool names', () => {
