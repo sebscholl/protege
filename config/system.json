@@ -1,7 +1,7 @@
 {
   "logs_dir_path": "tmp/logs",
   "console_log_format": "pretty",
-  "admin_contact_email": "",
+  "admin_contact_email": "sebscholl@gmail.com",
   "chat": {
     "default_display_mode": "light",
     "poll_interval_ms": 1500,
