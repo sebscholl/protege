@@ -147,23 +147,26 @@ export async function runSchedulerCycle(
   const runNextFn = args.runNextQueuedResponsibilityFn ?? runNextQueuedResponsibility;
   const inFlightByPersona = new Map<string, number>();
   const inFlightRuns = new Set<Promise<void>>();
+  let throttleLogged = false;
 
   const tryDispatchRun = (
     personaState: SchedulerPersonaState,
-  ): boolean => {
+  ): 'dispatched' | 'no_queue' | 'global_limit' | 'persona_limit' => {
+    const hasQueued = hasQueuedFn({
+      db: personaState.db,
+      personaId: personaState.personaId,
+    });
+    if (!hasQueued) {
+      return 'no_queue';
+    }
+
     const globalInFlightCount = inFlightRuns.size;
     const personaInFlightCount = inFlightByPersona.get(personaState.personaId) ?? 0;
     if (globalInFlightCount >= args.maxGlobalConcurrentRuns) {
-      return false;
+      return 'global_limit';
     }
     if (personaInFlightCount >= args.maxPerPersonaConcurrentRuns) {
-      return false;
-    }
-    if (!hasQueuedFn({
-      db: personaState.db,
-      personaId: personaState.personaId,
-    })) {
-      return false;
+      return 'persona_limit';
     }
 
     const runPromise = runNextFn({
@@ -236,16 +239,42 @@ export async function runSchedulerCycle(
 
     inFlightRuns.add(runPromise);
     inFlightByPersona.set(personaState.personaId, personaInFlightCount + 1);
-    return true;
+    return 'dispatched';
   };
 
   while (true) {
     let dispatched = false;
+    let blockedByGlobalLimitCount = 0;
+    let blockedByPersonaLimitCount = 0;
     for (const personaState of args.personaStates) {
-      if (tryDispatchRun(personaState)) {
+      const dispatchStatus = tryDispatchRun(personaState);
+      if (dispatchStatus === 'dispatched') {
         dispatched = true;
+      } else if (dispatchStatus === 'global_limit') {
+        blockedByGlobalLimitCount += 1;
+      } else if (dispatchStatus === 'persona_limit') {
+        blockedByPersonaLimitCount += 1;
       }
     }
+
+    if (inFlightRuns.size > 0 && !throttleLogged && (blockedByGlobalLimitCount > 0 || blockedByPersonaLimitCount > 0)) {
+      args.logger.info({
+        event: 'scheduler.cycle.throttled',
+        context: {
+          inFlightCount: inFlightRuns.size,
+          blockedByGlobalLimitCount,
+          blockedByPersonaLimitCount,
+          maxGlobalConcurrentRuns: args.maxGlobalConcurrentRuns,
+          maxPerPersonaConcurrentRuns: args.maxPerPersonaConcurrentRuns,
+        },
+      });
+      throttleLogged = true;
+    }
+
+    if (blockedByGlobalLimitCount === 0 && blockedByPersonaLimitCount === 0) {
+      throttleLogged = false;
+    }
+
     if (inFlightRuns.size === 0 && !dispatched) {
       return;
     }

@@ -17,6 +17,7 @@ let schedulerAlertFromPersonaIdentity = false;
 let observedMaxInFlight = 0;
 let personaARuns = 0;
 let personaBRuns = 0;
+let schedulerThrottleLogEmitted = false;
 
 /**
  * Creates one no-op gateway logger for scheduler runtime tests.
@@ -169,6 +170,50 @@ beforeAll(async (): Promise<void> => {
       };
     },
   });
+
+  const throttleLogs: string[] = [];
+  const throttledQueueByPersonaId = new Map<string, number>([
+    ['persona-a', 1],
+    ['persona-b', 1],
+  ]);
+  await runSchedulerCycle({
+    personaStates: [stateA, stateB],
+    logger: {
+      info: (
+        infoArgs: {
+          event: string;
+        },
+      ): void => {
+        throttleLogs.push(infoArgs.event);
+      },
+      error: (): void => undefined,
+    },
+    maxGlobalConcurrentRuns: 1,
+    maxPerPersonaConcurrentRuns: 1,
+    adminContactEmail: undefined,
+    hasQueuedRunForPersonaFn: (
+      hasQueuedArgs: {
+        db: ProtegeDatabase;
+        personaId: string;
+      },
+    ): boolean => (throttledQueueByPersonaId.get(hasQueuedArgs.personaId) ?? 0) > 0,
+    runNextQueuedResponsibilityFn: async (
+      runNextArgs: {
+        db: ProtegeDatabase;
+        personaId?: string;
+      },
+    ) => {
+      const personaId = runNextArgs.personaId ?? 'unknown';
+      throttledQueueByPersonaId.set(personaId, Math.max(0, (throttledQueueByPersonaId.get(personaId) ?? 0) - 1));
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 5);
+      });
+      return {
+        status: 'succeeded',
+      };
+    },
+  });
+  schedulerThrottleLogEmitted = throttleLogs.includes('scheduler.cycle.throttled');
 });
 
 afterAll((): void => {
@@ -206,5 +251,9 @@ describe('scheduler runtime parallel dispatch controls', () => {
 
   it('dispatches runs for persona-b under per-persona cap control', () => {
     expect(personaBRuns).toBe(2);
+  });
+
+  it('emits throttling visibility logs when queued work is blocked by concurrency limits', () => {
+    expect(schedulerThrottleLogEmitted).toBe(true);
   });
 });
