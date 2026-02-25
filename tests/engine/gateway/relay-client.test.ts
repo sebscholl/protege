@@ -37,7 +37,8 @@ let authSignatureVerified = false;
 let authenticatedAfterAuthOk = false;
 let reconnectSocketCreated = false;
 let reconnectDelayCaptured = 0;
-let heartbeatCloseCode = 0;
+let authenticatedIdleCloseCode = 0;
+let unauthenticatedHandshakeTimeoutCloseCode = 0;
 let binaryDeliveredAfterAuth = false;
 let binaryIgnoredBeforeAuth = true;
 let blobDeliveredAfterAuth = false;
@@ -302,7 +303,30 @@ beforeAll(async (): Promise<void> => {
   }));
   await Promise.resolve();
   manualClock.runTimerByDelay(25);
-  heartbeatCloseCode = secondSocket.closed[0]?.code ?? 0;
+  authenticatedIdleCloseCode = secondSocket.closed[0]?.code ?? 0;
+
+  const timeoutClock = createManualClock();
+  const timeoutSockets: ManualSocket[] = [];
+  const timeoutClient = startRelayClient({
+    config: {
+      relayWsUrl: 'ws://relay.local/ws',
+      publicKeyBase32,
+      privateKeyPem,
+      reconnectBaseDelayMs: 10,
+      reconnectMaxDelayMs: 40,
+      heartbeatTimeoutMs: 25,
+    },
+    clock: timeoutClock.clock,
+    socketFactory: (): ManualSocket => {
+      const socket = createManualSocket();
+      timeoutSockets.push(socket);
+      return socket;
+    },
+  });
+  timeoutSockets[0].emitOpen();
+  timeoutClock.runTimerByDelay(25);
+  unauthenticatedHandshakeTimeoutCloseCode = timeoutSockets[0].closed[0]?.code ?? 0;
+  timeoutClient.stop();
 
   void challengeRequestPayload;
 });
@@ -360,7 +384,11 @@ describe('gateway relay client reconnect and heartbeat', () => {
     expect(reconnectDelayCaptured).toBe(10);
   });
 
-  it('closes socket with heartbeat timeout code when idle timeout elapses', () => {
-    expect(heartbeatCloseCode).toBe(4408);
+  it('does not close authenticated idle sockets on heartbeat timeout interval', () => {
+    expect(authenticatedIdleCloseCode).toBe(0);
+  });
+
+  it('closes unauthenticated sockets when handshake heartbeat timeout elapses', () => {
+    expect(unauthenticatedHandshakeTimeoutCloseCode).toBe(4408);
   });
 });

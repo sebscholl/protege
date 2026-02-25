@@ -19,6 +19,7 @@ Accepted ADRs:
 15. `0015-chat-v1-read-only-existing-threads-and-local-synthetic-writes.md`
 16. `0016-responsibilities-file-first-with-db-index.md`
 17. `0017-scheduler-v1-run-policy.md`
+18. `0018-scheduler-runtime-owned-by-gateway.md`
 
 Notes:
 

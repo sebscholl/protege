@@ -12,6 +12,7 @@ let validConfigRelayEnabled = false;
 let missingDefaultFromThrows = false;
 let invalidRelayUrlThrows = false;
 let invalidRelayDelayThrows = false;
+let relayWithLocalhostSenderThrows = false;
 
 beforeAll((): void => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-gateway-config-'));
@@ -22,7 +23,7 @@ beforeAll((): void => {
     mode: 'dev',
     host: '127.0.0.1',
     port: 2525,
-    defaultFromAddress: 'protege@localhost',
+    defaultFromAddress: 'protege@mail.protege.bot',
     relay: {
       enabled: true,
       relayWsUrl: 'ws://127.0.0.1:8080/ws',
@@ -56,7 +57,7 @@ beforeAll((): void => {
     mode: 'dev',
     host: '127.0.0.1',
     port: 2525,
-    defaultFromAddress: 'protege@localhost',
+    defaultFromAddress: 'protege@mail.protege.bot',
     relay: {
       enabled: true,
       relayWsUrl: 'http://127.0.0.1:8080/ws',
@@ -78,7 +79,7 @@ beforeAll((): void => {
     mode: 'dev',
     host: '127.0.0.1',
     port: 2525,
-    defaultFromAddress: 'protege@localhost',
+    defaultFromAddress: 'protege@mail.protege.bot',
     relay: {
       enabled: true,
       relayWsUrl: 'ws://127.0.0.1:8080/ws',
@@ -93,6 +94,28 @@ beforeAll((): void => {
     });
   } catch {
     invalidRelayDelayThrows = true;
+  }
+
+  const relayWithLocalhostSenderPath = join(tempRootPath, 'config', 'gateway-relay-localhost-sender.json');
+  writeFileSync(relayWithLocalhostSenderPath, JSON.stringify({
+    mode: 'dev',
+    host: '127.0.0.1',
+    port: 2525,
+    defaultFromAddress: 'protege@localhost',
+    relay: {
+      enabled: true,
+      relayWsUrl: 'ws://127.0.0.1:8080/ws',
+      reconnectBaseDelayMs: 250,
+      reconnectMaxDelayMs: 8000,
+      heartbeatTimeoutMs: 30000,
+    },
+  }));
+  try {
+    readGatewayRuntimeConfig({
+      configPath: relayWithLocalhostSenderPath,
+    });
+  } catch {
+    relayWithLocalhostSenderThrows = true;
   }
 });
 
@@ -119,5 +142,9 @@ describe('gateway runtime config validation', () => {
 
   it('fails fast when relay timing fields are not positive integers', () => {
     expect(invalidRelayDelayThrows).toBe(true);
+  });
+
+  it('fails fast when relay is enabled with localhost default sender domain', () => {
+    expect(relayWithLocalhostSenderThrows).toBe(true);
   });
 });

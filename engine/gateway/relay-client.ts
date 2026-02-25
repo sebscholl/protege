@@ -62,6 +62,7 @@ export type RelayClientConfig = {
   relayWsUrl: string;
   publicKeyBase32: string;
   privateKeyPem: string;
+  sessionRole?: 'inbound' | 'outbound';
   reconnectBaseDelayMs: number;
   reconnectMaxDelayMs: number;
   heartbeatTimeoutMs: number;
@@ -139,9 +140,17 @@ export function startRelayClient(
   };
 
   const scheduleHeartbeatTimeout = (): void => {
+    if (authenticated) {
+      return;
+    }
+
     clearHeartbeatTimeout();
     heartbeatTimeout = clock.setTimeout((): void => {
       if (!socket) {
+        return;
+      }
+
+      if (authenticated) {
         return;
       }
 
@@ -187,7 +196,9 @@ export function startRelayClient(
       currentSocket.send(JSON.stringify({
         type: 'auth_challenge_request',
         publicKeyBase32: args.config.publicKeyBase32,
+        sessionRole: args.config.sessionRole ?? 'inbound',
       }));
+      scheduleHeartbeatTimeout();
     };
 
     currentSocket.onmessage = (event: RelayClientMessageEvent): void => {
@@ -229,6 +240,7 @@ export function startRelayClient(
               publicKeyBase32: args.config.publicKeyBase32,
               challengeId: payload.challengeId,
               signatureBase64,
+              sessionRole: args.config.sessionRole ?? 'inbound',
             }));
             return;
           }
@@ -236,7 +248,7 @@ export function startRelayClient(
           if (payload.type === 'auth_ok') {
             authenticated = true;
             reconnectAttempt = 0;
-            scheduleHeartbeatTimeout();
+            clearHeartbeatTimeout();
             args.callbacks?.onAuthenticated?.();
           }
         },
@@ -294,7 +306,6 @@ export function startRelayClient(
       }
 
       socket.send(sendArgs.messageJson);
-      scheduleHeartbeatTimeout();
     },
     sendBinaryFrame: (
       sendArgs: {
@@ -306,7 +317,6 @@ export function startRelayClient(
       }
 
       socket.send(sendArgs.frame);
-      scheduleHeartbeatTimeout();
     },
     readStatus: (): RelayClientStatus => {
       return {

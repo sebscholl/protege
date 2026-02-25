@@ -85,3 +85,29 @@ protege chat --persona <persona_id_or_prefix>
 ```bash
 protege logs --scope chat --tail 200
 ```
+
+## Scheduler Fails to Start with `node-cron` Error
+
+1. Ensure scheduler dependency is installed:
+```bash
+npm ls node-cron
+```
+2. If missing, install:
+```bash
+npm install node-cron@4.2.1
+```
+
+## Scheduler Runs but No Emails Are Delivered
+
+1. Ensure gateway runtime is running (scheduler is hosted by gateway):
+```bash
+protege gateway start
+```
+2. Ensure `config/gateway.json` has either:
+   - a valid `transport` block, or
+   - `relay.enabled: true` with a connected relay client persona.
+3. Verify `defaultFromAddress` is configured.
+4. Check runtime logs:
+```bash
+protege logs --scope scheduler --tail 200
+```

@@ -90,6 +90,7 @@ beforeAll(async (): Promise<void> => {
       },
       close: (): void => undefined,
     },
+    sessionRole: 'inbound',
     nowIso: '2026-02-14T00:00:00.000Z',
   });
   const onAccepted = createRelaySmtpDataHandler({

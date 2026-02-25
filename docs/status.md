@@ -1,6 +1,6 @@
 # Project Status
 
-Last Updated: 2026-02-20
+Last Updated: 2026-02-25
 
 This file tracks implementation progress against `docs/protege-development-sequencing-v2.md` and `docs/protege-implementation-plan-v3.md`.
 
@@ -98,19 +98,34 @@ Completed:
    - file->DB index sync/reconcile flow
    - scheduler storage and run-record APIs
    - scheduler schema migration (`responsibilities` index + `responsibility_runs`)
+4. Scheduler runtime foundations:
+   - cron trigger registration + enqueue flow
+   - runner single-cycle execution with synthetic inbound message creation
+   - run success/failure transitions with failure-alert callback contract
+   - gateway-owned global scheduler loop across all persona-owned responsibilities
+5. Scheduler operator command surface:
+   - `protege scheduler sync`
+6. Scheduler relay-capable runtime action path integrated for tool-driven email sends.
 
 Remaining:
 
 1. First-party `web_search` and `web_fetch` tools.
-2. Scheduler responsibilities runtime (`engine/scheduler` cron trigger + runner + failure alert path).
+2. Scheduler responsibilities runtime completion (`engine/scheduler` concurrency controls and E2E coverage hardening).
 3. Security/Ops completion (whitelist, recursion controls audit, terminal-failure notification flow).
 4. Hooks runtime and dispatch (`extensions/hooks`).
+5. Scheduler hardening follow-up:
+   - add explicit no-overlap and global concurrency controls
+   - expand gateway+scheduler E2E reliability coverage
 
 Planning updates:
 
 1. Scheduler milestone plan created: `docs/milestones/scheduler-plan.md`.
 2. File-first responsibility model + DB runtime index frozen via ADR-0016.
 3. Scheduler v1 run policy frozen via ADR-0017 (new thread per run, no retry, owner failure alert).
+4. Scheduler runtime ownership boundary frozen via ADR-0018 (gateway-owned network/runtime).
+5. Scheduler runtime and CLI were aligned to ADR-0018:
+   - scheduler runtime now runs inside gateway process
+   - scheduler CLI is control-plane sync only
 
 ## ADR Coverage
 
@@ -124,3 +139,4 @@ Recent status-aligned ADRs:
 6. `docs/adr/0015-chat-v1-read-only-existing-threads-and-local-synthetic-writes.md`
 7. `docs/adr/0016-responsibilities-file-first-with-db-index.md`
 8. `docs/adr/0017-scheduler-v1-run-policy.md`
+9. `docs/adr/0018-scheduler-runtime-owned-by-gateway.md`

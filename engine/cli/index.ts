@@ -11,6 +11,7 @@ import { runDoctorCommand } from '@engine/cli/doctor';
 import { runInitCommand } from '@engine/cli/init';
 import { runLogsCommand } from '@engine/cli/logs';
 import { parseRelayBootstrapArgs, runRelayBootstrap } from '@engine/cli/relay-bootstrap';
+import { runSchedulerCommand } from '@engine/cli/scheduler';
 import { runStatusCommand } from '@engine/cli/status';
 import {
   createPersona,
@@ -71,6 +72,14 @@ export async function runCli(
     return;
   }
 
+  if (area === 'scheduler') {
+    const result = await runSchedulerCommand({ argv: rest });
+    if (result) {
+      writeCliJson({ value: result });
+    }
+    return;
+  }
+
   if (area === 'init') {
     writeCliJson({ value: runInitCommand({ argv: rest }) });
     return;
@@ -88,7 +97,7 @@ export async function runCli(
  * Returns top-level CLI usage text shown for help and unknown command errors.
  */
 export function getCliUsageText(): string {
-  return 'Usage: protege <gateway|persona|relay|status|logs|doctor|init|chat> ...';
+  return 'Usage: protege <gateway|persona|relay|scheduler|status|logs|doctor|init|chat> ...';
 }
 
 /**

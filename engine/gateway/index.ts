@@ -19,6 +19,7 @@ import {
   persistInboundMessageForRuntime,
   runHarnessForPersistedInboundMessage,
 } from '@engine/harness/runtime';
+import { startSchedulerRuntime } from '@engine/scheduler/runtime';
 import { parseRelayTunnelFrame } from '@relay/src/tunnel';
 import { createUnifiedLogger } from '@engine/shared/logger';
 import {
@@ -166,6 +167,26 @@ export async function startGatewayRuntime(
       },
     });
   }
+  try {
+    const schedulerController = startSchedulerRuntime({
+      config: {
+        defaultFromAddress: args.config.defaultFromAddress,
+      },
+      dependencies: {
+        logger,
+        transport,
+        relayClientsByPersonaId,
+      },
+    });
+    void schedulerController;
+  } catch (error) {
+    logger.error({
+      event: 'gateway.scheduler.start_failed',
+      context: {
+        message: error instanceof Error ? error.message : String(error),
+      },
+    });
+  }
 
   await startInboundServer({
     config: inboundConfig,
@@ -257,6 +278,7 @@ export function createGatewayInboundProcessingConfig(
 export function startGatewayRelayClients(
   args: {
     relayConfig?: GatewayRelayClientRuntimeConfig;
+    sessionRole?: 'inbound' | 'outbound';
     logger: {
       info: (args: { event: string; context: Record<string, unknown> }) => void;
       error: (args: { event: string; context: Record<string, unknown> }) => void;
@@ -297,6 +319,7 @@ export function startGatewayRelayClients(
         relayWsUrl: args.relayConfig.relayWsUrl,
         publicKeyBase32: persona.publicKeyBase32,
         privateKeyPem: passportKeyPem,
+        sessionRole: args.sessionRole ?? 'inbound',
         reconnectBaseDelayMs: args.relayConfig.reconnectBaseDelayMs,
         reconnectMaxDelayMs: args.relayConfig.reconnectMaxDelayMs,
         heartbeatTimeoutMs: args.relayConfig.heartbeatTimeoutMs,
@@ -899,6 +922,11 @@ export function validateGatewayRuntimeConfig(
     value: parsed.relay,
     configPath: args.configPath,
   });
+  if (relay?.enabled && readEmailDomain({
+    emailAddress: defaultFromAddress,
+  }) === 'localhost') {
+    throw new Error(`Gateway config at ${args.configPath} field defaultFromAddress must not use localhost when relay is enabled.`);
+  }
 
   return {
     mode,
@@ -908,6 +936,17 @@ export function validateGatewayRuntimeConfig(
     transport,
     relay,
   };
+}
+
+/**
+ * Reads lowercase domain component from one email address.
+ */
+export function readEmailDomain(
+  args: {
+    emailAddress: string;
+  },
+): string {
+  return args.emailAddress.slice(args.emailAddress.lastIndexOf('@') + 1).toLowerCase();
 }
 
 /**

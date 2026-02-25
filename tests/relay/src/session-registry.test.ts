@@ -13,8 +13,8 @@ let replacementSocketId = '';
 let replacedSocketClosedCode = -1;
 let replacedSocketClosedReason = '';
 let latestSocketStoredAfterReplacement = false;
-let socketRebindRemovesOldPublicKey = false;
-let socketRebindSetsNewPublicKey = false;
+let outboundSessionAddedWithoutReplacingInbound = false;
+let outboundSessionRemovedBySocketId = false;
 let removedSessionMissing = false;
 let removedReverseIndexMissing = false;
 let missingSessionReadIsUndefined = false;
@@ -40,6 +40,7 @@ beforeAll((): void => {
     registry,
     publicKeyBase32: 'persona-alpha',
     socket: socketA,
+    sessionRole: 'inbound',
     nowIso: '2026-02-14T00:00:00.000Z',
   });
 
@@ -47,7 +48,7 @@ beforeAll((): void => {
     registry,
     publicKeyBase32: 'persona-alpha',
   })?.socket.id === 'socket-a';
-  createdReverseIndexMatchesPublicKey = registry.publicKeyBySocketId.get('socket-a') === 'persona-alpha';
+  createdReverseIndexMatchesPublicKey = registry.sessionIdentityBySocketId.get('socket-a')?.publicKeyBase32 === 'persona-alpha';
 
   const socketB = {
     id: 'socket-b',
@@ -58,6 +59,7 @@ beforeAll((): void => {
     registry,
     publicKeyBase32: 'persona-alpha',
     socket: socketB,
+    sessionRole: 'inbound',
     nowIso: '2026-02-14T00:00:01.000Z',
   });
   replacementSocketId = replacement.replacedSocketId ?? '';
@@ -68,20 +70,28 @@ beforeAll((): void => {
     publicKeyBase32: 'persona-alpha',
   })?.socket.id === 'socket-b';
 
+  const socketC = {
+    id: 'socket-c',
+    send: (): void => undefined,
+    close: (): void => undefined,
+  };
   activateRelaySession({
     registry,
-    publicKeyBase32: 'persona-beta',
-    socket: socketB,
+    publicKeyBase32: 'persona-alpha',
+    socket: socketC,
+    sessionRole: 'outbound',
     nowIso: '2026-02-14T00:00:02.000Z',
   });
-  socketRebindRemovesOldPublicKey = readRelaySessionByPublicKey({
+  outboundSessionAddedWithoutReplacingInbound = readRelaySessionByPublicKey({
     registry,
     publicKeyBase32: 'persona-alpha',
-  }) === undefined;
-  socketRebindSetsNewPublicKey = readRelaySessionByPublicKey({
+  })?.socket.id === 'socket-b' && registry.outboundSessionsByPublicKey.get('persona-alpha')?.size === 1;
+
+  removeRelaySessionBySocketId({
     registry,
-    publicKeyBase32: 'persona-beta',
-  })?.socket.id === 'socket-b';
+    socketId: 'socket-c',
+  });
+  outboundSessionRemovedBySocketId = registry.outboundSessionsByPublicKey.has('persona-alpha') === false;
 
   removeRelaySessionBySocketId({
     registry,
@@ -89,9 +99,9 @@ beforeAll((): void => {
   });
   removedSessionMissing = readRelaySessionByPublicKey({
     registry,
-    publicKeyBase32: 'persona-beta',
+    publicKeyBase32: 'persona-alpha',
   }) === undefined;
-  removedReverseIndexMissing = registry.publicKeyBySocketId.has('socket-b') === false;
+  removedReverseIndexMissing = registry.sessionIdentityBySocketId.has('socket-b') === false;
 
   missingSessionReadIsUndefined = readRelaySessionByPublicKey({
     registry,
@@ -124,12 +134,12 @@ describe('relay session registry', () => {
     expect(latestSocketStoredAfterReplacement).toBe(true);
   });
 
-  it('removes old public-key mapping when one socket rebinds to a new key', () => {
-    expect(socketRebindRemovesOldPublicKey).toBe(true);
+  it('adds outbound sessions without replacing inbound routing session', () => {
+    expect(outboundSessionAddedWithoutReplacingInbound).toBe(true);
   });
 
-  it('rebinds one socket to the new public-key mapping', () => {
-    expect(socketRebindSetsNewPublicKey).toBe(true);
+  it('removes outbound sessions by socket id', () => {
+    expect(outboundSessionRemovedBySocketId).toBe(true);
   });
 
   it('removes session records by socket id', () => {

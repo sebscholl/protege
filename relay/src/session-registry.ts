@@ -13,6 +13,7 @@ export type RelaySocket = {
 export type RelaySession = {
   publicKeyBase32: string;
   socket: RelaySocket;
+  sessionRole: 'inbound' | 'outbound';
   authenticatedAt: string;
   lastSeenAt: string;
 };
@@ -21,8 +22,15 @@ export type RelaySession = {
  * Represents in-memory indexes for active authenticated relay sessions.
  */
 export type RelaySessionRegistry = {
-  sessionsByPublicKey: Map<string, RelaySession>;
-  publicKeyBySocketId: Map<string, string>;
+  inboundSessionsByPublicKey: Map<string, RelaySession>;
+  outboundSessionsByPublicKey: Map<string, Map<string, RelaySession>>;
+  sessionIdentityBySocketId: Map<
+    string,
+    {
+      publicKeyBase32: string;
+      sessionRole: 'inbound' | 'outbound';
+    }
+  >;
 };
 
 /**
@@ -30,8 +38,9 @@ export type RelaySessionRegistry = {
  */
 export function createRelaySessionRegistry(): RelaySessionRegistry {
   return {
-    sessionsByPublicKey: new Map<string, RelaySession>(),
-    publicKeyBySocketId: new Map<string, string>(),
+    inboundSessionsByPublicKey: new Map<string, RelaySession>(),
+    outboundSessionsByPublicKey: new Map<string, Map<string, RelaySession>>(),
+    sessionIdentityBySocketId: new Map(),
   };
 }
 
@@ -43,31 +52,57 @@ export function activateRelaySession(
     registry: RelaySessionRegistry;
     publicKeyBase32: string;
     socket: RelaySocket;
+    sessionRole: 'inbound' | 'outbound';
     nowIso: string;
   },
 ): {
   replacedSocketId?: string;
 } {
-  const existing = args.registry.sessionsByPublicKey.get(args.publicKeyBase32);
+  const existingSessionIdentity = args.registry.sessionIdentityBySocketId.get(args.socket.id);
+  if (existingSessionIdentity) {
+    removeRelaySessionBySocketId({
+      registry: args.registry,
+      socketId: args.socket.id,
+    });
+  }
+
+  if (args.sessionRole === 'outbound') {
+    const outboundSessions = args.registry.outboundSessionsByPublicKey.get(args.publicKeyBase32)
+      ?? new Map<string, RelaySession>();
+    outboundSessions.set(args.socket.id, {
+      publicKeyBase32: args.publicKeyBase32,
+      socket: args.socket,
+      sessionRole: 'outbound',
+      authenticatedAt: args.nowIso,
+      lastSeenAt: args.nowIso,
+    });
+    args.registry.outboundSessionsByPublicKey.set(args.publicKeyBase32, outboundSessions);
+    args.registry.sessionIdentityBySocketId.set(args.socket.id, {
+      publicKeyBase32: args.publicKeyBase32,
+      sessionRole: 'outbound',
+    });
+    return {};
+  }
+
+  const existing = args.registry.inboundSessionsByPublicKey.get(args.publicKeyBase32);
   let replacedSocketId: string | undefined;
   if (existing && existing.socket.id !== args.socket.id) {
     replacedSocketId = existing.socket.id;
     existing.socket.close(4400, 'replaced_by_new_session');
-    args.registry.publicKeyBySocketId.delete(existing.socket.id);
+    args.registry.sessionIdentityBySocketId.delete(existing.socket.id);
   }
 
-  const existingForSocket = args.registry.publicKeyBySocketId.get(args.socket.id);
-  if (existingForSocket && existingForSocket !== args.publicKeyBase32) {
-    args.registry.sessionsByPublicKey.delete(existingForSocket);
-  }
-
-  args.registry.sessionsByPublicKey.set(args.publicKeyBase32, {
+  args.registry.inboundSessionsByPublicKey.set(args.publicKeyBase32, {
     publicKeyBase32: args.publicKeyBase32,
     socket: args.socket,
+    sessionRole: 'inbound',
     authenticatedAt: args.nowIso,
     lastSeenAt: args.nowIso,
   });
-  args.registry.publicKeyBySocketId.set(args.socket.id, args.publicKeyBase32);
+  args.registry.sessionIdentityBySocketId.set(args.socket.id, {
+    publicKeyBase32: args.publicKeyBase32,
+    sessionRole: 'inbound',
+  });
 
   return {
     replacedSocketId,
@@ -83,7 +118,7 @@ export function readRelaySessionByPublicKey(
     publicKeyBase32: string;
   },
 ): RelaySession | undefined {
-  return args.registry.sessionsByPublicKey.get(args.publicKeyBase32);
+  return args.registry.inboundSessionsByPublicKey.get(args.publicKeyBase32);
 }
 
 /**
@@ -95,14 +130,24 @@ export function removeRelaySessionBySocketId(
     socketId: string;
   },
 ): void {
-  const publicKey = args.registry.publicKeyBySocketId.get(args.socketId);
-  if (!publicKey) {
+  const identity = args.registry.sessionIdentityBySocketId.get(args.socketId);
+  if (!identity) {
     return;
   }
 
-  const session = args.registry.sessionsByPublicKey.get(publicKey);
-  if (session?.socket.id === args.socketId) {
-    args.registry.sessionsByPublicKey.delete(publicKey);
+  if (identity.sessionRole === 'outbound') {
+    const outboundSessions = args.registry.outboundSessionsByPublicKey.get(identity.publicKeyBase32);
+    outboundSessions?.delete(args.socketId);
+    if (outboundSessions && outboundSessions.size === 0) {
+      args.registry.outboundSessionsByPublicKey.delete(identity.publicKeyBase32);
+    }
+    args.registry.sessionIdentityBySocketId.delete(args.socketId);
+    return;
   }
-  args.registry.publicKeyBySocketId.delete(args.socketId);
+
+  const inboundSession = args.registry.inboundSessionsByPublicKey.get(identity.publicKeyBase32);
+  if (inboundSession?.socket.id === args.socketId) {
+    args.registry.inboundSessionsByPublicKey.delete(identity.publicKeyBase32);
+  }
+  args.registry.sessionIdentityBySocketId.delete(args.socketId);
 }

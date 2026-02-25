@@ -100,6 +100,21 @@ Chat v1 behavior:
 
 For full chat usage, modes, scroll behavior, and keybindings, see `guide/chat.md`.
 
+## Scheduler
+
+1. Reconcile all persona responsibility files into scheduler runtime index:
+```bash
+protege scheduler sync
+```
+2. Reconcile one specific persona:
+```bash
+protege scheduler sync --persona <persona_id_or_prefix>
+```
+3. Scheduler execution runtime is hosted by gateway:
+```bash
+protege gateway start
+```
+
 ## Init
 
 1. Initialize in current directory:

@@ -246,10 +246,33 @@ export function enqueueResponsibilityRun(
 export function claimNextQueuedRun(
   args: {
     db: ProtegeDatabase;
+    personaId?: string;
     startedAt?: string;
   },
 ): SchedulerResponsibilityRun | undefined {
-  const queued = args.db.prepare(`
+  const queued = (args.personaId
+    ? args.db.prepare(`
+    SELECT
+      id,
+      responsibility_id,
+      persona_id,
+      status,
+      triggered_at,
+      started_at,
+      finished_at,
+      thread_id,
+      inbound_message_id,
+      outbound_message_id,
+      error_message,
+      prompt_path_at_run,
+      prompt_hash_at_run,
+      prompt_snapshot
+    FROM responsibility_runs
+    WHERE status = 'queued' AND persona_id = ?
+    ORDER BY triggered_at ASC
+    LIMIT 1
+  `).get(args.personaId)
+    : args.db.prepare(`
     SELECT
       id,
       responsibility_id,
@@ -269,7 +292,7 @@ export function claimNextQueuedRun(
     WHERE status = 'queued'
     ORDER BY triggered_at ASC
     LIMIT 1
-  `).get() as Record<string, string | null> | undefined;
+  `).get()) as Record<string, string | null> | undefined;
   if (!queued) {
     return undefined;
   }
@@ -306,6 +329,33 @@ export function claimNextQueuedRun(
   return toSchedulerResponsibilityRun({
     row: updated,
   });
+}
+
+/**
+ * Stores one immutable prompt snapshot on a run row for reproducible execution history.
+ */
+export function updateRunPromptSnapshot(
+  args: {
+    db: ProtegeDatabase;
+    runId: string;
+    promptPathAtRun: string;
+    promptHashAtRun: string;
+    promptSnapshot: string;
+  },
+): void {
+  args.db.prepare(`
+    UPDATE responsibility_runs
+    SET
+      prompt_path_at_run = ?,
+      prompt_hash_at_run = ?,
+      prompt_snapshot = ?
+    WHERE id = ?
+  `).run(
+    args.promptPathAtRun,
+    args.promptHashAtRun,
+    args.promptSnapshot,
+    args.runId,
+  );
 }
 
 /**
@@ -452,4 +502,3 @@ export function toSchedulerResponsibilityRun(
     promptSnapshot: args.row.prompt_snapshot ?? undefined,
   };
 }
-
