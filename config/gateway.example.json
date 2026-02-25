@@ -19,5 +19,5 @@
     "reconnectMaxDelayMs": 8000,
     "heartbeatTimeoutMs": 30000
   },
-  "defaultFromAddress": "protege@localhost"
+  "mailDomain": "localhost"
 }

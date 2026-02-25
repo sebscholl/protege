@@ -36,12 +36,12 @@ beforeAll(async (): Promise<void> => {
     mode: 'dev',
     host: '127.0.0.1',
     port: 2525,
+    mailDomain: 'localhost',
     transport: {
       host: '127.0.0.1',
       port: 1025,
       secure: false,
     },
-    defaultFromAddress: 'protege@localhost',
   }, null, 2));
 
   await runCli({

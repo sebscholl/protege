@@ -5,7 +5,6 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
-  unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
@@ -17,6 +16,7 @@ export type PersonaMetadata = {
   personaId: string;
   publicKeyBase32: string;
   emailLocalPart: string;
+  emailAddress: string;
   createdAt: string;
   label?: string;
 };
@@ -29,8 +29,6 @@ export type PersonaRoots = {
   memoryDirPath: string;
 };
 
-const ACTIVE_PERSONA_FILE_NAME = '.active-persona';
-
 /**
  * Returns default repository paths for persona config and memory roots.
  */
@@ -39,18 +37,6 @@ export function resolveDefaultPersonaRoots(): PersonaRoots {
     personasDirPath: join(process.cwd(), 'personas'),
     memoryDirPath: join(process.cwd(), 'memory'),
   };
-}
-
-/**
- * Returns the default pointer-file path for the active persona id.
- */
-export function resolveActivePersonaPointerPath(
-  args: {
-    roots?: PersonaRoots;
-  } = {},
-): string {
-  const roots = args.roots ?? resolveDefaultPersonaRoots();
-  return join(roots.personasDirPath, ACTIVE_PERSONA_FILE_NAME);
 }
 
 /**
@@ -113,7 +99,7 @@ export function createPersona(
   args: {
     label?: string;
     roots?: PersonaRoots;
-    setActive?: boolean;
+    emailDomain?: string;
   } = {},
 ): PersonaMetadata {
   const roots = args.roots ?? resolveDefaultPersonaRoots();
@@ -150,6 +136,7 @@ export function createPersona(
     personaId,
     publicKeyBase32,
     emailLocalPart: publicKeyBase32,
+    emailAddress: `${publicKeyBase32}@${args.emailDomain ?? 'localhost'}`,
     createdAt: new Date().toISOString(),
     label: args.label,
   };
@@ -157,10 +144,6 @@ export function createPersona(
     join(configDirPath, 'persona.json'),
     JSON.stringify(metadata, null, 2),
   );
-
-  if (args.setActive) {
-    setActivePersona({ personaId, roots });
-  }
 
   return metadata;
 }
@@ -198,7 +181,15 @@ export function readPersonaMetadata(
     roots: args.roots,
   });
   const text = readFileSync(join(configDirPath, 'persona.json'), 'utf8');
-  return JSON.parse(text) as PersonaMetadata;
+  const parsed = JSON.parse(text) as PersonaMetadata;
+  if (typeof parsed.emailAddress === 'string' && parsed.emailAddress.trim().length > 0) {
+    return parsed;
+  }
+
+  return {
+    ...parsed,
+    emailAddress: `${parsed.emailLocalPart}@localhost`,
+  };
 }
 
 /**
@@ -212,44 +203,6 @@ export function resolvePersonaByEmailLocalPart(
 ): PersonaMetadata | undefined {
   const personas = listPersonas({ roots: args.roots });
   return personas.find((persona) => persona.emailLocalPart === args.emailLocalPart);
-}
-
-/**
- * Writes the active persona pointer file.
- */
-export function setActivePersona(
-  args: {
-    personaId: string;
-    roots?: PersonaRoots;
-  },
-): void {
-  const roots = args.roots ?? resolveDefaultPersonaRoots();
-  const configDirPath = resolvePersonaConfigDirPath({
-    personaId: args.personaId,
-    roots,
-  });
-  if (!existsSync(configDirPath)) {
-    throw new Error(`Persona not found: ${args.personaId}`);
-  }
-
-  writeFileSync(resolveActivePersonaPointerPath({ roots }), args.personaId);
-}
-
-/**
- * Reads the active persona id pointer if one has been selected.
- */
-export function readActivePersonaId(
-  args: {
-    roots?: PersonaRoots;
-  } = {},
-): string | undefined {
-  const pointerPath = resolveActivePersonaPointerPath({ roots: args.roots });
-  if (!existsSync(pointerPath)) {
-    return undefined;
-  }
-
-  const personaId = readFileSync(pointerPath, 'utf8').trim();
-  return personaId.length > 0 ? personaId : undefined;
 }
 
 /**
@@ -273,14 +226,35 @@ export function deletePersona(
 
   rmSync(configDirPath, { recursive: true, force: true });
   rmSync(memoryDirPath, { recursive: true, force: true });
+}
 
-  const activePersonaId = readActivePersonaId({ roots });
-  if (activePersonaId === args.personaId) {
-    const pointerPath = resolveActivePersonaPointerPath({ roots });
-    if (existsSync(pointerPath)) {
-      unlinkSync(pointerPath);
-    }
-  }
+/**
+ * Updates one persona mailbox address and persists metadata changes.
+ */
+export function updatePersonaEmailAddress(
+  args: {
+    personaId: string;
+    emailAddress: string;
+    roots?: PersonaRoots;
+  },
+): PersonaMetadata {
+  const configDirPath = resolvePersonaConfigDirPath({
+    personaId: args.personaId,
+    roots: args.roots,
+  });
+  const metadata = readPersonaMetadata({
+    personaId: args.personaId,
+    roots: args.roots,
+  });
+  const updated: PersonaMetadata = {
+    ...metadata,
+    emailAddress: args.emailAddress,
+  };
+  writeFileSync(
+    join(configDirPath, 'persona.json'),
+    JSON.stringify(updated, null, 2),
+  );
+  return updated;
 }
 
 /**

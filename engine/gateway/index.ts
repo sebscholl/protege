@@ -47,10 +47,10 @@ export type GatewayRuntimeConfig = {
   mode: GatewayMode;
   host: string;
   port: number;
+  mailDomain: string;
   attachmentLimits?: Partial<AttachmentLimits>;
   transport?: GatewayTransportConfig;
   relay?: GatewayRelayClientRuntimeConfig;
-  defaultFromAddress: string;
 };
 
 /**
@@ -169,9 +169,7 @@ export async function startGatewayRuntime(
   }
   try {
     const schedulerController = startSchedulerRuntime({
-      config: {
-        defaultFromAddress: args.config.defaultFromAddress,
-      },
+      config: {},
       dependencies: {
         logger,
         transport,
@@ -265,7 +263,7 @@ export function createGatewayInboundProcessingConfig(
         message,
         transport: args.transport,
         relayClientsByPersonaId: args.relayClientsByPersonaId,
-        defaultFromAddress: args.runtimeConfig.defaultFromAddress,
+        mailDomain: args.runtimeConfig.mailDomain,
         correlationId,
       });
     },
@@ -478,7 +476,7 @@ export function enqueueInboundProcessing(
     message: InboundNormalizedMessage;
     transport?: ReturnType<typeof createOutboundTransport>;
     relayClientsByPersonaId?: Map<string, RelayClientController>;
-    defaultFromAddress: string;
+    mailDomain: string;
     correlationId?: string;
   },
 ): void {
@@ -498,7 +496,7 @@ export function enqueueInboundProcessing(
       message: args.message,
       transport: args.transport,
       relayClientsByPersonaId: args.relayClientsByPersonaId,
-      defaultFromAddress: args.defaultFromAddress,
+      mailDomain: args.mailDomain,
       correlationId: args.correlationId,
     }).catch((error: Error) => {
       args.logger.error({
@@ -524,19 +522,21 @@ export async function handleInboundForRuntime(
     message: InboundNormalizedMessage;
     transport?: ReturnType<typeof createOutboundTransport>;
     relayClientsByPersonaId?: Map<string, RelayClientController>;
-    defaultFromAddress: string;
+    mailDomain: string;
     correlationId?: string;
   },
 ): Promise<void> {
+  const derivedSender = args.message.envelopeRcptTo[0]?.address
+    ?? args.message.to[0]?.address
+    ?? `unknown@${args.mailDomain}`;
   await runHarnessForPersistedInboundMessage({
     message: args.message,
-    defaultFromAddress: args.defaultFromAddress,
+    senderAddress: derivedSender,
     invokeRuntimeAction: createGatewayRuntimeActionInvoker({
       message: args.message,
       logger: args.logger,
       transport: args.transport,
       relayClientsByPersonaId: args.relayClientsByPersonaId,
-      defaultFromAddress: args.defaultFromAddress,
       correlationId: args.correlationId,
     }),
     logger: args.logger,
@@ -553,7 +553,6 @@ export function createGatewayRuntimeActionInvoker(
     logger: ReturnType<typeof createGatewayLogger>;
     transport?: ReturnType<typeof createOutboundTransport>;
     relayClientsByPersonaId?: Map<string, RelayClientController>;
-    defaultFromAddress: string;
     correlationId?: string;
   },
 ): (
@@ -581,7 +580,6 @@ export function createGatewayRuntimeActionInvoker(
     const request = buildEmailSendRequestFromAction({
       message: args.message,
       payload: runtimeArgs.payload,
-      defaultFromAddress: args.defaultFromAddress,
     });
     let messageId: string | null = null;
     if (args.transport) {
@@ -630,7 +628,6 @@ export function buildEmailSendRequestFromAction(
   args: {
     message: InboundNormalizedMessage;
     payload: Record<string, unknown>;
-    defaultFromAddress: string;
   },
 ): OutboundReplyRequest {
   const threadingMode = readEmailSendThreadingMode({
@@ -672,7 +669,6 @@ export function buildEmailSendRequestFromAction(
   });
   const fromAddress = resolveReplyFromAddress({
     message: args.message,
-    defaultFromAddress: args.defaultFromAddress,
   });
 
   return {
@@ -719,12 +715,15 @@ export function readEmailSendThreadingMode(
 export function resolveReplyFromAddress(
   args: {
     message: InboundNormalizedMessage;
-    defaultFromAddress: string;
   },
 ): string {
-  return args.message.envelopeRcptTo[0]?.address
-    ?? args.message.to[0]?.address
-    ?? args.defaultFromAddress;
+  const resolvedAddress = args.message.envelopeRcptTo[0]?.address
+    ?? args.message.to[0]?.address;
+  if (!resolvedAddress || !isEmailAddress({ value: resolvedAddress })) {
+    throw new Error('Unable to resolve persona sender address for email.send runtime action.');
+  }
+
+  return resolvedAddress;
 }
 
 /**
@@ -908,9 +907,9 @@ export function validateGatewayRuntimeConfig(
     fieldPath: 'port',
     configPath: args.configPath,
   });
-  const defaultFromAddress = readEmailLikeAddress({
-    value: parsed.defaultFromAddress,
-    fieldPath: 'defaultFromAddress',
+  const mailDomain = readMailDomain({
+    value: parsed.mailDomain,
+    fieldPath: 'mailDomain',
     configPath: args.configPath,
   });
 
@@ -922,31 +921,40 @@ export function validateGatewayRuntimeConfig(
     value: parsed.relay,
     configPath: args.configPath,
   });
-  if (relay?.enabled && readEmailDomain({
-    emailAddress: defaultFromAddress,
-  }) === 'localhost') {
-    throw new Error(`Gateway config at ${args.configPath} field defaultFromAddress must not use localhost when relay is enabled.`);
+  if (relay?.enabled && mailDomain === 'localhost') {
+    throw new Error(`Gateway config at ${args.configPath} field mailDomain must not be localhost when relay is enabled.`);
   }
 
   return {
     mode,
     host,
     port,
-    defaultFromAddress,
+    mailDomain,
     transport,
     relay,
   };
 }
 
 /**
- * Reads lowercase domain component from one email address.
+ * Reads and validates one gateway mail domain string.
  */
-export function readEmailDomain(
+export function readMailDomain(
   args: {
-    emailAddress: string;
+    value: unknown;
+    fieldPath: string;
+    configPath: string;
   },
 ): string {
-  return args.emailAddress.slice(args.emailAddress.lastIndexOf('@') + 1).toLowerCase();
+  const domain = readNonEmptyString({
+    value: args.value,
+    fieldPath: args.fieldPath,
+    configPath: args.configPath,
+  }).toLowerCase();
+  if (!/^[a-z0-9.-]+$/.test(domain) || domain.startsWith('.') || domain.endsWith('.')) {
+    throw new Error(`Gateway config at ${args.configPath} field ${args.fieldPath} must be a valid domain.`);
+  }
+
+  return domain;
 }
 
 /**

@@ -11,7 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { initializeDatabase } from '@engine/shared/database';
 import { createPersona } from '@engine/shared/personas';
 import { listResponsibilityRunsByPersona, upsertResponsibility, enqueueResponsibilityRun } from '@engine/scheduler/storage';
-import { derivePersonaMailboxIdentity, runNextQueuedResponsibility } from '@engine/scheduler/runner';
+import { runNextQueuedResponsibility } from '@engine/scheduler/runner';
 
 let tempRootPath = '';
 let db: ProtegeDatabase | undefined;
@@ -21,8 +21,7 @@ let successOutboundMessageId = '';
 let failureRunStatus = '';
 let failureAlertCount = 0;
 let inboundMessageSubject = '';
-let derivedRelayPersonaMailboxIdentity = '';
-let successRunDefaultFromAddress = '';
+let successRunSenderAddress = '';
 
 beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-scheduler-runner-'));
@@ -34,7 +33,6 @@ beforeAll(async (): Promise<void> => {
   mkdirSync(roots.memoryDirPath, { recursive: true });
   const persona = createPersona({
     roots,
-    setActive: true,
   });
   const responsibilitiesDirPath = join(roots.personasDirPath, persona.personaId, 'responsibilities');
   mkdirSync(responsibilitiesDirPath, { recursive: true });
@@ -75,16 +73,15 @@ beforeAll(async (): Promise<void> => {
   });
   await runNextQueuedResponsibility({
     db: db as ProtegeDatabase,
-    defaultFromAddress: 'protege@mail.protege.bot',
     roots,
     executeRun: async (
       executeArgs: {
         message: InboundNormalizedMessage;
-        defaultFromAddress: string;
+        senderAddress: string;
       },
     ) => {
       inboundMessageSubject = executeArgs.message.subject;
-      successRunDefaultFromAddress = executeArgs.defaultFromAddress;
+      successRunSenderAddress = executeArgs.senderAddress;
       return {
         responseText: 'done',
         responseMessageId: '<outbound-success@localhost>',
@@ -135,11 +132,6 @@ beforeAll(async (): Promise<void> => {
     personaId: persona.personaId,
   }).find((run) => run.id === 'run-fail');
   failureRunStatus = failedRun?.status ?? '';
-  derivedRelayPersonaMailboxIdentity = derivePersonaMailboxIdentity({
-    personaEmailLocalPart: persona.emailLocalPart,
-    defaultFromAddress: 'protege@mail.protege.bot',
-  });
-
 });
 
 afterAll((): void => {
@@ -160,12 +152,8 @@ describe('scheduler runner', () => {
     expect(inboundMessageSubject).toBe('Responsibility: Success Task');
   });
 
-  it('derives persona mailbox identity using configured sender domain', () => {
-    expect(derivedRelayPersonaMailboxIdentity.endsWith('@mail.protege.bot')).toBe(true);
-  });
-
-  it('passes relay-domain persona mailbox identity into executeRun default sender', () => {
-    expect(successRunDefaultFromAddress.endsWith('@mail.protege.bot')).toBe(true);
+  it('passes persona mailbox identity into executeRun sender address', () => {
+    expect(successRunSenderAddress.endsWith('@localhost')).toBe(true);
   });
 
   it('marks failed run rows as failed when execution throws', () => {

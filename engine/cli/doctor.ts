@@ -5,7 +5,6 @@ import { readGatewayRuntimeConfig, resolveDefaultGatewayConfigPath } from '@engi
 import { readInferenceRuntimeConfig } from '@engine/harness/config';
 import {
   listPersonas,
-  readActivePersonaId,
   resolveDefaultPersonaRoots,
   resolvePersonaMemoryDirPath,
 } from '@engine/shared/personas';
@@ -51,7 +50,6 @@ export function runDoctorChecks(): DoctorReport {
   const checks: DoctorCheckResult[] = [];
   checks.push(checkGatewayConfigReadableAndValid());
   checks.push(checkPersonasExist());
-  checks.push(checkActivePersonaExists());
   checks.push(checkMemoryPathsWritable());
   checks.push(checkGatewayPidStaleOrValid());
   checks.push(checkProviderConfigPresent());
@@ -165,62 +163,34 @@ export function checkPersonasExist(): DoctorCheckResult {
     id: 'personas.exists',
     status: 'fail',
     message: 'no personas found.',
-    hint: 'Run `protege persona create --set-active`.',
+    hint: 'Run `protege persona create --name "Primary"`.',
   };
 }
 
 /**
- * Verifies active persona pointer resolves to an existing persona.
- */
-export function checkActivePersonaExists(): DoctorCheckResult {
-  const activePersonaId = readActivePersonaId();
-  if (!activePersonaId) {
-    return {
-      id: 'personas.active_exists',
-      status: 'fail',
-      message: 'no active persona selected.',
-      hint: 'Run `protege persona use <persona_id>`.',
-    };
-  }
-
-  const personas = listPersonas();
-  if (personas.some((persona) => persona.personaId === activePersonaId)) {
-    return {
-      id: 'personas.active_exists',
-      status: 'pass',
-      message: `active persona is ${activePersonaId}.`,
-    };
-  }
-
-  return {
-    id: 'personas.active_exists',
-    status: 'fail',
-    message: `active persona ${activePersonaId} does not exist.`,
-    hint: 'Select an existing persona with `protege persona use <persona_id>`.',
-  };
-}
-
-/**
- * Verifies memory roots and active persona namespace are writable.
+ * Verifies memory roots and persona namespaces are writable.
  */
 export function checkMemoryPathsWritable(): DoctorCheckResult {
   try {
     const roots = resolveDefaultPersonaRoots();
     accessSync(roots.memoryDirPath, constants.W_OK);
-    const activePersonaId = readActivePersonaId();
-    if (!activePersonaId) {
+    const personas = listPersonas();
+    if (personas.length === 0) {
       return {
         id: 'memory.paths.writable',
         status: 'warn',
-        message: 'memory root is writable but no active persona is selected.',
-        hint: 'Set an active persona to validate persona-specific memory paths.',
+        message: 'memory root is writable but no personas exist yet.',
+        hint: 'Create a persona to validate persona-specific memory paths.',
       };
     }
 
-    const activeMemoryDirPath = resolvePersonaMemoryDirPath({
-      personaId: activePersonaId,
-    });
-    accessSync(activeMemoryDirPath, constants.W_OK);
+    for (const persona of personas) {
+      const personaMemoryDirPath = resolvePersonaMemoryDirPath({
+        personaId: persona.personaId,
+      });
+      accessSync(personaMemoryDirPath, constants.W_OK);
+    }
+
     return {
       id: 'memory.paths.writable',
       status: 'pass',

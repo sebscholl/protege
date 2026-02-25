@@ -20,6 +20,7 @@ Accepted ADRs:
 16. `0016-responsibilities-file-first-with-db-index.md`
 17. `0017-scheduler-v1-run-policy.md`
 18. `0018-scheduler-runtime-owned-by-gateway.md`
+19. `0019-persona-owned-sender-identity-and-no-active-persona.md`
 
 Notes:
 

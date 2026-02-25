@@ -33,7 +33,6 @@ beforeAll((): void => {
   mkdirSync(roots.memoryDirPath, { recursive: true });
   const persona = createPersona({
     roots,
-    setActive: true,
     label: 'Scheduler Persona',
   });
   personaId = persona.personaId;
@@ -118,4 +117,3 @@ describe('scheduler sync', () => {
     expect(enabledCountAfterRemoval).toBe(0);
   });
 });
-

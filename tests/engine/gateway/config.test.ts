@@ -9,10 +9,10 @@ import { readGatewayRuntimeConfig } from '@engine/gateway/index';
 let tempRootPath = '';
 let validConfigMode = '';
 let validConfigRelayEnabled = false;
-let missingDefaultFromThrows = false;
+let missingMailDomainThrows = false;
 let invalidRelayUrlThrows = false;
 let invalidRelayDelayThrows = false;
-let relayWithLocalhostSenderThrows = false;
+let relayWithLocalhostMailDomainThrows = false;
 
 beforeAll((): void => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-gateway-config-'));
@@ -23,7 +23,7 @@ beforeAll((): void => {
     mode: 'dev',
     host: '127.0.0.1',
     port: 2525,
-    defaultFromAddress: 'protege@mail.protege.bot',
+    mailDomain: 'mail.protege.bot',
     relay: {
       enabled: true,
       relayWsUrl: 'ws://127.0.0.1:8080/ws',
@@ -38,18 +38,18 @@ beforeAll((): void => {
   validConfigMode = validConfig.mode;
   validConfigRelayEnabled = validConfig.relay?.enabled === true;
 
-  const missingDefaultFromPath = join(tempRootPath, 'config', 'gateway-missing-default-from.json');
-  writeFileSync(missingDefaultFromPath, JSON.stringify({
+  const missingMailDomainPath = join(tempRootPath, 'config', 'gateway-missing-mail-domain.json');
+  writeFileSync(missingMailDomainPath, JSON.stringify({
     mode: 'dev',
     host: '127.0.0.1',
     port: 2525,
   }));
   try {
     readGatewayRuntimeConfig({
-      configPath: missingDefaultFromPath,
+      configPath: missingMailDomainPath,
     });
   } catch {
-    missingDefaultFromThrows = true;
+    missingMailDomainThrows = true;
   }
 
   const invalidRelayUrlPath = join(tempRootPath, 'config', 'gateway-invalid-relay-url.json');
@@ -57,7 +57,7 @@ beforeAll((): void => {
     mode: 'dev',
     host: '127.0.0.1',
     port: 2525,
-    defaultFromAddress: 'protege@mail.protege.bot',
+    mailDomain: 'mail.protege.bot',
     relay: {
       enabled: true,
       relayWsUrl: 'http://127.0.0.1:8080/ws',
@@ -79,7 +79,7 @@ beforeAll((): void => {
     mode: 'dev',
     host: '127.0.0.1',
     port: 2525,
-    defaultFromAddress: 'protege@mail.protege.bot',
+    mailDomain: 'mail.protege.bot',
     relay: {
       enabled: true,
       relayWsUrl: 'ws://127.0.0.1:8080/ws',
@@ -96,12 +96,12 @@ beforeAll((): void => {
     invalidRelayDelayThrows = true;
   }
 
-  const relayWithLocalhostSenderPath = join(tempRootPath, 'config', 'gateway-relay-localhost-sender.json');
-  writeFileSync(relayWithLocalhostSenderPath, JSON.stringify({
+  const relayWithLocalhostMailDomainPath = join(tempRootPath, 'config', 'gateway-relay-localhost-mail-domain.json');
+  writeFileSync(relayWithLocalhostMailDomainPath, JSON.stringify({
     mode: 'dev',
     host: '127.0.0.1',
     port: 2525,
-    defaultFromAddress: 'protege@localhost',
+    mailDomain: 'localhost',
     relay: {
       enabled: true,
       relayWsUrl: 'ws://127.0.0.1:8080/ws',
@@ -112,10 +112,10 @@ beforeAll((): void => {
   }));
   try {
     readGatewayRuntimeConfig({
-      configPath: relayWithLocalhostSenderPath,
+      configPath: relayWithLocalhostMailDomainPath,
     });
   } catch {
-    relayWithLocalhostSenderThrows = true;
+    relayWithLocalhostMailDomainThrows = true;
   }
 });
 
@@ -132,8 +132,8 @@ describe('gateway runtime config validation', () => {
     expect(validConfigRelayEnabled).toBe(true);
   });
 
-  it('fails fast when default sender address is missing', () => {
-    expect(missingDefaultFromThrows).toBe(true);
+  it('fails fast when mail domain is missing', () => {
+    expect(missingMailDomainThrows).toBe(true);
   });
 
   it('fails fast when relay websocket url uses non-websocket scheme', () => {
@@ -144,7 +144,7 @@ describe('gateway runtime config validation', () => {
     expect(invalidRelayDelayThrows).toBe(true);
   });
 
-  it('fails fast when relay is enabled with localhost default sender domain', () => {
-    expect(relayWithLocalhostSenderThrows).toBe(true);
+  it('fails fast when relay is enabled with localhost mail domain', () => {
+    expect(relayWithLocalhostMailDomainThrows).toBe(true);
   });
 });

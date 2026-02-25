@@ -10,7 +10,6 @@ import { setInterval } from 'node:timers';
 
 import { createGatewayRuntimeActionInvoker } from '@engine/gateway/index';
 import { createOutboundTransport } from '@engine/gateway/outbound';
-import { derivePersonaMailboxIdentity } from '@engine/scheduler/runner';
 import { createUnifiedLogger } from '@engine/shared/logger';
 import { initializeDatabase } from '@engine/shared/database';
 import { listPersonas, readPersonaMetadata, resolvePersonaMemoryPaths } from '@engine/shared/personas';
@@ -27,7 +26,7 @@ export type SchedulerRuntimeConfig = {
   roots?: PersonaRoots;
   personaIds?: string[];
   pollIntervalMs?: number;
-  defaultFromAddress: string;
+  ownerAlertAddress?: string;
 };
 
 /**
@@ -93,7 +92,7 @@ export function startSchedulerRuntime(
       logger,
       transport,
       relayClientsByPersonaId,
-      defaultFromAddress: args.config.defaultFromAddress,
+      ownerAlertAddress: args.config.ownerAlertAddress,
     }).finally(() => {
       processing = false;
     });
@@ -126,7 +125,7 @@ export async function runSchedulerCycle(
     logger: GatewayLogger;
     transport?: Transporter;
     relayClientsByPersonaId?: Map<string, RelayClientController>;
-    defaultFromAddress: string;
+    ownerAlertAddress?: string;
   },
 ): Promise<void> {
   for (const personaState of args.personaStates) {
@@ -134,7 +133,6 @@ export async function runSchedulerCycle(
       await runNextQueuedResponsibility({
         db: personaState.db,
         personaId: personaState.personaId,
-        defaultFromAddress: args.defaultFromAddress,
         roots: args.roots,
         logger: args.logger,
         createRuntimeActionInvoker: (
@@ -146,7 +144,6 @@ export async function runSchedulerCycle(
           logger: args.logger,
           transport: args.transport,
           relayClientsByPersonaId: args.relayClientsByPersonaId,
-          defaultFromAddress: args.defaultFromAddress,
           correlationId: `scheduler:${invokerArgs.message.threadId}`,
         }),
         sendFailureAlert: async (
@@ -167,9 +164,8 @@ export async function runSchedulerCycle(
             logger: args.logger,
             transport: args.transport,
             relayClientsByPersonaId: args.relayClientsByPersonaId,
-            defaultFromAddress: args.defaultFromAddress,
+            ownerAlertAddress: args.ownerAlertAddress,
             personaId: failurePersonaId,
-            alertTo: args.defaultFromAddress,
             runId: failureArgs.run.id,
             responsibilityId: failureArgs.run.responsibilityId,
             responsibilityName: failureArgs.responsibility?.name ?? 'unknown',
@@ -285,9 +281,8 @@ export async function sendSchedulerFailureAlert(
     logger: GatewayLogger;
     transport?: Transporter;
     relayClientsByPersonaId?: Map<string, RelayClientController>;
-    defaultFromAddress: string;
+    ownerAlertAddress?: string;
     personaId: string;
-    alertTo: string;
     runId: string;
     responsibilityId: string;
     responsibilityName: string;
@@ -301,7 +296,6 @@ export async function sendSchedulerFailureAlert(
     responsibilityId: args.responsibilityId,
     responsibilityName: args.responsibilityName,
     errorMessage: args.errorMessage,
-    defaultFromAddress: args.defaultFromAddress,
     roots: args.roots,
   });
   const invokeRuntimeAction = createGatewayRuntimeActionInvoker({
@@ -309,13 +303,12 @@ export async function sendSchedulerFailureAlert(
     logger: args.logger,
     transport: args.transport,
     relayClientsByPersonaId: args.relayClientsByPersonaId,
-    defaultFromAddress: args.defaultFromAddress,
     correlationId: `scheduler-alert:${args.runId}`,
   });
   await invokeRuntimeAction({
     action: 'email.send',
     payload: {
-      to: [args.alertTo],
+      to: [args.ownerAlertAddress ?? alertMessage.from[0].address],
       subject: alertMessage.subject,
       text: alertMessage.text,
       threadingMode: 'new_thread',
@@ -333,7 +326,6 @@ export function buildSchedulerFailureAlertInboundMessage(
     responsibilityId: string;
     responsibilityName: string;
     errorMessage: string;
-    defaultFromAddress: string;
     roots?: PersonaRoots;
   },
 ): InboundNormalizedMessage {
@@ -341,10 +333,7 @@ export function buildSchedulerFailureAlertInboundMessage(
     personaId: args.personaId,
     roots: args.roots,
   });
-  const personaMailboxIdentity = derivePersonaMailboxIdentity({
-    personaEmailLocalPart: persona.emailLocalPart,
-    defaultFromAddress: args.defaultFromAddress,
-  });
+  const personaMailboxIdentity = persona.emailAddress;
   return {
     personaId: args.personaId,
     messageId: `<scheduler.alert.${Date.now()}@localhost>`,

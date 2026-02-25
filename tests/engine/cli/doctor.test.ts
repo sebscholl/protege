@@ -51,7 +51,7 @@ beforeAll(async (): Promise<void> => {
     mode: 'dev',
     host: '127.0.0.1',
     port: 2525,
-    defaultFromAddress: 'protege@localhost',
+    mailDomain: 'mail.protege.bot',
     relay: {
       enabled: true,
       relayWsUrl: 'ws://relay.test/ws',
@@ -75,9 +75,7 @@ beforeAll(async (): Promise<void> => {
     tools: ['send-email'],
     hooks: [],
   }, null, 2));
-  createPersona({
-    setActive: true,
-  });
+  createPersona({});
 
   process.exitCode = 0;
   const healthyJson = JSON.parse((await captureStdout({
@@ -132,7 +130,7 @@ describe('doctor cli command', () => {
   });
 
   it('includes expected doctor check entries in json output', () => {
-    expect(healthyChecksCount).toBe(8);
+    expect(healthyChecksCount).toBe(7);
   });
 
   it('prints human-readable status lines without --json', () => {

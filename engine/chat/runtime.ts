@@ -283,7 +283,7 @@ export async function startChatRuntime(
     try {
       await runHarnessForPersistedInboundMessage({
         message: inboundMessage,
-        defaultFromAddress: personaMailboxIdentity,
+        senderAddress: personaMailboxIdentity,
         invokeRuntimeAction: createChatRuntimeActionInvoker({
           db,
           message: inboundMessage,

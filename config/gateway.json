@@ -7,7 +7,7 @@
     "maxAttachmentsPerMessage": 10,
     "maxTotalAttachmentBytes": 26214400
   },
-  "defaultFromAddress": "protege@localhost",
+  "mailDomain": "mail.protege.bot",
   "relay": {
     "enabled": true,
     "relayWsUrl": "wss://relay.protege.bot/ws",

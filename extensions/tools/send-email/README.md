@@ -13,9 +13,7 @@ This extension provides the `send_email` tool used by the harness to send outbou
 
 ## Configuration
 
-`config.json` supports:
-
-1. `default_from_address`: fallback sender address when tool input omits `from`.
+`config.json` is currently reserved for future per-tool options.
 
 ## Input Contract
 
@@ -41,6 +39,6 @@ Optional:
 1. Tool execution fails fast when required fields are missing.
 2. Runtime must support `email.send` in `context.runtime.invoke`.
 3. Recipient fields must be concrete email addresses.
-4. Runtime enforces canonical sender identity for threaded replies.
+4. Runtime enforces canonical persona sender identity.
 5. Runtime defaults to same-thread replies; use `threadingMode: "new_thread"` only when intentionally starting a separate conversation.
 6. Runtime may normalize same-thread reply subjects to preserve thread semantics.

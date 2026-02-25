@@ -21,9 +21,7 @@ beforeAll((): void => {
   mkdirSync(join(tempRootPath, 'personas'), { recursive: true });
   mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
 
-  const personaA = createPersona({
-    setActive: true,
-  });
+  const personaA = createPersona({});
   createPersona({});
   parsedAction = parseSchedulerArgs({
     argv: ['sync'],

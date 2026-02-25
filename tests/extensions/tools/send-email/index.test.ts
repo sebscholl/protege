@@ -12,7 +12,6 @@ let toolDescription = '';
 let sentMessageSource = '';
 let validationMessage = '';
 let invalidRecipientMessage = '';
-let configDefaultFromAddress = '';
 let plusAddressAccepted = false;
 let subdomainAddressAccepted = false;
 let mixedCaseAddressAccepted = false;
@@ -25,8 +24,7 @@ let invalidThreadingModeMessage = '';
 let forwardedThreadingMode = '';
 
 beforeAll(async (): Promise<void> => {
-  const config = readSendEmailToolConfig();
-  configDefaultFromAddress = config.defaultFromAddress ?? '';
+  void readSendEmailToolConfig();
   const tool = createSendEmailTool();
   toolName = tool.name;
   toolDescription = tool.description;
@@ -57,7 +55,7 @@ beforeAll(async (): Promise<void> => {
 
           const info = await transport.sendMail({
             to: args.payload.to as string[],
-            from: args.payload.from as string,
+            from: (args.payload.from as string | undefined) ?? 'persona@example.com',
             cc: args.payload.cc as string[] | undefined,
             bcc: args.payload.bcc as string[] | undefined,
             subject: args.payload.subject as string,
@@ -293,10 +291,6 @@ describe('send-email tool extension', () => {
 
   it('documents that user-visible replies require send_email delivery', () => {
     expect(toolDescription.includes('user to receive your response')).toBe(true);
-  });
-
-  it('reads default from-address from tool config', () => {
-    expect(configDefaultFromAddress).toBe('protege@localhost');
   });
 
   it('builds and sends outbound email payload using tool executor', () => {

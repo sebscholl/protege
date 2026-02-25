@@ -45,7 +45,7 @@ beforeAll(async (): Promise<void> => {
     mode: 'dev',
     host: '127.0.0.1',
     port: 2525,
-    defaultFromAddress: 'protege@localhost',
+    mailDomain: 'mail.protege.bot',
     relay: {
       enabled: true,
       relayWsUrl: 'ws://relay.test/ws',
@@ -60,7 +60,6 @@ beforeAll(async (): Promise<void> => {
   }, null, 2));
 
   const persona = createPersona({
-    setActive: true,
   });
   const memoryPaths = resolvePersonaMemoryPaths({
     personaId: persona.personaId,
@@ -93,10 +92,9 @@ describe('status cli command', () => {
     expect((statusJson.relay as Record<string, unknown>).enabled).toBe(true);
   });
 
-  it('reports active persona memory temporal db existence', () => {
+  it('reports persona memory temporal db coverage count', () => {
     const memory = statusJson.memory as Record<string, unknown>;
-    const activePersona = memory.activePersona as Record<string, unknown>;
-    expect(activePersona.temporalDbExists).toBe(true);
+    expect(memory.personasWithTemporalDb).toBe(1);
   });
 
   it('prints readable status lines without --json', () => {

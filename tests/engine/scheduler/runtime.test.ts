@@ -71,7 +71,6 @@ beforeAll(async (): Promise<void> => {
   await runSchedulerCycle({
     personaStates: [stateA, stateB],
     logger: createSilentLogger(),
-    defaultFromAddress: 'protege@localhost',
   });
   schedulerCycleContinuesAfterPersonaFailure = true;
 
@@ -110,6 +109,7 @@ beforeAll(async (): Promise<void> => {
   mkdirSync(roots.memoryDirPath, { recursive: true });
   const persona = createPersona({
     roots,
+    emailDomain: 'mail.protege.bot',
   });
   const alertMessage = buildSchedulerFailureAlertInboundMessage({
     personaId: persona.personaId,
@@ -117,7 +117,6 @@ beforeAll(async (): Promise<void> => {
     responsibilityId: 'resp-1',
     responsibilityName: 'Joke Task',
     errorMessage: 'Provider failed',
-    defaultFromAddress: 'protege@mail.protege.bot',
     roots,
   });
   schedulerAlertFromPersonaIdentity = alertMessage.envelopeRcptTo[0]?.address.endsWith('@mail.protege.bot') === true;

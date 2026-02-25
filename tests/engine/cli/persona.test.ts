@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -11,7 +11,6 @@ let previousCwd = '';
 let createdPersonaId = '';
 let listedPersonasLength = 0;
 let personaInfoId = '';
-let activePersonaId = '';
 let personaDeleted = false;
 
 beforeAll(async (): Promise<void> => {
@@ -26,7 +25,7 @@ beforeAll(async (): Promise<void> => {
     return true;
   }) as typeof process.stdout.write;
 
-  await runCli({ argv: ['persona', 'create', '--name', 'Primary', '--set-active'] });
+  await runCli({ argv: ['persona', 'create', '--name', 'Primary'] });
   const created = JSON.parse(outputs.pop() ?? '{}') as { personaId: string };
   createdPersonaId = created.personaId;
 
@@ -37,13 +36,6 @@ beforeAll(async (): Promise<void> => {
   await runCli({ argv: ['persona', 'info', createdPersonaId] });
   const info = JSON.parse(outputs.pop() ?? '{}') as { personaId: string };
   personaInfoId = info.personaId;
-
-  await runCli({ argv: ['persona', 'use', createdPersonaId] });
-  void outputs.pop();
-  activePersonaId = readFileSync(
-    join(tempRootPath, 'personas', '.active-persona'),
-    'utf8',
-  ).trim();
 
   await runCli({ argv: ['persona', 'delete', createdPersonaId] });
   void outputs.pop();
@@ -68,10 +60,6 @@ describe('persona cli commands', () => {
 
   it('returns info for a specific persona id', () => {
     expect(personaInfoId).toBe(createdPersonaId);
-  });
-
-  it('writes active persona pointer when use command runs', () => {
-    expect(activePersonaId).toBe(createdPersonaId);
   });
 
   it('hard deletes persona config namespace on delete', () => {

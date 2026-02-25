@@ -56,7 +56,7 @@ beforeAll(async (): Promise<void> => {
       attachments: [],
     },
     transport: undefined,
-    defaultFromAddress: 'protege@localhost',
+    mailDomain: 'localhost',
   });
 
   temporalDbPath = join(tempRootPath, 'memory', 'persona-test', 'temporal.db');

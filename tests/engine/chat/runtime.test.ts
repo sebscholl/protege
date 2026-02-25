@@ -55,9 +55,7 @@ beforeAll(async (): Promise<void> => {
   mkdirSync(join(tempRootPath, 'engine', 'shared', 'migrations'), { recursive: true });
   chdir(tempRootPath);
 
-  const created = createPersona({
-    setActive: true,
-  });
+  const created = createPersona({});
   createdPersonaId = created.personaId;
   const persona = resolvePersonaBySelector({
     selector: created.personaId.slice(0, 6),

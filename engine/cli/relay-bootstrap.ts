@@ -9,8 +9,7 @@ import { readPositiveIntOrFallback } from '@engine/shared/number';
 import {
   createPersona,
   listPersonas,
-  readActivePersonaId,
-  setActivePersona,
+  updatePersonaEmailAddress,
 } from '@engine/shared/personas';
 
 /**
@@ -100,8 +99,12 @@ export function runRelayBootstrap(
   const gatewayConfig = readGatewayConfigOrDefault({
     gatewayConfigPath,
   });
+  const inferredMailDomain = inferMailDomainFromRelayWsUrl({
+    relayWsUrl: args.bootstrapArgs.relayWsUrl,
+  });
   const updatedConfig: GatewayRuntimeConfig = {
     ...gatewayConfig,
+    mailDomain: gatewayConfig.mailDomain ?? inferredMailDomain,
     relay: {
       enabled: true,
       relayWsUrl: args.bootstrapArgs.relayWsUrl,
@@ -112,14 +115,38 @@ export function runRelayBootstrap(
   };
   mkdirSync(dirname(gatewayConfigPath), { recursive: true });
   writeFileSync(gatewayConfigPath, JSON.stringify(updatedConfig, null, 2));
+  const persona = synchronizeBootstrapPersonaMailboxAddress({
+    persona: personaSelection.persona,
+    mailDomain: updatedConfig.mailDomain,
+  });
 
   return {
     relayEnabled: true,
     relayWsUrl: args.bootstrapArgs.relayWsUrl,
-    personaId: personaSelection.persona.personaId,
+    personaId: persona.personaId,
     createdPersona: personaSelection.created,
     gatewayConfigPath,
   };
+}
+
+/**
+ * Infers one mail domain from relay websocket URL using relay->mail subdomain convention.
+ */
+export function inferMailDomainFromRelayWsUrl(
+  args: {
+    relayWsUrl: string;
+  },
+): string {
+  try {
+    const url = new URL(args.relayWsUrl);
+    if (url.hostname.startsWith('relay.')) {
+      return `mail.${url.hostname.slice('relay.'.length)}`;
+    }
+
+    return url.hostname;
+  } catch {
+    return 'localhost';
+  }
 }
 
 /**
@@ -135,7 +162,7 @@ export function readGatewayConfigOrDefault(
       mode: 'dev',
       host: '127.0.0.1',
       port: 2525,
-      defaultFromAddress: 'protege@localhost',
+      mailDomain: 'localhost',
     };
   }
 
@@ -144,7 +171,7 @@ export function readGatewayConfigOrDefault(
 }
 
 /**
- * Ensures one persona exists and one active persona pointer is selected.
+ * Ensures one persona exists and returns a deterministic bootstrap persona selection.
  */
 export function ensureBootstrapPersona(): {
   persona: PersonaMetadata;
@@ -152,34 +179,32 @@ export function ensureBootstrapPersona(): {
 } {
   const personas = listPersonas();
   if (personas.length === 0) {
-    const createdPersona = createPersona({
-      setActive: true,
-    });
+    const createdPersona = createPersona({});
     return {
       persona: createdPersona,
       created: true,
     };
   }
 
-  const activePersonaId = readActivePersonaId();
-  if (activePersonaId) {
-    const activePersona = personas.find((persona) => persona.personaId === activePersonaId);
-    if (activePersona) {
-      return {
-        persona: activePersona,
-        created: false,
-      };
-    }
-  }
-
-  const firstPersona = personas[0];
-  setActivePersona({
-    personaId: firstPersona.personaId,
-  });
   return {
-    persona: firstPersona,
+    persona: personas[0],
     created: false,
   };
+}
+
+/**
+ * Synchronizes one persona mailbox address from configured mail domain.
+ */
+export function synchronizeBootstrapPersonaMailboxAddress(
+  args: {
+    persona: PersonaMetadata;
+    mailDomain: string;
+  },
+): PersonaMetadata {
+  return updatePersonaEmailAddress({
+    personaId: args.persona.personaId,
+    emailAddress: `${args.persona.emailLocalPart}@${args.mailDomain}`,
+  });
 }
 
 /**

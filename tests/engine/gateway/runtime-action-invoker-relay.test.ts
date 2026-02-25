@@ -46,7 +46,6 @@ beforeAll(async (): Promise<void> => {
         },
       ],
     ]),
-    defaultFromAddress: 'protege@localhost',
   });
 
   const result = await invoke({

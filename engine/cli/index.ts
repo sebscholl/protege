@@ -18,7 +18,6 @@ import {
   deletePersona,
   listPersonas,
   readPersonaMetadata,
-  setActivePersona,
 } from '@engine/shared/personas';
 
 const PID_FILE_PATH = join(process.cwd(), 'tmp', 'gateway.pid');
@@ -181,14 +180,13 @@ export function runPersonaCli(
 ): void {
   const [action, maybeId, ...rest] = args.argv;
   if (!action) {
-    throw new Error('Usage: protege persona <create|list|info|use|delete> ...');
+    throw new Error('Usage: protege persona <create|list|info|delete> ...');
   }
 
   if (action === 'create') {
     const parsed = parsePersonaCreateArgs({ argv: [maybeId ?? '', ...rest] });
     const persona = createPersona({
       label: parsed.label,
-      setActive: parsed.setActive,
     });
     writeCliJson({ value: persona });
     return;
@@ -208,16 +206,6 @@ export function runPersonaCli(
     return;
   }
 
-  if (action === 'use') {
-    if (!maybeId) {
-      throw new Error('Usage: protege persona use <persona_id>');
-    }
-
-    setActivePersona({ personaId: maybeId });
-    writeCliJson({ value: { activePersonaId: maybeId } });
-    return;
-  }
-
   if (action === 'delete') {
     if (!maybeId) {
       throw new Error('Usage: protege persona delete <persona_id>');
@@ -228,7 +216,7 @@ export function runPersonaCli(
     return;
   }
 
-  throw new Error('Usage: protege persona <create|list|info|use|delete> ...');
+  throw new Error('Usage: protege persona <create|list|info|delete> ...');
 }
 
 /**
@@ -267,18 +255,11 @@ export function parsePersonaCreateArgs(
   },
 ): {
   label?: string;
-  setActive: boolean;
 } {
   let label: string | undefined;
-  let setActive = false;
 
   for (let index = 0; index < args.argv.length; index += 1) {
     const token = args.argv[index];
-    if (token === '--set-active') {
-      setActive = true;
-      continue;
-    }
-
     if (token === '--name') {
       label = args.argv[index + 1] || undefined;
       index += 1;
@@ -287,7 +268,6 @@ export function parsePersonaCreateArgs(
 
   return {
     label,
-    setActive,
   };
 }
 

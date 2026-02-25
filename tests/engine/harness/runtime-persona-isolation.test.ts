@@ -104,11 +104,11 @@ beforeAll(async (): Promise<void> => {
   await Promise.all([
     runHarnessForPersistedInboundMessage({
       message: personaAMessage,
-      defaultFromAddress: 'protege@localhost',
+      senderAddress: 'protege@localhost',
     }),
     runHarnessForPersistedInboundMessage({
       message: personaBMessage,
-      defaultFromAddress: 'protege@localhost',
+      senderAddress: 'protege@localhost',
     }),
   ]);
 

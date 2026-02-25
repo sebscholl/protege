@@ -7,13 +7,6 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * Represents static configuration for the send-email tool extension.
- */
-export type SendEmailToolConfig = {
-  defaultFromAddress?: string;
-};
-
-/**
  * Represents the accepted input payload schema for send_email execution.
  */
 export type SendEmailToolInput = {
@@ -49,19 +42,14 @@ export function readSendEmailToolConfig(
   args: {
     configPath?: string;
   } = {},
-): SendEmailToolConfig {
+): Record<string, unknown> {
   const configPath = args.configPath ?? resolveDefaultSendEmailToolConfigPath();
   if (!existsSync(configPath)) {
     return {};
   }
 
   const text = readFileSync(configPath, 'utf8');
-  const parsed = JSON.parse(text) as Record<string, unknown>;
-  return {
-    defaultFromAddress: readOptionalString({
-      value: parsed.default_from_address,
-    }),
-  };
+  return JSON.parse(text) as Record<string, unknown>;
 }
 
 /**
@@ -149,7 +137,7 @@ export async function executeSendEmailTool(
   args: {
     input: Record<string, unknown>;
     context: HarnessToolExecutionContext;
-    config: SendEmailToolConfig;
+    config: Record<string, unknown>;
   },
 ): Promise<Record<string, unknown>> {
   const normalized = normalizeSendEmailInput({
@@ -179,7 +167,7 @@ export async function executeSendEmailTool(
 export function normalizeSendEmailInput(
   args: {
     input: Record<string, unknown>;
-    config: SendEmailToolConfig;
+    config: Record<string, unknown>;
   },
 ): Record<string, unknown> {
   const to = readRequiredEmailAddressArray({
@@ -194,13 +182,8 @@ export function normalizeSendEmailInput(
     value: args.input.text,
     fieldName: 'text',
   });
-  const from = readOptionalString({ value: args.input.from })
-    ?? args.config.defaultFromAddress;
-  if (!from) {
-    throw new SendEmailToolInputError(
-      'send_email requires from or a configured default_from_address.',
-    );
-  }
+  void args.config;
+  const from = readOptionalString({ value: args.input.from });
 
   return {
     to,

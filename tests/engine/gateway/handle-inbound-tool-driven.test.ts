@@ -85,7 +85,7 @@ beforeAll(async (): Promise<void> => {
         attachments: [],
       },
       transport: undefined,
-      defaultFromAddress: 'protege@localhost',
+      mailDomain: 'localhost',
     });
   } catch {
     noToolRunFailed = true;
@@ -144,7 +144,7 @@ beforeAll(async (): Promise<void> => {
         attachments: [],
       },
       transport: undefined,
-      defaultFromAddress: 'protege@localhost',
+      mailDomain: 'localhost',
     });
   } catch (error) {
     toolRunErrorMessage = (error as Error).message;

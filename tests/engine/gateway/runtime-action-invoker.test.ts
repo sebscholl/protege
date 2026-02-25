@@ -55,7 +55,6 @@ beforeAll(async (): Promise<void> => {
       error: (): void => undefined,
     },
     transport: streamTransport,
-    defaultFromAddress: 'protege@localhost',
   });
 
   try {
@@ -144,7 +143,6 @@ beforeAll(async (): Promise<void> => {
       rawMimePath: '/tmp/inbound.eml',
       attachments: [],
     },
-    defaultFromAddress: 'protege@localhost',
   });
   replySubject = resolveReplySubject({
     message: {
@@ -209,7 +207,6 @@ beforeAll(async (): Promise<void> => {
       subject: 'Manual Test',
       text: 'Reply body',
     },
-    defaultFromAddress: 'protege@localhost',
   });
   implicitReplyAllCcCount = noImplicitReplyAllRequest.cc?.length ?? 0;
 
@@ -236,7 +233,6 @@ beforeAll(async (): Promise<void> => {
       subject: 'Manual Test',
       text: 'Reply body',
     },
-    defaultFromAddress: 'protege@localhost',
   });
   explicitCcCount = explicitCcRequest.cc?.length ?? 0;
 
@@ -263,7 +259,6 @@ beforeAll(async (): Promise<void> => {
       subject: 'Manual Test',
       text: 'Reply body',
     },
-    defaultFromAddress: 'protege@localhost',
   });
   lockedFromAddress = lockedFromRequest.from.address;
 
@@ -289,7 +284,6 @@ beforeAll(async (): Promise<void> => {
       subject: 'Manual Test',
       text: 'Reply body',
     },
-    defaultFromAddress: 'protege@localhost',
   });
   defaultInReplyTo = defaultThreadingRequest.inReplyTo;
   defaultReferencesCount = defaultThreadingRequest.references.length;
@@ -318,7 +312,6 @@ beforeAll(async (): Promise<void> => {
       references: ['<different-root@example.com>'],
       text: 'Reply body',
     },
-    defaultFromAddress: 'protege@localhost',
   });
   forcedReplyModeInReplyTo = forcedReplyModeRequest.inReplyTo;
   forcedReplyModeSubject = forcedReplyModeRequest.subject;
@@ -348,7 +341,6 @@ beforeAll(async (): Promise<void> => {
       references: ['<new-thread-root@example.com>'],
       text: 'Reply body',
     },
-    defaultFromAddress: 'protege@localhost',
   });
   newThreadModeInReplyTo = newThreadModeRequest.inReplyTo;
   newThreadModeSubject = newThreadModeRequest.subject;

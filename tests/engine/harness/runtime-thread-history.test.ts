@@ -123,7 +123,7 @@ beforeAll(async (): Promise<void> => {
   });
   await runHarnessForPersistedInboundMessage({
     message: firstInboundMessage,
-    defaultFromAddress: 'protege@localhost',
+    senderAddress: 'protege@localhost',
   });
 
   persistInboundMessageForRuntime({
@@ -131,7 +131,7 @@ beforeAll(async (): Promise<void> => {
   });
   await runHarnessForPersistedInboundMessage({
     message: secondInboundMessage,
-    defaultFromAddress: 'protege@localhost',
+    senderAddress: 'protege@localhost',
   });
 
   capturedSecondRequestMessages = requestMessagesByCall[1] ?? [];

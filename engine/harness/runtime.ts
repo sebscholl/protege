@@ -82,7 +82,7 @@ export function persistInboundMessageForRuntime(
 export async function runHarnessForPersistedInboundMessage(
   args: {
     message: InboundNormalizedMessage;
-    defaultFromAddress: string;
+    senderAddress: string;
     invokeRuntimeAction?: HarnessRuntimeActionInvoker;
     logger?: GatewayLogger;
     correlationId?: string;
@@ -154,7 +154,7 @@ export async function runHarnessForPersistedInboundMessage(
         threadId: args.message.threadId,
         messageId: responseMessageId,
         inReplyTo: args.message.messageId,
-        sender: args.defaultFromAddress,
+        sender: args.senderAddress,
         recipients: args.message.from.map((item) => item.address),
         subject: args.message.subject,
         text: responseText,
@@ -193,7 +193,7 @@ export async function runHarnessForPersistedInboundMessage(
 export async function runHarnessForInboundMessage(
   args: {
     message: InboundNormalizedMessage;
-    defaultFromAddress: string;
+    senderAddress: string;
     invokeRuntimeAction?: HarnessRuntimeActionInvoker;
     logger?: GatewayLogger;
     correlationId?: string;
@@ -206,7 +206,7 @@ export async function runHarnessForInboundMessage(
   });
   return runHarnessForPersistedInboundMessage({
     message: args.message,
-    defaultFromAddress: args.defaultFromAddress,
+    senderAddress: args.senderAddress,
     invokeRuntimeAction: args.invokeRuntimeAction,
     logger: args.logger,
     correlationId: args.correlationId,

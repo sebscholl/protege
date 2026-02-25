@@ -33,9 +33,7 @@ beforeAll(async (): Promise<void> => {
   mkdirSync(join(tempRootPath, 'personas'), { recursive: true });
   symlinkSync(join(previousCwd, 'extensions'), join(tempRootPath, 'extensions'));
 
-  const knownPersona = createPersona({
-    setActive: true,
-  });
+  const knownPersona = createPersona({});
   writeFileSync(join(tempRootPath, 'config', 'inference.json'), JSON.stringify({
     provider: 'openai',
     model: 'gpt-4.1',
@@ -74,7 +72,7 @@ beforeAll(async (): Promise<void> => {
       mode: 'dev',
       host: '127.0.0.1',
       port: 2525,
-      defaultFromAddress: 'protege@localhost',
+      mailDomain: 'localhost',
     },
     logger,
   });
@@ -160,7 +158,7 @@ beforeAll(async (): Promise<void> => {
           },
         ],
       ]),
-      defaultFromAddress: 'protege@localhost',
+      mailDomain: 'localhost',
       correlationId: 'test-correlation',
     });
   } catch {

@@ -36,7 +36,7 @@ Inspect failed checks and follow each check's `hint`.
 Common failures:
 
 1. Missing or invalid `config/gateway.json`.
-2. No active persona selected.
+2. No personas created.
 3. Missing provider API key in inference config.
 4. Missing or invalid `extensions/extensions.json`.
 
@@ -106,7 +106,7 @@ protege gateway start
 2. Ensure `config/gateway.json` has either:
    - a valid `transport` block, or
    - `relay.enabled: true` with a connected relay client persona.
-3. Verify `defaultFromAddress` is configured.
+3. Verify `mailDomain` is configured to a non-`localhost` domain when relay mode is enabled.
 4. Check runtime logs:
 ```bash
 protege logs --scope scheduler --tail 200

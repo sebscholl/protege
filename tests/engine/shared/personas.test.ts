@@ -12,12 +12,9 @@ import {
   derivePersonaId,
   extractEmailLocalPart,
   listPersonas,
-  readActivePersonaId,
-  resolveActivePersonaPointerPath,
   resolvePersonaByEmailLocalPart,
   resolvePersonaConfigDirPath,
   resolvePersonaMemoryPaths,
-  setActivePersona,
 } from '@engine/shared/personas';
 
 let tempRootPath = '';
@@ -25,7 +22,6 @@ let roots: PersonaRoots;
 let createdPersona: PersonaMetadata;
 let listedPersonasCount = 0;
 let resolvedPersonaId = '';
-let activePersonaId = '';
 let personaPassportExists = false;
 let personaActiveMemoryExists = false;
 let extractedLocalPart = '';
@@ -38,14 +34,12 @@ beforeAll((): void => {
     memoryDirPath: join(tempRootPath, 'memory'),
   };
 
-  createdPersona = createPersona({ roots, label: 'Test Persona', setActive: true });
+  createdPersona = createPersona({ roots, label: 'Test Persona' });
   listedPersonasCount = listPersonas({ roots }).length;
   resolvedPersonaId = resolvePersonaByEmailLocalPart({
     emailLocalPart: createdPersona.emailLocalPart,
     roots,
   })?.personaId ?? '';
-
-  activePersonaId = readActivePersonaId({ roots }) ?? '';
 
   const configDirPath = resolvePersonaConfigDirPath({
     personaId: createdPersona.personaId,
@@ -65,16 +59,9 @@ beforeAll((): void => {
   derivedPersonaIdLength = derivePersonaId({
     publicKeyBase32: createdPersona.publicKeyBase32,
   }).length;
-
-  setActivePersona({ personaId: createdPersona.personaId, roots });
 });
 
 afterAll((): void => {
-  const pointerPath = resolveActivePersonaPointerPath({ roots });
-  if (existsSync(pointerPath)) {
-    rmSync(pointerPath, { force: true });
-  }
-
   deletePersona({ personaId: createdPersona.personaId, roots });
   rmSync(tempRootPath, { recursive: true, force: true });
 });
@@ -98,10 +85,6 @@ describe('shared persona model', () => {
 
   it('resolves persona by full public-key email local-part', () => {
     expect(resolvedPersonaId).toBe(createdPersona.personaId);
-  });
-
-  it('persists and reads active persona pointer id', () => {
-    expect(activePersonaId).toBe(createdPersona.personaId);
   });
 
   it('extracts local-part from full recipient addresses', () => {

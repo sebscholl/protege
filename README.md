@@ -33,7 +33,7 @@ protege init
 ```
 4. Create a persona:
 ```bash
-protege persona create --name "Primary" --set-active
+protege persona create --name "Primary"
 ```
 5. Bootstrap relay mode:
 ```bash
@@ -54,7 +54,7 @@ protege doctor
 1. `protege --help`
 2. `protege --version`
 3. `protege gateway start|stop|restart [--dev]`
-4. `protege persona create|list|info|use|delete ...`
+4. `protege persona create|list|info|delete ...`
 5. `protege relay bootstrap --relay-ws-url <ws_url>`
 6. `protege status [--json]`
 7. `protege logs [--follow] [--tail <n>] [--scope <scope>] [--json]`

@@ -47,7 +47,7 @@ beforeAll((): void => {
       mode: 'dev',
       host: '127.0.0.1',
       port: 2525,
-      defaultFromAddress: 'protege@localhost',
+      mailDomain: 'localhost',
     },
     logger: {
       info: (): void => undefined,

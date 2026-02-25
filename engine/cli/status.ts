@@ -6,8 +6,6 @@ import type { GatewayRuntimeConfig } from '@engine/gateway/index';
 import { readGatewayRuntimeConfig, resolveDefaultGatewayConfigPath } from '@engine/gateway/index';
 import {
   listPersonas,
-  readActivePersonaId,
-  resolveDefaultPersonaRoots,
   resolvePersonaMemoryPaths,
 } from '@engine/shared/personas';
 import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
@@ -27,14 +25,11 @@ export type CliStatusSnapshot = {
     relayWsUrl: string | null;
   };
   persona: {
-    activePersonaId: string | null;
     count: number;
   };
   memory: {
-    activePersona: {
-      temporalDbExists: boolean;
-      activeMdExists: boolean;
-    } | null;
+    personasWithTemporalDb: number;
+    personasWithActiveMd: number;
   };
   paths: {
     logsDir: string;
@@ -65,13 +60,9 @@ export function buildStatusSnapshot(): CliStatusSnapshot {
   });
   const globalConfig = readGlobalRuntimeConfig();
   const personas = listPersonas();
-  const activePersonaId = readActivePersonaId() ?? null;
-  const activeMemory = activePersonaId
-    ? resolvePersonaMemoryPaths({
-        personaId: activePersonaId,
-        roots: resolveDefaultPersonaRoots(),
-      })
-    : null;
+  const memoryByPersona = personas.map((persona) => resolvePersonaMemoryPaths({
+    personaId: persona.personaId,
+  }));
 
   return {
     gateway: {
@@ -85,16 +76,11 @@ export function buildStatusSnapshot(): CliStatusSnapshot {
       relayWsUrl: gatewayConfig.relay?.relayWsUrl ?? null,
     },
     persona: {
-      activePersonaId,
       count: personas.length,
     },
     memory: {
-      activePersona: activeMemory
-        ? {
-            temporalDbExists: existsSync(activeMemory.temporalDbPath),
-            activeMdExists: existsSync(activeMemory.activeMemoryPath),
-          }
-        : null,
+      personasWithTemporalDb: memoryByPersona.filter((memoryPaths) => existsSync(memoryPaths.temporalDbPath)).length,
+      personasWithActiveMd: memoryByPersona.filter((memoryPaths) => existsSync(memoryPaths.activeMemoryPath)).length,
     },
     paths: {
       logsDir: globalConfig.logsDirPath,
@@ -117,10 +103,9 @@ export function renderStatusSnapshot(
     `gateway.port: ${args.snapshot.gateway.port}`,
     `relay.enabled: ${args.snapshot.relay.enabled}`,
     `relay.relayWsUrl: ${args.snapshot.relay.relayWsUrl ?? 'none'}`,
-    `persona.activePersonaId: ${args.snapshot.persona.activePersonaId ?? 'none'}`,
     `persona.count: ${args.snapshot.persona.count}`,
-    `memory.activePersona.temporalDbExists: ${args.snapshot.memory.activePersona?.temporalDbExists ?? false}`,
-    `memory.activePersona.activeMdExists: ${args.snapshot.memory.activePersona?.activeMdExists ?? false}`,
+    `memory.personasWithTemporalDb: ${args.snapshot.memory.personasWithTemporalDb}`,
+    `memory.personasWithActiveMd: ${args.snapshot.memory.personasWithActiveMd}`,
     `paths.logsDir: ${args.snapshot.paths.logsDir}`,
   ].join('\n');
 }

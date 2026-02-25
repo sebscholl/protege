@@ -54,7 +54,7 @@ protege gateway restart
 
 1. Create persona:
 ```bash
-protege persona create --name "Primary" --set-active
+protege persona create --name "Primary"
 ```
 2. List personas:
 ```bash
@@ -64,11 +64,7 @@ protege persona list
 ```bash
 protege persona info <persona_id>
 ```
-4. Set active persona:
-```bash
-protege persona use <persona_id>
-```
-5. Delete persona:
+4. Delete persona:
 ```bash
 protege persona delete <persona_id>
 ```

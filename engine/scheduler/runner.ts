@@ -38,7 +38,7 @@ export type SchedulerRunnerCycleResult = {
 export type SchedulerRunExecutor = (
   args: {
     message: InboundNormalizedMessage;
-    defaultFromAddress: string;
+    senderAddress: string;
     invokeRuntimeAction?: HarnessRuntimeActionInvoker;
     logger?: GatewayLogger;
     correlationId?: string;
@@ -63,7 +63,6 @@ export async function runNextQueuedResponsibility(
   args: {
     db: ProtegeDatabase;
     personaId?: string;
-    defaultFromAddress?: string;
     roots?: PersonaRoots;
     logger?: GatewayLogger;
     invokeRuntimeAction?: HarnessRuntimeActionInvoker;
@@ -131,10 +130,7 @@ export async function runNextQueuedResponsibility(
     personaId: responsibility.personaId,
     roots: args.roots,
   });
-  const personaMailboxIdentity = derivePersonaMailboxIdentity({
-    personaEmailLocalPart: persona.emailLocalPart,
-    defaultFromAddress: args.defaultFromAddress,
-  });
+  const personaMailboxIdentity = persona.emailAddress;
   const message = buildResponsibilityInboundMessage({
     responsibility,
     threadId,
@@ -148,7 +144,7 @@ export async function runNextQueuedResponsibility(
   try {
     const result = await executeRun({
       message,
-      defaultFromAddress: personaMailboxIdentity,
+      senderAddress: personaMailboxIdentity,
       invokeRuntimeAction: args.createRuntimeActionInvoker
         ? args.createRuntimeActionInvoker({ message }) ?? args.invokeRuntimeAction
         : args.invokeRuntimeAction,
@@ -196,34 +192,6 @@ export async function runNextQueuedResponsibility(
       errorMessage,
     };
   }
-}
-
-/**
- * Derives one persona mailbox identity using persona local-part and default sender domain.
- */
-export function derivePersonaMailboxIdentity(
-  args: {
-    personaEmailLocalPart: string;
-    defaultFromAddress?: string;
-  },
-): string {
-  const domain = args.defaultFromAddress && isEmailLikeAddress({
-    value: args.defaultFromAddress,
-  })
-    ? args.defaultFromAddress.slice(args.defaultFromAddress.lastIndexOf('@') + 1)
-    : 'localhost';
-  return `${args.personaEmailLocalPart}@${domain}`;
-}
-
-/**
- * Returns true when one string matches a basic email-like address shape.
- */
-export function isEmailLikeAddress(
-  args: {
-    value: string;
-  },
-): boolean {
-  return /^[^\s@]+@[^\s@]+$/.test(args.value);
 }
 
 /**
