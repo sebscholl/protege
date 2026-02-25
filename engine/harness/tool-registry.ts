@@ -8,7 +8,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { tool as editFileTool } from '@extensions/tools/edit-file/index';
+import { tool as readFileTool } from '@extensions/tools/read-file/index';
 import { tool as sendEmailTool } from '@extensions/tools/send-email/index';
+import { tool as writeFileTool } from '@extensions/tools/write-file/index';
 
 /**
  * Represents one manifest entry for enabling a tool extension by name.
@@ -193,6 +196,15 @@ export function readBuiltInToolDefinition(
     toolName: string;
   },
 ): HarnessToolDefinition | undefined {
+  if (args.toolName === 'read-file') {
+    return readFileTool;
+  }
+  if (args.toolName === 'write-file') {
+    return writeFileTool;
+  }
+  if (args.toolName === 'edit-file') {
+    return editFileTool;
+  }
   if (args.toolName === 'send-email') {
     return sendEmailTool;
   }

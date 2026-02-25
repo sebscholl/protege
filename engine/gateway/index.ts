@@ -6,8 +6,8 @@ import type {
 } from '@engine/gateway/types';
 import type { SMTPServerDataStream, SMTPServerSession } from 'smtp-server';
 
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 
 import { handleInboundData, startInboundServer } from '@engine/gateway/inbound';
@@ -645,6 +645,21 @@ export function createGatewayRuntimeActionInvoker(
         action: runtimeArgs.action,
       },
     });
+    if (runtimeArgs.action === 'file.read') {
+      return runReadFileRuntimeAction({
+        payload: runtimeArgs.payload,
+      });
+    }
+    if (runtimeArgs.action === 'file.write') {
+      return runWriteFileRuntimeAction({
+        payload: runtimeArgs.payload,
+      });
+    }
+    if (runtimeArgs.action === 'file.edit') {
+      return runEditFileRuntimeAction({
+        payload: runtimeArgs.payload,
+      });
+    }
     if (runtimeArgs.action !== 'email.send') {
       throw new Error(`Unsupported runtime action: ${runtimeArgs.action}`);
     }
@@ -692,6 +707,197 @@ export function createGatewayRuntimeActionInvoker(
       messageId,
     };
   };
+}
+
+/**
+ * Runs one file.read runtime action and returns full text content.
+ */
+export function runReadFileRuntimeAction(
+  args: {
+    payload: Record<string, unknown>;
+  },
+): Record<string, unknown> {
+  const targetPath = readRequiredRuntimePath({
+    payload: args.payload,
+    fieldName: 'path',
+    actionName: 'file.read',
+  });
+  const content = readFileSync(targetPath, 'utf8');
+  return {
+    path: targetPath,
+    content,
+  };
+}
+
+/**
+ * Runs one file.write runtime action and creates parent directories as needed.
+ */
+export function runWriteFileRuntimeAction(
+  args: {
+    payload: Record<string, unknown>;
+  },
+): Record<string, unknown> {
+  const targetPath = readRequiredRuntimePath({
+    payload: args.payload,
+    fieldName: 'path',
+    actionName: 'file.write',
+  });
+  const content = readRuntimeStringValue({
+    payload: args.payload,
+    fieldName: 'content',
+    actionName: 'file.write',
+  });
+  mkdirSync(dirname(targetPath), { recursive: true });
+  writeFileSync(targetPath, content, 'utf8');
+  return {
+    path: targetPath,
+    bytesWritten: Buffer.byteLength(content, 'utf8'),
+  };
+}
+
+/**
+ * Runs one file.edit runtime action using literal replacement semantics.
+ */
+export function runEditFileRuntimeAction(
+  args: {
+    payload: Record<string, unknown>;
+  },
+): Record<string, unknown> {
+  const targetPath = readRequiredRuntimePath({
+    payload: args.payload,
+    fieldName: 'path',
+    actionName: 'file.edit',
+  });
+  const oldText = readRequiredRuntimeString({
+    payload: args.payload,
+    fieldName: 'oldText',
+    actionName: 'file.edit',
+  });
+  if (oldText.length === 0) {
+    throw new Error('file.edit payload.oldText must not be empty.');
+  }
+  const newText = readRuntimeStringValue({
+    payload: args.payload,
+    fieldName: 'newText',
+    actionName: 'file.edit',
+  });
+  const replaceAll = readOptionalRuntimeBoolean({
+    payload: args.payload,
+    fieldName: 'replaceAll',
+    actionName: 'file.edit',
+  }) ?? false;
+
+  const original = readFileSync(targetPath, 'utf8');
+  const matchCount = original.split(oldText).length - 1;
+  if (matchCount <= 0) {
+    throw new Error('file.edit could not find payload.oldText in target file.');
+  }
+
+  const next = replaceAll
+    ? original.split(oldText).join(newText)
+    : original.replace(oldText, newText);
+  writeFileSync(targetPath, next, 'utf8');
+  return {
+    path: targetPath,
+    appliedEdits: replaceAll ? matchCount : 1,
+  };
+}
+
+/**
+ * Reads one required runtime path and resolves it within workspace root.
+ */
+export function readRequiredRuntimePath(
+  args: {
+    payload: Record<string, unknown>;
+    fieldName: string;
+    actionName: string;
+  },
+): string {
+  const rawPath = readRequiredRuntimeString({
+    payload: args.payload,
+    fieldName: args.fieldName,
+    actionName: args.actionName,
+  });
+  return resolveWorkspacePath({
+    inputPath: rawPath,
+    actionName: args.actionName,
+  });
+}
+
+/**
+ * Reads one required non-empty runtime payload string.
+ */
+export function readRequiredRuntimeString(
+  args: {
+    payload: Record<string, unknown>;
+    fieldName: string;
+    actionName: string;
+  },
+): string {
+  const value = args.payload[args.fieldName];
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(`${args.actionName} payload.${args.fieldName} is required.`);
+  }
+
+  return value;
+}
+
+/**
+ * Reads one required runtime payload string and allows empty text content values.
+ */
+export function readRuntimeStringValue(
+  args: {
+    payload: Record<string, unknown>;
+    fieldName: string;
+    actionName: string;
+  },
+): string {
+  const value = args.payload[args.fieldName];
+  if (typeof value !== 'string') {
+    throw new Error(`${args.actionName} payload.${args.fieldName} must be a string.`);
+  }
+
+  return value;
+}
+
+/**
+ * Reads one optional boolean runtime payload value.
+ */
+export function readOptionalRuntimeBoolean(
+  args: {
+    payload: Record<string, unknown>;
+    fieldName: string;
+    actionName: string;
+  },
+): boolean | undefined {
+  const value = args.payload[args.fieldName];
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== 'boolean') {
+    throw new Error(`${args.actionName} payload.${args.fieldName} must be a boolean.`);
+  }
+
+  return value;
+}
+
+/**
+ * Resolves one input path inside workspace root and blocks traversal outside it.
+ */
+export function resolveWorkspacePath(
+  args: {
+    inputPath: string;
+    actionName: string;
+  },
+): string {
+  const workspaceRoot = process.cwd();
+  const resolvedPath = resolve(workspaceRoot, args.inputPath);
+  const relativePath = relative(workspaceRoot, resolvedPath);
+  if (relativePath.startsWith('..') || isAbsolute(relativePath)) {
+    throw new Error(`${args.actionName} path resolves outside workspace root.`);
+  }
+
+  return resolvedPath;
 }
 
 /**

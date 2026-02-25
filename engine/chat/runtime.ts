@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 
 import blessed from 'neo-blessed';
 
+import { createGatewayRuntimeActionInvoker } from '@engine/gateway/index';
 import { dispatchChatInputEvent, applyChatControllerAction, createInitialChatSessionState } from '@engine/chat/controller';
 import { normalizeBlessedKeypress } from '@engine/chat/keys';
 import { listChatThreadSummaries, readChatThreadDetail } from '@engine/chat/queries';
@@ -199,14 +200,18 @@ export async function startChatRuntime(
     inboxList.hide();
     threadBox.show();
     composeBox.show();
-    threadBox.setContent([
+    threadBox.setContent(applyHorizontalPadding({
+      content: [
       `${threadViewModel.title} (${threadViewModel.modeLabel} | ${state.mode.toUpperCase()})`,
       '',
       threadViewModel.writeBanner,
       '',
       ...threadViewModel.messages.flatMap((message) => [message.header, message.body, '']),
-    ].join('\n'));
-    composeBox.setContent(threadViewModel.composeEnabled ? threadViewModel.draft : '[read-only]');
+    ].join('\n'),
+    }));
+    composeBox.setContent(applyHorizontalPadding({
+      content: threadViewModel.composeEnabled ? threadViewModel.draft : '[read-only]',
+    }));
     statusBar.setContent(
       buildStatusLine({
         view: state.view,
@@ -285,6 +290,7 @@ export async function startChatRuntime(
       await runHarnessForPersistedInboundMessage({
         message: inboundMessage,
         senderAddress: personaMailboxIdentity,
+        suppressFinalResponsePersistenceWhenActions: ['email.send'],
         invokeRuntimeAction: createChatRuntimeActionInvoker({
           db,
           message: inboundMessage,
@@ -505,6 +511,20 @@ export function scrollThreadBoxToBottom(
 }
 
 /**
+ * Adds one-space horizontal padding to each rendered line for chat readability.
+ */
+export function applyHorizontalPadding(
+  args: {
+    content: string;
+  },
+): string {
+  return args.content
+    .split('\n')
+    .map((line) => ` ${line} `)
+    .join('\n');
+}
+
+/**
  * Resolves one persona by id, id prefix, or email local-part selector.
  */
 export function resolvePersonaBySelector(
@@ -539,6 +559,11 @@ export function createChatRuntimeActionInvoker(
     personaMailboxIdentity: string;
   },
 ): HarnessRuntimeActionInvoker {
+  const delegatedRuntimeInvoker = createGatewayRuntimeActionInvoker({
+    message: args.message,
+    logger: args.logger,
+  });
+
   return async (
     runtimeArgs: {
       action: string;
@@ -546,7 +571,7 @@ export function createChatRuntimeActionInvoker(
     },
   ): Promise<Record<string, unknown>> => {
     if (runtimeArgs.action !== 'email.send') {
-      throw new Error(`Unsupported runtime action: ${runtimeArgs.action}`);
+      return delegatedRuntimeInvoker(runtimeArgs);
     }
 
     const to = Array.isArray(runtimeArgs.payload.to)

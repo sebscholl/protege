@@ -84,6 +84,7 @@ export async function runHarnessForPersistedInboundMessage(
     message: InboundNormalizedMessage;
     senderAddress: string;
     invokeRuntimeAction?: HarnessRuntimeActionInvoker;
+    suppressFinalResponsePersistenceWhenActions?: string[];
     logger?: GatewayLogger;
     correlationId?: string;
   },
@@ -148,24 +149,30 @@ export async function runHarnessForPersistedInboundMessage(
     }
 
     const responseMessageId = `<protege.${randomUUID()}@localhost>`;
-    storeOutboundMessage({
-      db,
-      request: {
-        threadId: args.message.threadId,
-        messageId: responseMessageId,
-        inReplyTo: args.message.messageId,
-        sender: args.senderAddress,
-        recipients: args.message.from.map((item) => item.address),
-        subject: args.message.subject,
-        text: responseText,
-        receivedAt: new Date().toISOString(),
-        metadata: {
-          provider: inferenceConfig.provider,
-          model: inferenceConfig.model,
-          usage: toolResult.usage ?? {},
-        },
-      },
+    const suppressedFinalPersistence = shouldSuppressFinalResponsePersistence({
+      invokedActions: toolResult.invokedActions,
+      suppressedActions: args.suppressFinalResponsePersistenceWhenActions,
     });
+    if (!suppressedFinalPersistence) {
+      storeOutboundMessage({
+        db,
+        request: {
+          threadId: args.message.threadId,
+          messageId: responseMessageId,
+          inReplyTo: args.message.messageId,
+          sender: args.senderAddress,
+          recipients: args.message.from.map((item) => item.address),
+          subject: args.message.subject,
+          text: responseText,
+          receivedAt: new Date().toISOString(),
+          metadata: {
+            provider: inferenceConfig.provider,
+            model: inferenceConfig.model,
+            usage: toolResult.usage ?? {},
+          },
+        },
+      });
+    }
     args.logger?.info({
       event: 'harness.inference.completed',
       context: {
@@ -174,6 +181,7 @@ export async function runHarnessForPersistedInboundMessage(
         threadId: args.message.threadId,
         messageId: args.message.messageId,
         responseMessageId,
+        suppressedFinalPersistence,
       },
     });
 
@@ -195,6 +203,7 @@ export async function runHarnessForInboundMessage(
     message: InboundNormalizedMessage;
     senderAddress: string;
     invokeRuntimeAction?: HarnessRuntimeActionInvoker;
+    suppressFinalResponsePersistenceWhenActions?: string[];
     logger?: GatewayLogger;
     correlationId?: string;
   },
@@ -208,9 +217,26 @@ export async function runHarnessForInboundMessage(
     message: args.message,
     senderAddress: args.senderAddress,
     invokeRuntimeAction: args.invokeRuntimeAction,
+    suppressFinalResponsePersistenceWhenActions: args.suppressFinalResponsePersistenceWhenActions,
     logger: args.logger,
     correlationId: args.correlationId,
   });
+}
+
+/**
+ * Returns true when final assistant response persistence should be skipped for invoked actions.
+ */
+export function shouldSuppressFinalResponsePersistence(
+  args: {
+    invokedActions: string[];
+    suppressedActions?: string[];
+  },
+): boolean {
+  if (!args.suppressedActions || args.suppressedActions.length === 0) {
+    return false;
+  }
+
+  return args.invokedActions.some((invokedAction) => args.suppressedActions?.includes(invokedAction));
 }
 
 /**

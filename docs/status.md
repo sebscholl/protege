@@ -92,7 +92,11 @@ Status: In progress (early)
 Completed:
 
 1. Extension isolation boundary and manifest/registry flow.
-2. First production tool: `send_email`.
+2. First production tools:
+   - `send_email`
+   - `read_file`
+   - `write_file`
+   - `edit_file`
 3. Scheduler foundations:
    - responsibility file contract + frontmatter parser
    - file->DB index sync/reconcile flow

@@ -1,5 +1,8 @@
 {
   "tools": [
+    "read-file",
+    "write-file",
+    "edit-file",
     "send-email"
   ],
   "hooks": []

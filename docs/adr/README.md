@@ -21,6 +21,7 @@ Accepted ADRs:
 17. `0017-scheduler-v1-run-policy.md`
 18. `0018-scheduler-runtime-owned-by-gateway.md`
 19. `0019-persona-owned-sender-identity-and-no-active-persona.md`
+20. `0020-core-file-tools-v1-simple-literal-reliable-semantics.md`
 
 Notes:
 

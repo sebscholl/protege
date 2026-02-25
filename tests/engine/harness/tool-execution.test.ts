@@ -9,6 +9,7 @@ import {
 let sentMessageId = '';
 let toolNotFoundMessage = '';
 let sentMessageSource = '';
+let readFileContent = '';
 
 beforeAll(async (): Promise<void> => {
   const registry = await loadToolRegistry();
@@ -60,6 +61,32 @@ beforeAll(async (): Promise<void> => {
   });
   sentMessageId = String(result.messageId ?? '');
 
+  const readResult = await executeRegisteredTool({
+    registry,
+    name: 'read_file',
+    input: {
+      path: 'README.md',
+    },
+    context: {
+      runtime: {
+        invoke: async (
+          args: {
+            action: string;
+            payload: Record<string, unknown>;
+          },
+        ): Promise<Record<string, unknown>> => {
+          if (args.action !== 'file.read') {
+            throw new Error(`Unsupported action: ${args.action}`);
+          }
+          return {
+            content: `read:${String(args.payload.path ?? '')}`,
+          };
+        },
+      },
+    },
+  });
+  readFileContent = String(readResult.content ?? '');
+
   try {
     await executeRegisteredTool({
       registry,
@@ -83,6 +110,10 @@ describe('harness tool execution', () => {
 
   it('executes send_email via SMTP transport payload fields', () => {
     expect(sentMessageSource.includes('Subject: Tool registry execution')).toBe(true);
+  });
+
+  it('executes read_file via runtime file.read payload fields', () => {
+    expect(readFileContent).toBe('read:README.md');
   });
 
   it('throws for unknown tool names', () => {

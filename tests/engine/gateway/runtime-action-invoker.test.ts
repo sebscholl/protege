@@ -60,7 +60,7 @@ beforeAll(async (): Promise<void> => {
 
   try {
     await invoke({
-      action: 'file.write',
+      action: 'unknown.action',
       payload: {},
     });
   } catch (error) {

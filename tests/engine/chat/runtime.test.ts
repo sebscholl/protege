@@ -1,7 +1,7 @@
 import type { InboundNormalizedMessage } from '@engine/gateway/types';
 import type { ProtegeDatabase } from '@engine/shared/database';
 
-import { mkdtempSync, rmSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { chdir, cwd } from 'node:process';
 import { join } from 'node:path';
@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
+  applyHorizontalPadding,
   buildStatusLine,
   createChatRuntimeActionInvoker,
   resolvePersonaBySelector,
@@ -25,12 +26,16 @@ let resolvedPersonaId = '';
 let outboundCount = 0;
 let outboundSender = '';
 let unsupportedActionError = '';
+let fileReadContent = '';
+let fileWriteContent = '';
+let fileEditContent = '';
 let createdPersonaId = '';
 let statusLine = '';
 let scrollUpDelta = 0;
 let scrollPageDownDelta = 0;
 let scrollUnknownDelta: number | undefined;
 let capturedScrollPercent = -1;
+let paddedContent = '';
 
 const inboundMessage: InboundNormalizedMessage = {
   personaId: 'persona-test',
@@ -53,6 +58,7 @@ beforeAll(async (): Promise<void> => {
   originalCwd = cwd();
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-chat-runtime-'));
   mkdirSync(join(tempRootPath, 'engine', 'shared', 'migrations'), { recursive: true });
+  mkdirSync(join(tempRootPath, 'tmp'), { recursive: true });
   chdir(tempRootPath);
 
   const created = createPersona({});
@@ -112,6 +118,36 @@ beforeAll(async (): Promise<void> => {
     unsupportedActionError = (error as Error).message;
   }
 
+  writeFileSync(join(tempRootPath, 'tmp', 'chat-read.txt'), 'chat-read', 'utf8');
+  const fileReadResult = await invoke({
+    action: 'file.read',
+    payload: {
+      path: 'tmp/chat-read.txt',
+    },
+  });
+  fileReadContent = String(fileReadResult.content ?? '');
+
+  await invoke({
+    action: 'file.write',
+    payload: {
+      path: 'tmp/chat-write.txt',
+      content: 'chat-write',
+    },
+  });
+  fileWriteContent = readFileSync(join(tempRootPath, 'tmp', 'chat-write.txt'), 'utf8');
+
+  writeFileSync(join(tempRootPath, 'tmp', 'chat-edit.txt'), 'before after before', 'utf8');
+  await invoke({
+    action: 'file.edit',
+    payload: {
+      path: 'tmp/chat-edit.txt',
+      oldText: 'before',
+      newText: 'after',
+      replaceAll: true,
+    },
+  });
+  fileEditContent = readFileSync(join(tempRootPath, 'tmp', 'chat-edit.txt'), 'utf8');
+
   statusLine = buildStatusLine({
     view: 'thread',
     mode: 'compose',
@@ -132,6 +168,9 @@ beforeAll(async (): Promise<void> => {
         capturedScrollPercent = percent;
       },
     },
+  });
+  paddedContent = applyHorizontalPadding({
+    content: 'line-one\nline-two',
   });
 });
 
@@ -158,6 +197,18 @@ describe('chat runtime helper behavior', () => {
     expect(unsupportedActionError).toContain('Unsupported runtime action');
   });
 
+  it('supports file.read runtime actions in chat mode', () => {
+    expect(fileReadContent).toBe('chat-read');
+  });
+
+  it('supports file.write runtime actions in chat mode', () => {
+    expect(fileWriteContent).toBe('chat-write');
+  });
+
+  it('supports file.edit runtime actions in chat mode', () => {
+    expect(fileEditContent).toBe('after after after');
+  });
+
   it('renders explicit mode and key context in status line', () => {
     expect(statusLine).toContain('[THREAD|COMPOSE|LIGHT]');
   });
@@ -180,5 +231,9 @@ describe('chat runtime helper behavior', () => {
 
   it('sets thread scroll percentage to 100 for bottom anchoring', () => {
     expect(capturedScrollPercent).toBe(100);
+  });
+
+  it('adds one-space horizontal padding to each rendered chat line', () => {
+    expect(paddedContent).toBe(' line-one \n line-two ');
   });
 });

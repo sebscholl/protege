@@ -9,6 +9,7 @@ import {
   buildProviderMessages,
   createProviderAdapter,
   resolveMigrationsDirPath,
+  shouldSuppressFinalResponsePersistence,
   toHarnessInput,
 } from '@engine/harness/runtime';
 import { HarnessProviderError } from '@engine/harness/provider-contract';
@@ -38,6 +39,8 @@ let routingContextHasAllKeys = false;
 let routingContextIsEmptyWithoutMetadata = false;
 let unsupportedProviderCode = '';
 let migrationsDirExists = false;
+let suppressesOnEmailSend = false;
+let keepsPersistenceWhenNoActionMatch = false;
 
 beforeAll((): void => {
   harnessInputSender = toHarnessInput({ message: inboundMessage }).sender;
@@ -137,6 +140,14 @@ beforeAll((): void => {
   }
 
   migrationsDirExists = existsSync(resolveMigrationsDirPath());
+  suppressesOnEmailSend = shouldSuppressFinalResponsePersistence({
+    invokedActions: ['email.send', 'file.read'],
+    suppressedActions: ['email.send'],
+  });
+  keepsPersistenceWhenNoActionMatch = shouldSuppressFinalResponsePersistence({
+    invokedActions: ['file.read'],
+    suppressedActions: ['email.send'],
+  });
 });
 
 describe('harness runtime helpers', () => {
@@ -170,5 +181,13 @@ describe('harness runtime helpers', () => {
 
   it('resolves one existing migrations directory path', () => {
     expect(migrationsDirExists).toBe(true);
+  });
+
+  it('suppresses final persistence when configured action was invoked', () => {
+    expect(suppressesOnEmailSend).toBe(true);
+  });
+
+  it('does not suppress final persistence when no configured action was invoked', () => {
+    expect(keepsPersistenceWhenNoActionMatch).toBe(false);
   });
 });

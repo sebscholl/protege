@@ -26,6 +26,18 @@ afterAll((): void => {
 });
 
 describe('harness tool registry', () => {
+  it('loads read_file from extensions manifest', () => {
+    expect(toolNames.includes('read_file')).toBe(true);
+  });
+
+  it('loads write_file from extensions manifest', () => {
+    expect(toolNames.includes('write_file')).toBe(true);
+  });
+
+  it('loads edit_file from extensions manifest', () => {
+    expect(toolNames.includes('edit_file')).toBe(true);
+  });
+
   it('loads enabled tools from extensions manifest', () => {
     expect(toolNames.includes('send_email')).toBe(true);
   });
