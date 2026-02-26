@@ -15,6 +15,8 @@ let healthyChecksCount = 0;
 let unhealthyStatus = '';
 let unhealthyExitCode = -1;
 let doctorText = '';
+let relayIdentityCheckStatus = '';
+let healthyFailedCheckIds: string[] = [];
 
 beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-doctor-'));
@@ -59,7 +61,9 @@ beforeAll(async (): Promise<void> => {
     admin_contact_email: 'ops@example.com',
   }, null, 2));
   process.env.OPENAI_API_KEY = 'test-key';
-  createPersona({});
+  createPersona({
+    emailDomain: 'mail.protege.bot',
+  });
 
   process.exitCode = 0;
   const healthyJson = JSON.parse((await captureStdout({
@@ -72,6 +76,14 @@ beforeAll(async (): Promise<void> => {
   };
   healthyStatus = healthyJson.status;
   healthyChecksCount = healthyJson.checks.length;
+  healthyFailedCheckIds = healthyJson.checks
+    .filter((check) => String(check.status ?? '') === 'fail')
+    .map((check) => String(check.id ?? ''));
+  relayIdentityCheckStatus = String(
+    healthyJson.checks.find(
+      (check) => check.id === 'relay.persona_sender_domains_consistent',
+    )?.status ?? '',
+  );
 
   doctorText = await captureStdout({
     run: async (): Promise<void> => runCli({
@@ -114,8 +126,16 @@ describe('doctor cli command', () => {
     expect(healthyStatus).toBe('healthy');
   });
 
+  it('has no failing checks in healthy setup', () => {
+    expect(healthyFailedCheckIds).toEqual([]);
+  });
+
   it('includes expected doctor check entries in json output', () => {
-    expect(healthyChecksCount).toBe(8);
+    expect(healthyChecksCount).toBe(9);
+  });
+
+  it('validates relay persona sender domains when relay is enabled', () => {
+    expect(relayIdentityCheckStatus).toBe('pass');
   });
 
   it('prints human-readable status lines without --json', () => {

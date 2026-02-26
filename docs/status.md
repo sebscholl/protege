@@ -162,6 +162,10 @@ Planning updates:
    - `protege init` no longer scaffolds `config/inference.local.example.json`
    - `.env.example` reduced to secret credential keys only
    - CLI dotenv loading now applies `.env` then `.env.local`, while preserving shell-defined env values
+19. OH3 implemented:
+   - `relay bootstrap` now replaces scaffold `mailDomain: localhost` with inferred relay mail domain
+   - bootstrap now reconciles persona sender emails to the relay mail domain
+   - doctor now validates relay-enabled persona sender domain consistency
 
 ## ADR Coverage
 

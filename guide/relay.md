@@ -16,6 +16,10 @@ Core agent logic and memory still run locally in your Protege runtime.
 ```bash
 protege relay bootstrap --relay-ws-url wss://relay.example.com/ws
 ```
+This bootstrap step also:
+1. Enables relay mode in `config/gateway.json`.
+2. Replaces `mailDomain: localhost` with the inferred relay mail domain.
+3. Reconciles persona sender email domains to match `mailDomain`.
 2. Start gateway:
 ```bash
 protege gateway start

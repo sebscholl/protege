@@ -55,7 +55,7 @@ Status: Complete
 
 ## OH3. Relay-First Outbound Defaults (Issue #6)
 
-Status: Planned
+Status: Complete
 
 ### Tasks
 

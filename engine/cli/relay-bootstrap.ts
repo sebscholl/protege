@@ -102,9 +102,13 @@ export function runRelayBootstrap(
   const inferredMailDomain = inferMailDomainFromRelayWsUrl({
     relayWsUrl: args.bootstrapArgs.relayWsUrl,
   });
+  const effectiveMailDomain = selectRelayBootstrapMailDomain({
+    existingMailDomain: gatewayConfig.mailDomain,
+    inferredMailDomain,
+  });
   const updatedConfig: GatewayRuntimeConfig = {
     ...gatewayConfig,
-    mailDomain: gatewayConfig.mailDomain ?? inferredMailDomain,
+    mailDomain: effectiveMailDomain,
     relay: {
       enabled: true,
       relayWsUrl: args.bootstrapArgs.relayWsUrl,
@@ -117,7 +121,7 @@ export function runRelayBootstrap(
   writeFileSync(gatewayConfigPath, JSON.stringify(updatedConfig, null, 2));
   const persona = synchronizeBootstrapPersonaMailboxAddress({
     persona: personaSelection.persona,
-    mailDomain: updatedConfig.mailDomain,
+    mailDomain: effectiveMailDomain,
   });
 
   return {
@@ -127,6 +131,22 @@ export function runRelayBootstrap(
     createdPersona: personaSelection.created,
     gatewayConfigPath,
   };
+}
+
+/**
+ * Selects mail domain for relay bootstrap, replacing localhost defaults with inferred relay domain.
+ */
+export function selectRelayBootstrapMailDomain(
+  args: {
+    existingMailDomain: string | undefined;
+    inferredMailDomain: string;
+  },
+): string {
+  if (!args.existingMailDomain || args.existingMailDomain === 'localhost') {
+    return args.inferredMailDomain;
+  }
+
+  return args.existingMailDomain;
 }
 
 /**

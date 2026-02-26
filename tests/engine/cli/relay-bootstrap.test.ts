@@ -17,7 +17,9 @@ let secondBootstrapCreatedPersona = true;
 let personaCountAfterSecondBootstrap = 0;
 let gatewayConfigRelayEnabled = false;
 let gatewayConfigRelayWsUrl = '';
+let gatewayConfigMailDomain = '';
 let gatewayConfigPreservedTransportHost = '';
+let bootstrapPersonaEmailDomain = '';
 
 beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-relay-bootstrap-'));
@@ -70,6 +72,7 @@ beforeAll(async (): Promise<void> => {
   const gatewayConfig = JSON.parse(
     readFileSync(join(tempRootPath, 'config', 'gateway.json'), 'utf8'),
   ) as {
+    mailDomain?: string;
     relay?: {
       enabled?: boolean;
       relayWsUrl?: string;
@@ -78,9 +81,11 @@ beforeAll(async (): Promise<void> => {
       host?: string;
     };
   };
+  gatewayConfigMailDomain = gatewayConfig.mailDomain ?? '';
   gatewayConfigRelayEnabled = gatewayConfig.relay?.enabled === true;
   gatewayConfigRelayWsUrl = gatewayConfig.relay?.relayWsUrl ?? '';
   gatewayConfigPreservedTransportHost = gatewayConfig.transport?.host ?? '';
+  bootstrapPersonaEmailDomain = (listPersonas()[0]?.emailAddress ?? '').split('@')[1] ?? '';
 
   process.stdout.write = stdoutWrite;
 });
@@ -113,6 +118,14 @@ describe('relay bootstrap cli', () => {
 
   it('writes requested relay websocket url into gateway config', () => {
     expect(gatewayConfigRelayWsUrl).toBe('ws://relay.test/ws');
+  });
+
+  it('replaces localhost mail domain with inferred relay mail domain', () => {
+    expect(gatewayConfigMailDomain).toBe('mail.test');
+  });
+
+  it('reconciles persona email address domain with relay mail domain', () => {
+    expect(bootstrapPersonaEmailDomain).toBe('mail.test');
   });
 
   it('preserves existing non-relay gateway config fields', () => {

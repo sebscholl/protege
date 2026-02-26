@@ -4,6 +4,10 @@ import { join } from 'node:path';
 import { readGatewayRuntimeConfig, resolveDefaultGatewayConfigPath } from '@engine/gateway/index';
 import { readInferenceRuntimeConfig } from '@engine/harness/config';
 import {
+  isValidEmailAddress,
+  readEmailAddressDomain,
+} from '@engine/shared/email';
+import {
   listPersonas,
   resolveDefaultPersonaRoots,
   resolvePersonaMemoryDirPath,
@@ -54,6 +58,7 @@ export function runDoctorChecks(): DoctorReport {
   checks.push(checkGatewayPidStaleOrValid());
   checks.push(checkProviderConfigPresent());
   checks.push(checkRelayConfigValidWhenEnabled());
+  checks.push(checkRelayPersonaAddressDomains());
   checks.push(checkExtensionsManifestReadable());
   checks.push(checkAdminContactEmailConfigured());
   return {
@@ -62,6 +67,59 @@ export function runDoctorChecks(): DoctorReport {
     }),
     checks,
   };
+}
+
+/**
+ * Verifies persona sender domains align with gateway mail domain when relay mode is enabled.
+ */
+export function checkRelayPersonaAddressDomains(): DoctorCheckResult {
+  try {
+    const gateway = readGatewayRuntimeConfig({
+      configPath: resolveDefaultGatewayConfigPath(),
+    });
+    if (!gateway.relay?.enabled) {
+      return {
+        id: 'relay.persona_sender_domains_consistent',
+        status: 'pass',
+        message: 'relay mode is disabled.',
+      };
+    }
+
+    const personas = listPersonas();
+    for (const persona of personas) {
+      if (!isValidEmailAddress({ value: persona.emailAddress })) {
+        return {
+          id: 'relay.persona_sender_domains_consistent',
+          status: 'fail',
+          message: `persona ${persona.personaId} has invalid emailAddress.`,
+          hint: 'Run `protege relay bootstrap` to reconcile persona email domains.',
+        };
+      }
+
+      const personaDomain = readEmailAddressDomain({ emailAddress: persona.emailAddress });
+      if (personaDomain !== gateway.mailDomain) {
+        return {
+          id: 'relay.persona_sender_domains_consistent',
+          status: 'fail',
+          message: `persona ${persona.personaId} email domain mismatch (${personaDomain} != ${gateway.mailDomain}).`,
+          hint: 'Run `protege relay bootstrap` to reconcile persona email domains.',
+        };
+      }
+    }
+
+    return {
+      id: 'relay.persona_sender_domains_consistent',
+      status: 'pass',
+      message: 'persona sender domains align with relay mail domain.',
+    };
+  } catch (error) {
+    return {
+      id: 'relay.persona_sender_domains_consistent',
+      status: 'fail',
+      message: (error as Error).message,
+      hint: 'Fix config/gateway.json and persona metadata.',
+    };
+  }
 }
 
 /**

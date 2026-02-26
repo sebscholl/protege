@@ -84,6 +84,7 @@ protege persona delete <persona_id>
 ```bash
 protege relay bootstrap --relay-ws-url wss://relay.example.com/ws
 ```
+This command enables relay mode and reconciles persona sender domains to the configured gateway `mailDomain`.
 
 ## Chat
 
