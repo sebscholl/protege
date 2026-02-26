@@ -1,7 +1,8 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runCli, stopGatewayCommand } from '@engine/cli/index';
 import { captureStdout } from '@tests/helpers/stdout';
@@ -61,6 +62,10 @@ let shortHelpOutput = '';
 let versionOutput = '';
 let shortVersionOutput = '';
 let packageVersion = '';
+let envTempRootPath = '';
+let previousCwd = '';
+let loadedEnvValue = '';
+let preservedEnvValue = '';
 
 beforeAll(async (): Promise<void> => {
   helpOutput = await captureStdout({
@@ -93,5 +98,38 @@ describe('top-level cli flags', () => {
 
   it('prints package version for -v', () => {
     expect(shortVersionOutput.trim()).toBe(packageVersion);
+  });
+});
+
+beforeAll(async (): Promise<void> => {
+  envTempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-env-'));
+  previousCwd = process.cwd();
+  process.chdir(envTempRootPath);
+  writeFileSync(join(envTempRootPath, '.env'), [
+    'PROTEGE_ENV_LOAD_TEST=loaded-from-dotenv',
+    'PROTEGE_ENV_OVERRIDE_TEST=from-dotenv',
+  ].join('\n'), 'utf8');
+
+  delete process.env.PROTEGE_ENV_LOAD_TEST;
+  process.env.PROTEGE_ENV_OVERRIDE_TEST = 'pre-existing';
+  await runCli({ argv: ['--help'] });
+  loadedEnvValue = String(process.env.PROTEGE_ENV_LOAD_TEST ?? '');
+  preservedEnvValue = String(process.env.PROTEGE_ENV_OVERRIDE_TEST ?? '');
+});
+
+afterAll((): void => {
+  process.chdir(previousCwd);
+  rmSync(envTempRootPath, { recursive: true, force: true });
+  delete process.env.PROTEGE_ENV_LOAD_TEST;
+  delete process.env.PROTEGE_ENV_OVERRIDE_TEST;
+});
+
+describe('cli dotenv loading behavior', () => {
+  it('loads dotenv values from cwd .env file', () => {
+    expect(loadedEnvValue).toBe('loaded-from-dotenv');
+  });
+
+  it('does not override pre-existing environment values', () => {
+    expect(preservedEnvValue).toBe('pre-existing');
   });
 });

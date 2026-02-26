@@ -4,6 +4,7 @@
 - Date: 2026-02-25
 - Deciders: Protege team
 - Technical Story: Add practical file discovery primitives for autonomous local workflows.
+- Superseded In Part By: ADR-0025 (workspace-root path guardrail removed for v1 file/discovery actions)
 
 ## Context
 
@@ -25,8 +26,7 @@ The immediate objective is usefulness and reliability with minimal conceptual ov
 4. Keep behavior simple and deterministic:
    - default to workspace-root scope when no explicit path/cwd is provided
    - allow fixed-string search by default, optional regex mode
-5. Maintain minimal runtime guardrail:
-   - resolved paths must stay inside workspace root.
+5. Maintain deterministic output behavior; path policy is defined by ADR-0025 for v1.
 
 ## Consequences
 

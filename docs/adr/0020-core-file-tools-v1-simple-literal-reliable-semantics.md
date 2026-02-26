@@ -4,6 +4,7 @@
 - Date: 2026-02-25
 - Deciders: Protege team
 - Technical Story: Add practical local file manipulation primitives that match common agent harness capabilities.
+- Superseded In Part By: ADR-0025 (workspace-root path guardrail removed for v1 file/discovery actions)
 
 ## Context
 
@@ -24,8 +25,7 @@ Protege needs core local tools for practical autonomy: read files, write files, 
    - `file.read`
    - `file.write`
    - `file.edit`
-5. Keep a minimal reliability guardrail:
-   - block path traversal outside workspace root.
+5. Keep runtime behavior deterministic and literal; path policy is defined by ADR-0025 for v1.
 
 ## Consequences
 

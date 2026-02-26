@@ -14,6 +14,8 @@ import { tool as readFileTool } from '@extensions/tools/read-file/index';
 import { tool as searchTool } from '@extensions/tools/search/index';
 import { tool as sendEmailTool } from '@extensions/tools/send-email/index';
 import { tool as shellTool } from '@extensions/tools/shell/index';
+import { tool as webFetchTool } from '@extensions/tools/web-fetch/index';
+import { tool as webSearchTool } from '@extensions/tools/web-search/index';
 import { tool as writeFileTool } from '@extensions/tools/write-file/index';
 
 /**
@@ -219,6 +221,12 @@ export function readBuiltInToolDefinition(
   }
   if (args.toolName === 'send-email') {
     return sendEmailTool;
+  }
+  if (args.toolName === 'web-fetch') {
+    return webFetchTool;
+  }
+  if (args.toolName === 'web-search') {
+    return webSearchTool;
   }
 
   return undefined;

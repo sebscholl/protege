@@ -1,0 +1,19 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/search"
+  },
+  "response": {
+    "status": 401,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "error": "Unauthorized"
+    }
+  },
+  "meta": {
+    "service": "tavily",
+    "name": "search unauthorized"
+  }
+}

@@ -13,7 +13,7 @@ let writeContent = '';
 let editedContent = '';
 let editAppliedCount = -1;
 let editTextNotFoundError = '';
-let pathOutsideWorkspaceError = '';
+let outsideReadContent = '';
 
 beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-runtime-file-actions-'));
@@ -22,6 +22,7 @@ beforeAll(async (): Promise<void> => {
   mkdirSync(join(tempRootPath, 'tmp'), { recursive: true });
   writeFileSync(join(tempRootPath, 'tmp', 'read-target.txt'), 'alpha', 'utf8');
   writeFileSync(join(tempRootPath, 'tmp', 'edit-target.txt'), 'alpha beta alpha', 'utf8');
+  writeFileSync(join(tmpdir(), 'protege-outside-runtime-read.txt'), 'outside-content', 'utf8');
 
   const invoke = createGatewayRuntimeActionInvoker({
     message: {
@@ -88,16 +89,13 @@ beforeAll(async (): Promise<void> => {
     editTextNotFoundError = (error as Error).message;
   }
 
-  try {
-    await invoke({
-      action: 'file.read',
-      payload: {
-        path: '../outside.txt',
-      },
-    });
-  } catch (error) {
-    pathOutsideWorkspaceError = (error as Error).message;
-  }
+  const outsideReadResult = await invoke({
+    action: 'file.read',
+    payload: {
+      path: join(tmpdir(), 'protege-outside-runtime-read.txt'),
+    },
+  });
+  outsideReadContent = String(outsideReadResult.content ?? '');
 });
 
 afterAll((): void => {
@@ -126,7 +124,7 @@ describe('gateway runtime action invoker file actions', () => {
     expect(editTextNotFoundError.includes('could not find')).toBe(true);
   });
 
-  it('blocks file actions that resolve outside workspace root', () => {
-    expect(pathOutsideWorkspaceError.includes('outside workspace root')).toBe(true);
+  it('allows file actions outside workspace root for v1 flexibility', () => {
+    expect(outsideReadContent).toBe('outside-content');
   });
 });

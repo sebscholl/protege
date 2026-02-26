@@ -30,6 +30,7 @@ export async function runCli(
     argv: string[];
   },
 ): Promise<void> {
+  loadCliEnvFiles();
   const [area, ...rest] = args.argv;
   if (!area || area === '-h' || area === '--help' || area === 'help') {
     process.stdout.write(`${getCliUsageText()}\n`);
@@ -90,6 +91,95 @@ export async function runCli(
   }
 
   throw new Error(getCliUsageText());
+}
+
+/**
+ * Resolves supported dotenv file paths for CLI process startup.
+ */
+export function resolveCliEnvFilePaths(): string[] {
+  return [
+    join(process.cwd(), '.env'),
+    join(process.cwd(), '.env.local'),
+  ];
+}
+
+/**
+ * Loads dotenv key/value entries into process.env without overriding existing values.
+ */
+export function loadCliEnvFiles(): void {
+  const filePaths = resolveCliEnvFilePaths();
+  for (const filePath of filePaths) {
+    if (!existsSync(filePath)) {
+      continue;
+    }
+
+    const text = readFileSync(filePath, 'utf8');
+    const parsed = parseDotEnvText({
+      text,
+    });
+    for (const [key, value] of Object.entries(parsed)) {
+      if (process.env[key] !== undefined) {
+        continue;
+      }
+
+      process.env[key] = value;
+    }
+  }
+}
+
+/**
+ * Parses dotenv text content into a key/value record.
+ */
+export function parseDotEnvText(
+  args: {
+    text: string;
+  },
+): Record<string, string> {
+  const output: Record<string, string> = {};
+  for (const line of args.text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (trimmed.length === 0 || trimmed.startsWith('#')) {
+      continue;
+    }
+
+    const separatorIndex = trimmed.indexOf('=');
+    if (separatorIndex <= 0) {
+      continue;
+    }
+
+    const key = trimmed.slice(0, separatorIndex).trim();
+    if (key.length === 0) {
+      continue;
+    }
+
+    const rawValue = trimmed.slice(separatorIndex + 1).trim();
+    output[key] = stripDotEnvQuotes({
+      value: rawValue,
+    });
+  }
+
+  return output;
+}
+
+/**
+ * Strips matching single or double quotes around one dotenv value.
+ */
+export function stripDotEnvQuotes(
+  args: {
+    value: string;
+  },
+): string {
+  if (args.value.length < 2) {
+    return args.value;
+  }
+
+  const first = args.value[0];
+  const last = args.value[args.value.length - 1];
+  if ((first === '"' && last === '"') || (first === '\'' && last === '\'')) {
+    return args.value.slice(1, -1);
+  }
+
+  return args.value;
 }
 
 /**

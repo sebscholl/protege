@@ -32,5 +32,7 @@ Each tool must be implemented as:
 5. `write-file`: Creates or overwrites UTF-8 file content through `write_file`.
 6. `edit-file`: Applies literal text replacement edits through `edit_file`.
 7. `send-email`: Sends outbound email via generic runtime action invocation.
+8. `web-fetch`: Fetches one HTTP(S) URL through `web_fetch`.
+9. `web-search`: Searches the web through `web_search` using config-selected providers.
 
 Each tool lives in its own directory with `index.ts`, `config.json`, and `README.md`.

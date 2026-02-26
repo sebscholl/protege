@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/success.html"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "text/html; charset=utf-8"
+    },
+    "bodyType": "text",
+    "body": "<!doctype html><html><head><title>Fixture HTML</title><style>.x{display:none;}</style><script>window.alert('x')</script></head><body><main><h1>Hello</h1><p>Web fetch fixture page.</p></main></body></html>"
+  },
+  "meta": {
+    "service": "web",
+    "name": "fetch html success"
+  }
+}

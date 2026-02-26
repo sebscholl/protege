@@ -1,0 +1,33 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/search"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "results": [
+        {
+          "title": "Perplexity Result One",
+          "url": "https://perplexity.ai/one",
+          "snippet": "Perplexity snippet one",
+          "published_at": "2026-02-20T00:00:00Z",
+          "source": "Perplexity"
+        },
+        {
+          "title": "Perplexity Result Two",
+          "url": "https://perplexity.ai/two",
+          "snippet": "Perplexity snippet two",
+          "source": "Perplexity"
+        }
+      ]
+    }
+  },
+  "meta": {
+    "service": "perplexity",
+    "name": "search success"
+  }
+}

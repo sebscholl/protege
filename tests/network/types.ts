@@ -26,6 +26,7 @@ export type NetworkFixtureResponse = {
   status: number;
   headers?: Record<string, string>;
   body: unknown;
+  bodyType?: 'json' | 'text';
 };
 
 /**

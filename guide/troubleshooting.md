@@ -125,6 +125,20 @@ protege doctor --json
    - `gateway.alert.sent` / `scheduler.alert.sent`, or
    - explicit skip/failure events with context.
 
+## Web Search Fails with Missing Environment Variable
+
+If you see errors like:
+
+`web_search requires environment variable "<NAME>".`
+
+1. Ensure `extensions/tools/web-search/config.json` uses env variable names in `apiKeyEnv` (not raw API key values).
+2. Add keys to `.env` (or export them in your shell):
+```bash
+TAVILY_API_KEY=tvly-...
+PERPLEXITY_API_KEY=pplx-...
+```
+3. Restart the running Protege process (`gateway` and/or `chat`) so new env values are available.
+
 ## Scheduler Appears Backlogged
 
 1. Scheduler now enforces bounded concurrency.

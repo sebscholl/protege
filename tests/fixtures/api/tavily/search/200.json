@@ -1,0 +1,33 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/search"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "results": [
+        {
+          "title": "Tavily Result One",
+          "url": "https://example.com/one",
+          "content": "Snippet one",
+          "published_date": "2026-02-25T00:00:00Z",
+          "source": "Example"
+        },
+        {
+          "title": "Tavily Result Two",
+          "url": "https://example.com/two",
+          "content": "Snippet two",
+          "source": "Example"
+        }
+      ]
+    }
+  },
+  "meta": {
+    "service": "tavily",
+    "name": "search success"
+  }
+}

@@ -24,4 +24,4 @@ Searches file contents and returns structured text matches.
 ## Notes
 
 1. Results include `path`, `line`, `column`, and `preview`.
-2. Runtime blocks path traversal outside workspace root.
+2. Runtime path policy in v1 allows local-machine paths outside workspace root.

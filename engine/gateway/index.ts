@@ -671,6 +671,16 @@ export function createGatewayRuntimeActionInvoker(
         payload: runtimeArgs.payload,
       });
     }
+    if (runtimeArgs.action === 'web.fetch') {
+      return runWebFetchRuntimeAction({
+        payload: runtimeArgs.payload,
+      });
+    }
+    if (runtimeArgs.action === 'web.search') {
+      return runWebSearchRuntimeAction({
+        payload: runtimeArgs.payload,
+      });
+    }
     if (runtimeArgs.action === 'shell.exec') {
       return runShellExecRuntimeAction({
         payload: runtimeArgs.payload,
@@ -737,6 +747,7 @@ export function runReadFileRuntimeAction(
     payload: args.payload,
     fieldName: 'path',
     actionName: 'file.read',
+    enforceWorkspaceRoot: false,
   });
   const content = readFileSync(targetPath, 'utf8');
   return {
@@ -757,6 +768,7 @@ export function runWriteFileRuntimeAction(
     payload: args.payload,
     fieldName: 'path',
     actionName: 'file.write',
+    enforceWorkspaceRoot: false,
   });
   const content = readRuntimeStringValue({
     payload: args.payload,
@@ -783,6 +795,7 @@ export function runEditFileRuntimeAction(
     payload: args.payload,
     fieldName: 'path',
     actionName: 'file.edit',
+    enforceWorkspaceRoot: false,
   });
   const oldText = readRequiredRuntimeString({
     payload: args.payload,
@@ -839,6 +852,7 @@ export function runGlobRuntimeAction(
       payload: args.payload,
       fieldName: 'cwd',
       actionName: 'file.glob',
+      enforceWorkspaceRoot: false,
     });
   const maxResults = readOptionalRuntimePositiveInteger({
     payload: args.payload,
@@ -885,6 +899,7 @@ export function runSearchRuntimeAction(
       payload: args.payload,
       fieldName: 'path',
       actionName: 'file.search',
+      enforceWorkspaceRoot: false,
     });
   const isRegex = readOptionalRuntimeBoolean({
     payload: args.payload,
@@ -928,6 +943,561 @@ export function runSearchRuntimeAction(
     .slice(0, maxResults);
   return {
     matches,
+  };
+}
+
+const DEFAULT_WEB_FETCH_TIMEOUT_MS = 10000;
+const DEFAULT_WEB_FETCH_MAX_BYTES = 200000;
+const DEFAULT_WEB_FETCH_MAX_REDIRECTS = 5;
+
+/**
+ * Runs one web.fetch runtime action and returns normalized readable page content.
+ */
+export async function runWebFetchRuntimeAction(
+  args: {
+    payload: Record<string, unknown>;
+    fetchFn?: typeof fetch;
+  },
+): Promise<Record<string, unknown>> {
+  const url = readRequiredHttpRuntimeUrl({
+    payload: args.payload,
+    fieldName: 'url',
+    actionName: 'web.fetch',
+  });
+  const timeoutMs = readOptionalRuntimePositiveInteger({
+    payload: args.payload,
+    fieldName: 'timeoutMs',
+    actionName: 'web.fetch',
+  }) ?? DEFAULT_WEB_FETCH_TIMEOUT_MS;
+  const maxBytes = readOptionalRuntimePositiveInteger({
+    payload: args.payload,
+    fieldName: 'maxBytes',
+    actionName: 'web.fetch',
+  }) ?? DEFAULT_WEB_FETCH_MAX_BYTES;
+  const fetchImpl = args.fetchFn ?? fetch;
+
+  const controller = new AbortController();
+  const timeoutHandle = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    const responseWithUrl = await fetchWithRedirectLimit({
+      url,
+      signal: controller.signal,
+      fetchFn: fetchImpl,
+      maxRedirects: DEFAULT_WEB_FETCH_MAX_REDIRECTS,
+    });
+    if (!responseWithUrl.response.ok) {
+      throw new Error(`web.fetch received upstream status ${responseWithUrl.response.status}.`);
+    }
+
+    const contentType = readResponseContentType({
+      response: responseWithUrl.response,
+    });
+    if (!isSupportedTextContentType({ contentType })) {
+      throw new Error(`web.fetch does not support content-type ${contentType || 'unknown'}.`);
+    }
+
+    const body = await readResponseTextWithLimit({
+      response: responseWithUrl.response,
+      maxBytes,
+    });
+    const parsed = parseWebFetchBody({
+      contentType,
+      bodyText: body.text,
+    });
+
+    return {
+      url: responseWithUrl.url,
+      status: responseWithUrl.response.status,
+      contentType,
+      title: parsed.title,
+      text: parsed.text,
+      truncated: body.truncated,
+    };
+  } catch (error) {
+    if (isAbortError({ error })) {
+      throw new Error(`web.fetch timed out after ${timeoutMs}ms.`);
+    }
+    if (error instanceof Error) {
+      throw error;
+    }
+
+    throw new Error('web.fetch failed.');
+  } finally {
+    clearTimeout(timeoutHandle);
+  }
+}
+
+/**
+ * Represents one redirected fetch completion payload.
+ */
+export type RedirectedFetchResult = {
+  response: Response;
+  url: string;
+};
+
+/**
+ * Fetches one URL while enforcing a bounded redirect-follow policy.
+ */
+export async function fetchWithRedirectLimit(
+  args: {
+    url: string;
+    signal: AbortSignal;
+    fetchFn: typeof fetch;
+    maxRedirects: number;
+  },
+): Promise<RedirectedFetchResult> {
+  let currentUrl = args.url;
+  for (let redirectCount = 0; redirectCount <= args.maxRedirects; redirectCount += 1) {
+    const response = await args.fetchFn(currentUrl, {
+      method: 'GET',
+      redirect: 'manual',
+      signal: args.signal,
+      headers: {
+        'user-agent': 'protege-web-fetch/1.0',
+      },
+    });
+    if (!isRedirectStatus({ status: response.status })) {
+      return {
+        response,
+        url: currentUrl,
+      };
+    }
+    if (redirectCount === args.maxRedirects) {
+      throw new Error(`web.fetch exceeded redirect limit (${args.maxRedirects}).`);
+    }
+
+    const location = response.headers.get('location');
+    if (!location) {
+      throw new Error('web.fetch redirect response missing location header.');
+    }
+    currentUrl = new URL(location, currentUrl).toString();
+  }
+
+  throw new Error('web.fetch exceeded redirect limit.');
+}
+
+/**
+ * Returns true when one HTTP status code represents redirect behavior.
+ */
+export function isRedirectStatus(
+  args: {
+    status: number;
+  },
+): boolean {
+  return args.status === 301
+    || args.status === 302
+    || args.status === 303
+    || args.status === 307
+    || args.status === 308;
+}
+
+/**
+ * Reads normalized content-type metadata from one fetch response.
+ */
+export function readResponseContentType(
+  args: {
+    response: Response;
+  },
+): string {
+  const header = args.response.headers.get('content-type');
+  if (!header) {
+    return '';
+  }
+
+  return header.toLowerCase().split(';')[0]?.trim() ?? '';
+}
+
+/**
+ * Returns true when one content-type is supported for readable-text extraction.
+ */
+export function isSupportedTextContentType(
+  args: {
+    contentType: string;
+  },
+): boolean {
+  if (args.contentType.startsWith('text/')) {
+    return true;
+  }
+
+  return args.contentType === 'application/xhtml+xml'
+    || args.contentType === 'application/xml'
+    || args.contentType === 'application/json';
+}
+
+/**
+ * Reads response body text while enforcing a maximum byte budget.
+ */
+export async function readResponseTextWithLimit(
+  args: {
+    response: Response;
+    maxBytes: number;
+  },
+): Promise<{
+  text: string;
+  truncated: boolean;
+}> {
+  const fullText = await args.response.text();
+  const fullBuffer = Buffer.from(fullText, 'utf8');
+  const truncated = fullBuffer.length > args.maxBytes;
+  return {
+    text: fullBuffer.subarray(0, args.maxBytes).toString('utf8'),
+    truncated,
+  };
+}
+
+/**
+ * Parses one fetched body into normalized title + readable text fields.
+ */
+export function parseWebFetchBody(
+  args: {
+    contentType: string;
+    bodyText: string;
+  },
+): {
+  title: string | null;
+  text: string;
+} {
+  if (args.contentType === 'text/html' || args.contentType === 'application/xhtml+xml') {
+    const title = extractHtmlTitle({
+      html: args.bodyText,
+    });
+    const text = extractReadableHtmlText({
+      html: args.bodyText,
+    });
+    return {
+      title,
+      text,
+    };
+  }
+
+  return {
+    title: null,
+    text: normalizeReadableText({
+      text: args.bodyText,
+    }),
+  };
+}
+
+/**
+ * Extracts one best-effort HTML title value from a document body.
+ */
+export function extractHtmlTitle(
+  args: {
+    html: string;
+  },
+): string | null {
+  const match = args.html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  if (!match || typeof match[1] !== 'string') {
+    return null;
+  }
+
+  const title = normalizeReadableText({
+    text: decodeBasicHtmlEntities({
+      text: match[1],
+    }),
+  });
+  return title.length > 0 ? title : null;
+}
+
+/**
+ * Extracts readable text from one HTML document using lightweight tag stripping.
+ */
+export function extractReadableHtmlText(
+  args: {
+    html: string;
+  },
+): string {
+  const withoutScripts = args.html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ');
+  const withBreaks = withoutScripts
+    .replace(/<\/(p|div|section|article|li|h1|h2|h3|h4|h5|h6|br)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n');
+  const withoutTags = withBreaks.replace(/<[^>]+>/g, ' ');
+  return normalizeReadableText({
+    text: decodeBasicHtmlEntities({
+      text: withoutTags,
+    }),
+  });
+}
+
+/**
+ * Decodes a small set of common HTML entities for readable text output.
+ */
+export function decodeBasicHtmlEntities(
+  args: {
+    text: string;
+  },
+): string {
+  return args.text
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, '\'');
+}
+
+/**
+ * Normalizes whitespace/newlines for readable body and title text.
+ */
+export function normalizeReadableText(
+  args: {
+    text: string;
+  },
+): string {
+  const normalizedLines = args.text
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter((line) => line.length > 0);
+  return normalizedLines.join('\n');
+}
+
+/**
+ * Reads one required runtime URL and enforces http/https schemes.
+ */
+export function readRequiredHttpRuntimeUrl(
+  args: {
+    payload: Record<string, unknown>;
+    fieldName: string;
+    actionName: string;
+  },
+): string {
+  const raw = readRequiredRuntimeString({
+    payload: args.payload,
+    fieldName: args.fieldName,
+    actionName: args.actionName,
+  });
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error(`${args.actionName} payload.${args.fieldName} must be a valid URL.`);
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(`${args.actionName} payload.${args.fieldName} must use http or https.`);
+  }
+
+  return parsed.toString();
+}
+
+/**
+ * Returns true when an unknown error represents request abortion.
+ */
+export function isAbortError(
+  args: {
+    error: unknown;
+  },
+): boolean {
+  return args.error instanceof DOMException && args.error.name === 'AbortError';
+}
+
+/**
+ * Represents one normalized web-search result entry returned to tools.
+ */
+export type WebSearchResult = {
+  title: string;
+  url: string;
+  snippet: string;
+  publishedAt?: string;
+  source?: string;
+};
+
+/**
+ * Runs one web.search runtime action using the configured provider adapter.
+ */
+export async function runWebSearchRuntimeAction(
+  args: {
+    payload: Record<string, unknown>;
+    fetchFn?: typeof fetch;
+  },
+): Promise<Record<string, unknown>> {
+  const provider = readRequiredRuntimeString({
+    payload: args.payload,
+    fieldName: 'provider',
+    actionName: 'web.search',
+  });
+  const query = readRequiredRuntimeString({
+    payload: args.payload,
+    fieldName: 'query',
+    actionName: 'web.search',
+  });
+  const apiKey = readRequiredRuntimeString({
+    payload: args.payload,
+    fieldName: 'apiKey',
+    actionName: 'web.search',
+  });
+  const maxResults = readOptionalRuntimePositiveInteger({
+    payload: args.payload,
+    fieldName: 'maxResults',
+    actionName: 'web.search',
+  }) ?? 8;
+  const baseUrl = typeof args.payload.baseUrl === 'string' && args.payload.baseUrl.trim().length > 0
+    ? args.payload.baseUrl
+    : undefined;
+  const fetchImpl = args.fetchFn ?? fetch;
+
+  if (provider === 'tavily') {
+    return runTavilyWebSearch({
+      query,
+      maxResults,
+      apiKey,
+      baseUrl: baseUrl ?? 'https://api.tavily.com',
+      fetchFn: fetchImpl,
+    });
+  }
+  if (provider === 'perplexity') {
+    return runPerplexityWebSearch({
+      query,
+      maxResults,
+      apiKey,
+      baseUrl: baseUrl ?? 'https://api.perplexity.ai',
+      fetchFn: fetchImpl,
+    });
+  }
+
+  throw new Error(`web.search unsupported provider: ${provider}`);
+}
+
+/**
+ * Executes one Tavily-backed web search and normalizes result payload fields.
+ */
+export async function runTavilyWebSearch(
+  args: {
+    query: string;
+    maxResults: number;
+    apiKey: string;
+    baseUrl: string;
+    fetchFn: typeof fetch;
+  },
+): Promise<Record<string, unknown>> {
+  const response = await args.fetchFn(`${args.baseUrl}/search`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${args.apiKey}`,
+    },
+    body: JSON.stringify({
+      query: args.query,
+      max_results: args.maxResults,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`web.search tavily failed with status ${response.status}.`);
+  }
+
+  const payload = await response.json() as Record<string, unknown>;
+  const rawResults = Array.isArray(payload.results) ? payload.results : [];
+  const normalized = rawResults
+    .map((item) => normalizeTavilyResult({
+      value: item,
+    }))
+    .filter((item): item is WebSearchResult => item !== undefined);
+  return {
+    provider: 'tavily',
+    query: args.query,
+    results: normalized.slice(0, args.maxResults),
+    truncated: normalized.length > args.maxResults,
+    totalReturned: normalized.length,
+  };
+}
+
+/**
+ * Normalizes one Tavily response entry into shared web-search result shape.
+ */
+export function normalizeTavilyResult(
+  args: {
+    value: unknown;
+  },
+): WebSearchResult | undefined {
+  if (typeof args.value !== 'object' || args.value === null || Array.isArray(args.value)) {
+    return undefined;
+  }
+
+  const record = args.value as Record<string, unknown>;
+  if (typeof record.title !== 'string' || typeof record.url !== 'string') {
+    return undefined;
+  }
+
+  return {
+    title: record.title,
+    url: record.url,
+    snippet: typeof record.content === 'string' ? record.content : '',
+    publishedAt: typeof record.published_date === 'string' ? record.published_date : undefined,
+    source: typeof record.source === 'string' ? record.source : undefined,
+  };
+}
+
+/**
+ * Executes one Perplexity-backed web search and normalizes result payload fields.
+ */
+export async function runPerplexityWebSearch(
+  args: {
+    query: string;
+    maxResults: number;
+    apiKey: string;
+    baseUrl: string;
+    fetchFn: typeof fetch;
+  },
+): Promise<Record<string, unknown>> {
+  const response = await args.fetchFn(`${args.baseUrl}/search`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${args.apiKey}`,
+    },
+    body: JSON.stringify({
+      query: args.query,
+      max_results: args.maxResults,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`web.search perplexity failed with status ${response.status}.`);
+  }
+
+  const payload = await response.json() as Record<string, unknown>;
+  const rawResults = Array.isArray(payload.results) ? payload.results : [];
+  const normalized = rawResults
+    .map((item) => normalizePerplexityResult({
+      value: item,
+    }))
+    .filter((item): item is WebSearchResult => item !== undefined);
+  return {
+    provider: 'perplexity',
+    query: args.query,
+    results: normalized.slice(0, args.maxResults),
+    truncated: normalized.length > args.maxResults,
+    totalReturned: normalized.length,
+  };
+}
+
+/**
+ * Normalizes one Perplexity response entry into shared web-search result shape.
+ */
+export function normalizePerplexityResult(
+  args: {
+    value: unknown;
+  },
+): WebSearchResult | undefined {
+  if (typeof args.value !== 'object' || args.value === null || Array.isArray(args.value)) {
+    return undefined;
+  }
+
+  const record = args.value as Record<string, unknown>;
+  if (typeof record.title !== 'string' || typeof record.url !== 'string') {
+    return undefined;
+  }
+
+  return {
+    title: record.title,
+    url: record.url,
+    snippet: typeof record.snippet === 'string' ? record.snippet : '',
+    publishedAt: typeof record.published_at === 'string' ? record.published_at : undefined,
+    source: typeof record.source === 'string' ? record.source : undefined,
   };
 }
 
@@ -1027,6 +1597,7 @@ export async function runShellExecRuntimeAction(
       payload: args.payload,
       fieldName: 'workdir',
       actionName: 'shell.exec',
+      enforceWorkspaceRoot: true,
     });
   const executeCommand = args.executeShellCommandFn ?? executeShellCommand;
   return executeCommand({
@@ -1219,6 +1790,7 @@ export function readRequiredRuntimePath(
     payload: Record<string, unknown>;
     fieldName: string;
     actionName: string;
+    enforceWorkspaceRoot?: boolean;
   },
 ): string {
   const rawPath = readRequiredRuntimeString({
@@ -1226,10 +1798,14 @@ export function readRequiredRuntimePath(
     fieldName: args.fieldName,
     actionName: args.actionName,
   });
-  return resolveWorkspacePath({
-    inputPath: rawPath,
-    actionName: args.actionName,
-  });
+  if (args.enforceWorkspaceRoot === true) {
+    return resolveWorkspacePath({
+      inputPath: rawPath,
+      actionName: args.actionName,
+    });
+  }
+
+  return resolve(rawPath);
 }
 
 /**

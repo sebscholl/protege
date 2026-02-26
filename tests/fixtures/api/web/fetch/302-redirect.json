@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/redirect"
+  },
+  "response": {
+    "status": 302,
+    "headers": {
+      "location": "https://fixtures.local/redirect-target.txt"
+    },
+    "bodyType": "text",
+    "body": ""
+  },
+  "meta": {
+    "service": "web",
+    "name": "fetch redirect"
+  }
+}

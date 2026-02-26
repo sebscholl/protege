@@ -22,4 +22,4 @@ Creates or overwrites UTF-8 text files.
 ## Notes
 
 1. Parent directories are created when missing.
-2. Path traversal outside workspace root is blocked by runtime action policy.
+2. Runtime path policy in v1 allows local-machine paths outside workspace root.

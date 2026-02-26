@@ -24,4 +24,4 @@ Edits UTF-8 text files with literal replacement semantics.
 ## Notes
 
 1. Matching is literal in v1 (no regex).
-2. Path traversal outside workspace root is blocked by runtime action policy.
+2. Runtime path policy in v1 allows local-machine paths outside workspace root.

@@ -1,0 +1,6 @@
+{
+  "name": "web_fetch",
+  "runtimeAction": "web.fetch",
+  "version": "1.0.0",
+  "description": "Fetches HTTP(S) URLs and returns readable page content."
+}

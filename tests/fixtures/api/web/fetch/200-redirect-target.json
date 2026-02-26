@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/redirect-target.txt"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "text/plain; charset=utf-8"
+    },
+    "bodyType": "text",
+    "body": "Redirected fixture body."
+  },
+  "meta": {
+    "service": "web",
+    "name": "fetch redirect target"
+  }
+}

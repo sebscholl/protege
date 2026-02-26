@@ -145,7 +145,7 @@ Exit:
 ## 5) Milestone 4: Extensions, Scheduler, Security/Ops
 
 1. Implement trusted in-process extension loading via `extensions.json`.
-2. Ship first-party `web_search` and `web_fetch`.
+2. Ship first-party `web_fetch` first, then `web_search`.
 3. Implement scheduler responsibilities + cron + retry.
 4. Implement whitelist and recursion-depth safeguards.
 5. Implement hooks loading and event dispatch.

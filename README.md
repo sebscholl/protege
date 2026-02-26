@@ -12,7 +12,8 @@ Email-native AI agent focused on simplicity, interoperability, and self-sovereig
 
 1. Gateway, harness core loop, relay mode, and key operator commands are implemented.
 2. CLI packaging for npm distribution is in progress and functional for local smoke usage.
-3. Remaining major scope includes scheduler, more first-party tools, hooks, and full TUI chat.
+3. First-party tools include `web_fetch` and provider-agnostic `web_search` (Tavily/Perplexity adapters).
+4. Remaining major scope includes scheduler hardening, hooks, and advanced chat polish.
 
 See `docs/status.md` for milestone-level progress.
 

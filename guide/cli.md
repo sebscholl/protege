@@ -31,6 +31,15 @@ cd my-protege
 protege init
 ```
 
+## Environment Files
+
+CLI commands load environment files from the current project directory in this order:
+
+1. `.env`
+2. `.env.local`
+
+Existing exported shell variables take precedence and are not overridden by file values.
+
 ## Gateway
 
 1. Start:

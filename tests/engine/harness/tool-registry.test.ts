@@ -54,6 +54,14 @@ describe('harness tool registry', () => {
     expect(toolNames.includes('send_email')).toBe(true);
   });
 
+  it('loads web_fetch from extensions manifest', () => {
+    expect(toolNames.includes('web_fetch')).toBe(true);
+  });
+
+  it('loads web_search from extensions manifest', () => {
+    expect(toolNames.includes('web_search')).toBe(true);
+  });
+
   it('returns an empty registry when the extensions manifest is missing', () => {
     expect(missingManifestToolCount).toBe(0);
   });

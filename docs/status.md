@@ -1,6 +1,6 @@
 # Project Status
 
-Last Updated: 2026-02-25
+Last Updated: 2026-02-26
 
 This file tracks implementation progress against `docs/protege-development-sequencing-v2.md` and `docs/protege-implementation-plan-v3.md`.
 
@@ -100,6 +100,8 @@ Completed:
    - `glob`
    - `search`
    - `shell`
+   - `web_fetch`
+   - `web_search`
 3. Scheduler foundations:
    - responsibility file contract + frontmatter parser
    - file->DB index sync/reconcile flow
@@ -118,11 +120,10 @@ Completed:
 
 Remaining:
 
-1. First-party `web_search` and `web_fetch` tools.
-2. Scheduler responsibilities runtime completion (`engine/scheduler` concurrency controls and E2E coverage hardening).
-3. Security/Ops completion (whitelist, recursion controls audit, terminal-failure notification flow).
-4. Hooks runtime and dispatch (`extensions/hooks`).
-5. Scheduler hardening follow-up:
+1. Scheduler responsibilities runtime completion (`engine/scheduler` concurrency controls and E2E coverage hardening).
+2. Security/Ops completion (whitelist, recursion controls audit, terminal-failure notification flow).
+3. Hooks runtime and dispatch (`extensions/hooks`).
+4. Scheduler hardening follow-up:
    - add explicit no-overlap and global concurrency controls
    - expand gateway+scheduler E2E reliability coverage
 
@@ -135,6 +136,13 @@ Planning updates:
 5. Scheduler runtime and CLI were aligned to ADR-0018:
    - scheduler runtime now runs inside gateway process
    - scheduler CLI is control-plane sync only
+6. `web_fetch` v1 boundary frozen via ADR-0023 (URL-first, no API key, bounded readable extraction).
+7. `web_fetch` tests-first plan created: `docs/milestones/web-fetch-plan.md`.
+8. `web_fetch` runtime/tool implementation completed with fixture-backed gateway/runtime coverage.
+9. `web_search` provider-agnostic boundary frozen via ADR-0024 (config-selected adapters and normalized outputs).
+10. `web_search` tests-first plan created: `docs/milestones/web-search-plan.md`.
+11. `web_search` runtime/tool implementation completed with Tavily + Perplexity adapter coverage.
+12. File/discovery runtime actions are unsandboxed in v1 (ADR-0025), while shell `workdir` boundary remains enforced.
 
 ## ADR Coverage
 
@@ -153,3 +161,6 @@ Recent status-aligned ADRs:
 11. `docs/adr/0020-core-file-tools-v1-simple-literal-reliable-semantics.md`
 12. `docs/adr/0021-glob-and-search-tools-v1.md`
 13. `docs/adr/0022-shell-tool-v1.md`
+14. `docs/adr/0023-web-fetch-tool-v1.md`
+15. `docs/adr/0024-web-search-provider-agnostic-v1.md`
+16. `docs/adr/0025-file-and-discovery-runtime-actions-unsandboxed-v1.md`

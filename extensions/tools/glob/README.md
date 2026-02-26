@@ -23,4 +23,4 @@ Finds file paths matching one glob pattern.
 ## Notes
 
 1. Results are workspace-relative paths.
-2. Runtime blocks path traversal outside workspace root.
+2. Runtime path policy in v1 allows local-machine paths outside workspace root.

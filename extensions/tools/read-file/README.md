@@ -21,4 +21,4 @@ Reads full UTF-8 text content from a file path.
 ## Notes
 
 1. `read_file` is text-first in v1.
-2. Path traversal outside workspace root is blocked by runtime action policy.
+2. Runtime path policy in v1 allows local-machine paths outside workspace root.

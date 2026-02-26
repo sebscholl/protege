@@ -1,0 +1,14 @@
+{
+  "provider": "tavily",
+  "defaultMaxResults": 8,
+  "providers": {
+    "tavily": {
+      "apiKeyEnv": "TAVILY_API_KEY",
+      "baseUrl": "https://api.tavily.com"
+    },
+    "perplexity": {
+      "apiKeyEnv": "PERPLEXITY_API_KEY",
+      "baseUrl": "https://api.perplexity.ai"
+    }
+  }
+}

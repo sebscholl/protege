@@ -164,9 +164,17 @@ export function createHandlerFromFixture(
   const routeRegex = buildUrlRegex({ request: args.fixture.request });
   const methodHandler = getMethodHandler({ method });
 
-  const responseBody = args.fixture.response.body as JsonValue;
+  const responseBody = args.fixture.response.body;
+  const bodyType = args.fixture.response.bodyType ?? 'json';
   const handler = methodHandler(routeRegex, () => {
-    return HttpResponse.json(responseBody, {
+    if (bodyType === 'text') {
+      return new HttpResponse(String(responseBody), {
+        status: args.fixture.response.status,
+        headers: args.fixture.response.headers,
+      });
+    }
+
+    return HttpResponse.json(responseBody as JsonValue, {
       status: args.fixture.response.status,
       headers: args.fixture.response.headers,
     });

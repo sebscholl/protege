@@ -24,6 +24,9 @@ Accepted ADRs:
 20. `0020-core-file-tools-v1-simple-literal-reliable-semantics.md`
 21. `0021-glob-and-search-tools-v1.md`
 22. `0022-shell-tool-v1.md`
+23. `0023-web-fetch-tool-v1.md`
+24. `0024-web-search-provider-agnostic-v1.md`
+25. `0025-file-and-discovery-runtime-actions-unsandboxed-v1.md`
 
 Notes:
 

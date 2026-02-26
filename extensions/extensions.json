@@ -6,6 +6,8 @@
     "read-file",
     "write-file",
     "edit-file",
+    "web-fetch",
+    "web-search",
     "send-email"
   ],
   "hooks": []
