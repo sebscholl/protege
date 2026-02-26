@@ -70,7 +70,7 @@ Status: Complete
 
 ## OH4. Delivery Reliability Bugfix (Issue #7)
 
-Status: Planned
+Status: Complete
 
 ### Tasks
 

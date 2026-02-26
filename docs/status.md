@@ -166,6 +166,10 @@ Planning updates:
    - `relay bootstrap` now replaces scaffold `mailDomain: localhost` with inferred relay mail domain
    - bootstrap now reconciles persona sender emails to the relay mail domain
    - doctor now validates relay-enabled persona sender domain consistency
+20. OH4 implemented:
+   - relay now emits delivery control messages (`relay_delivery_result`) back to originating websocket sessions
+   - gateway relay clients consume delivery control messages and resolve strict runtime delivery status when available
+   - relay runtime action path now distinguishes queued-vs-sent semantics based on delivery signal capability
 
 ## ADR Coverage
 

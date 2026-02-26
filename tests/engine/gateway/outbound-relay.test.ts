@@ -3,6 +3,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import {
   chunkBuffer,
   deriveEnvelopeRecipients,
+  handleRelayDeliveryControlMessage,
+  registerRelayClientDeliverySignals,
   renderGatewayReplyMime,
   sendGatewayReplyViaRelay,
 } from '@engine/gateway/outbound';
@@ -20,6 +22,8 @@ let chunkCount = 0;
 let invalidChunkSizeThrows = false;
 let retrySucceededAfterTransientFailure = false;
 let retryAttemptCount = 0;
+let strictDeliverySignalSucceeded = false;
+let strictDeliverySignalFailureMessage = '';
 
 beforeAll(async (): Promise<void> => {
   envelopeRecipientCount = deriveEnvelopeRecipients({
@@ -145,6 +149,118 @@ beforeAll(async (): Promise<void> => {
     },
   });
   retrySucceededAfterTransientFailure = retryFrames.length > 0;
+
+  const strictClient = {
+    stop: (): void => undefined,
+    sendTextMessage: (): void => undefined,
+    sendBinaryFrame: (
+      args: {
+        frame: Buffer;
+      },
+    ): void => {
+      const parsed = parseRelayTunnelFrame({
+        payload: args.frame,
+      });
+      if (parsed?.type !== 'smtp_end') {
+        return;
+      }
+
+      setTimeout((): void => {
+        handleRelayDeliveryControlMessage({
+          relayClient: strictClient,
+          payload: {
+            type: 'relay_delivery_result',
+            streamId: parsed.streamId,
+            status: 'sent',
+          },
+        });
+      }, 0);
+    },
+    readStatus: (): { connected: boolean; authenticated: boolean; reconnectAttempt: number } => ({
+      connected: true,
+      authenticated: true,
+      reconnectAttempt: 0,
+    }),
+  };
+  registerRelayClientDeliverySignals({
+    relayClient: strictClient,
+  });
+  await sendGatewayReplyViaRelay({
+    relayClient: strictClient,
+    logger: {
+      info: (): void => undefined,
+      error: (): void => undefined,
+    },
+    request: {
+      to: [{ address: 'receiver@example.com' }],
+      from: { address: 'persona@example.com' },
+      subject: 'Relay Strict Delivery Test',
+      text: 'relay strict delivery body',
+      inReplyTo: '<inbound@example.com>',
+      references: ['<root@example.com>'],
+    },
+  });
+  strictDeliverySignalSucceeded = true;
+
+  const failingClient = {
+    stop: (): void => undefined,
+    sendTextMessage: (): void => undefined,
+    sendBinaryFrame: (
+      args: {
+        frame: Buffer;
+      },
+    ): void => {
+      const parsed = parseRelayTunnelFrame({
+        payload: args.frame,
+      });
+      if (parsed?.type !== 'smtp_end') {
+        return;
+      }
+
+      setTimeout((): void => {
+        handleRelayDeliveryControlMessage({
+          relayClient: failingClient,
+          payload: {
+            type: 'relay_delivery_result',
+            streamId: parsed.streamId,
+            status: 'failed',
+            error: 'mx_rejected',
+          },
+        });
+      }, 0);
+    },
+    readStatus: (): { connected: boolean; authenticated: boolean; reconnectAttempt: number } => ({
+      connected: true,
+      authenticated: true,
+      reconnectAttempt: 0,
+    }),
+  };
+  registerRelayClientDeliverySignals({
+    relayClient: failingClient,
+  });
+  try {
+    await sendGatewayReplyViaRelay({
+      relayClient: failingClient,
+      logger: {
+        info: (): void => undefined,
+        error: (): void => undefined,
+      },
+      request: {
+        to: [{ address: 'receiver@example.com' }],
+        from: { address: 'persona@example.com' },
+        subject: 'Relay Strict Delivery Failure Test',
+        text: 'relay strict delivery failure body',
+        inReplyTo: '<inbound@example.com>',
+        references: ['<root@example.com>'],
+      },
+      retryPolicy: {
+        maxAttempts: 1,
+        baseDelayMs: 1,
+      },
+    });
+  } catch (error) {
+    strictDeliverySignalFailureMessage = (error as Error).message;
+  }
 });
 
 describe('gateway outbound relay helpers', () => {
@@ -194,5 +310,13 @@ describe('gateway outbound relay helpers', () => {
 
   it('attempts relay frame sends multiple times when retry policy allows', () => {
     expect(retryAttemptCount > 1).toBe(true);
+  });
+
+  it('supports strict relay delivery signaling when control messages are registered', () => {
+    expect(strictDeliverySignalSucceeded).toBe(true);
+  });
+
+  it('fails strict relay sends when delivery signal reports failed', () => {
+    expect(strictDeliverySignalFailureMessage.includes('mx_rejected')).toBe(true);
   });
 });

@@ -122,6 +122,29 @@ export function readRelaySessionByPublicKey(
 }
 
 /**
+ * Returns one active relay session by socket id.
+ */
+export function readRelaySessionBySocketId(
+  args: {
+    registry: RelaySessionRegistry;
+    socketId: string;
+  },
+): RelaySession | undefined {
+  const identity = args.registry.sessionIdentityBySocketId.get(args.socketId);
+  if (!identity) {
+    return undefined;
+  }
+
+  if (identity.sessionRole === 'outbound') {
+    return args.registry.outboundSessionsByPublicKey
+      .get(identity.publicKeyBase32)
+      ?.get(args.socketId);
+  }
+
+  return args.registry.inboundSessionsByPublicKey.get(identity.publicKeyBase32);
+}
+
+/**
  * Removes one relay session by socket id and clears reverse index entries.
  */
 export function removeRelaySessionBySocketId(

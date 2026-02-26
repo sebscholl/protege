@@ -15,6 +15,7 @@ import {
   createRelayOutboundTunnelState,
   sendRelayOutboundMime,
 } from '@relay/src/outbound';
+import { readRelaySessionBySocketId } from '@relay/src/session-registry';
 import { startRelaySmtpServer, stopRelaySmtpServer } from '@relay/src/smtp-server';
 import { createRelaySessionRegistry } from '@relay/src/session-registry';
 import { createRelayStore } from '@relay/src/storage';
@@ -250,6 +251,16 @@ export async function startRelayServer(
           });
         },
       }).then((deliveryInfo): void => {
+        sendRelayDeliveryControlMessage({
+          runtimeState,
+          socketId: frameArgs.socketId,
+          payload: {
+            type: 'relay_delivery_result',
+            streamId: frameArgs.frame.streamId,
+            status: 'sent',
+            messageId: deliveryInfo.messageId,
+          },
+        });
         args.callbacks?.onOutboundSent?.({
           streamKey: result.completed?.streamKey ?? frameArgs.frame.streamId,
           mailFrom: result.completed?.mailFrom ?? '',
@@ -260,6 +271,16 @@ export async function startRelayServer(
           publicKeyBase32: frameArgs.publicKeyBase32,
         });
       }).catch((error: Error): void => {
+        sendRelayDeliveryControlMessage({
+          runtimeState,
+          socketId: frameArgs.socketId,
+          payload: {
+            type: 'relay_delivery_result',
+            streamId: frameArgs.frame.streamId,
+            status: 'failed',
+            error: error.message,
+          },
+        });
         args.callbacks?.onOutboundFailed?.({
           streamKey: result.completed?.streamKey ?? frameArgs.frame.streamId,
           mailFrom: result.completed?.mailFrom ?? '',
@@ -293,6 +314,23 @@ export async function startRelayServer(
     smtpServer,
     baseUrl: `http://${addressInfo.address}:${addressInfo.port}`,
   };
+}
+
+/**
+ * Sends one control payload back to the originating websocket session when present.
+ */
+export function sendRelayDeliveryControlMessage(
+  args: {
+    runtimeState: RelayRuntimeState;
+    socketId: string;
+    payload: Record<string, unknown>;
+  },
+): void {
+  const session = readRelaySessionBySocketId({
+    registry: args.runtimeState.sessionRegistry,
+    socketId: args.socketId,
+  });
+  session?.socket.send(JSON.stringify(args.payload));
 }
 
 /**

@@ -12,7 +12,12 @@ import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 
 import { handleInboundData, startInboundServer } from '@engine/gateway/inbound';
-import { sendGatewayReply, sendGatewayReplyViaRelay } from '@engine/gateway/outbound';
+import {
+  handleRelayDeliveryControlMessage,
+  registerRelayClientDeliverySignals,
+  sendGatewayReply,
+  sendGatewayReplyViaRelay,
+} from '@engine/gateway/outbound';
 import { applyRelayTunnelFrame, createRelayTunnelAssemblyState } from '@engine/gateway/relay-tunnel';
 import { startRelayClient } from '@engine/gateway/relay-client';
 import type { RelayClientController } from '@engine/gateway/relay-client';
@@ -443,8 +448,15 @@ export function startGatewayRelayClients(
                 : null,
             },
           });
+          handleRelayDeliveryControlMessage({
+            relayClient: controller,
+            payload: controlArgs.payload,
+          });
         },
       },
+    });
+    registerRelayClientDeliverySignals({
+      relayClient: controller,
     });
     relayClientsByPersonaId.set(persona.personaId, controller);
   }

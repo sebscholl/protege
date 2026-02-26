@@ -155,8 +155,18 @@ export async function sendGatewayReplyViaRelay(
       const envelopeRecipients = deriveEnvelopeRecipients({
         request: args.request,
       });
+      const shouldAwaitDeliverySignals = isRelayClientDeliverySignalsEnabled({
+        relayClient: args.relayClient,
+      });
+      const deliveryWaiters: Array<Promise<RelayDeliverySignal>> = [];
       for (const recipientAddress of envelopeRecipients) {
         const streamId = randomUUID();
+        if (shouldAwaitDeliverySignals) {
+          deliveryWaiters.push(waitForRelayDeliverySignal({
+            relayClient: args.relayClient,
+            streamId,
+          }));
+        }
         args.relayClient.sendBinaryFrame({
           frame: createRelaySmtpStartFrame({
             streamId,
@@ -181,9 +191,18 @@ export async function sendGatewayReplyViaRelay(
           }),
         });
       }
+      if (shouldAwaitDeliverySignals) {
+        const signals = await Promise.all(deliveryWaiters);
+        const failedSignal = signals.find((signal) => signal.status === 'failed');
+        if (failedSignal) {
+          throw new Error(failedSignal.errorMessage ?? 'Relay outbound delivery failed.');
+        }
+      }
 
       args.logger.info({
-        event: 'gateway.outbound.sent_via_relay',
+        event: shouldAwaitDeliverySignals
+          ? 'gateway.outbound.sent_via_relay'
+          : 'gateway.outbound.queued_via_relay',
         context: {
           correlationId: args.correlationId ?? null,
           attempt,
@@ -216,6 +235,105 @@ export async function sendGatewayReplyViaRelay(
   }
 
   throw new Error('Relay outbound send exhausted retry loop without completion.');
+}
+
+type RelayDeliverySignal = {
+  streamId: string;
+  status: 'sent' | 'failed';
+  errorMessage?: string;
+};
+
+const RELAY_DELIVERY_SIGNAL_TIMEOUT_MS = 20_000;
+const relayClientsWithDeliverySignals = new WeakSet<RelayClientController>();
+const relayPendingSignalsByClient = new WeakMap<
+  RelayClientController,
+  Map<string, {
+    resolve: (signal: RelayDeliverySignal) => void;
+    reject: (error: Error) => void;
+    timeout: ReturnType<typeof setTimeout>;
+  }>
+>();
+
+/**
+ * Marks one relay client as delivery-signal capable for strict send completion semantics.
+ */
+export function registerRelayClientDeliverySignals(
+  args: {
+    relayClient: RelayClientController;
+  },
+): void {
+  relayClientsWithDeliverySignals.add(args.relayClient);
+}
+
+/**
+ * Handles one relay delivery control message and resolves pending send waiters.
+ */
+export function handleRelayDeliveryControlMessage(
+  args: {
+    relayClient: RelayClientController;
+    payload: Record<string, unknown>;
+  },
+): void {
+  if (args.payload.type !== 'relay_delivery_result') {
+    return;
+  }
+
+  const streamId = typeof args.payload.streamId === 'string' ? args.payload.streamId : undefined;
+  const status = args.payload.status === 'sent' || args.payload.status === 'failed'
+    ? args.payload.status
+    : undefined;
+  if (!streamId || !status) {
+    return;
+  }
+
+  const waiters = relayPendingSignalsByClient.get(args.relayClient);
+  const waiter = waiters?.get(streamId);
+  if (!waiter) {
+    return;
+  }
+
+  clearTimeout(waiter.timeout);
+  waiters?.delete(streamId);
+  waiter.resolve({
+    streamId,
+    status,
+    errorMessage: typeof args.payload.error === 'string' ? args.payload.error : undefined,
+  });
+}
+
+/**
+ * Returns true when one relay client is configured to provide delivery control signals.
+ */
+export function isRelayClientDeliverySignalsEnabled(
+  args: {
+    relayClient: RelayClientController;
+  },
+): boolean {
+  return relayClientsWithDeliverySignals.has(args.relayClient);
+}
+
+/**
+ * Waits for one relay delivery signal for a specific stream id.
+ */
+export function waitForRelayDeliverySignal(
+  args: {
+    relayClient: RelayClientController;
+    streamId: string;
+  },
+): Promise<RelayDeliverySignal> {
+  const waiters = relayPendingSignalsByClient.get(args.relayClient) ?? new Map();
+  relayPendingSignalsByClient.set(args.relayClient, waiters);
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      waiters.delete(args.streamId);
+      reject(new Error(`Timed out waiting for relay delivery signal for stream ${args.streamId}.`));
+    }, RELAY_DELIVERY_SIGNAL_TIMEOUT_MS);
+    waiters.set(args.streamId, {
+      resolve,
+      reject,
+      timeout,
+    });
+  });
 }
 
 /**
