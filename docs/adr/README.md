@@ -30,6 +30,7 @@ Accepted ADRs:
 26. `0026-tool-config-manifest-deep-merge.md`
 27. `0027-secrets-env-and-single-config-surface.md`
 28. `0028-init-wizard-guided-onboarding.md`
+29. `0029-bounded-tool-failure-recovery-loop.md`
 
 Notes:
 

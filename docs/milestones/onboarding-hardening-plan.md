@@ -15,6 +15,7 @@ Scope: Resolve first-run setup friction and stabilize defaults, secrets, tool co
 1. `docs/adr/0026-tool-config-manifest-deep-merge.md`
 2. `docs/adr/0027-secrets-env-and-single-config-surface.md`
 3. `docs/adr/0028-init-wizard-guided-onboarding.md`
+4. `docs/adr/0029-bounded-tool-failure-recovery-loop.md`
 
 ## OH1. Tool Config Surface Unification (Issue #5 + extension pattern)
 
@@ -101,7 +102,7 @@ Status: Complete
 
 ## OH6. Tool-Failure Recovery Design (Issue #9, design first)
 
-Status: Planned
+Status: Complete
 
 ### Tasks
 

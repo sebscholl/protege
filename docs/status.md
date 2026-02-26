@@ -174,6 +174,9 @@ Planning updates:
    - `send_email` now supports attachment descriptors (`path`, optional `filename`, optional `contentType`)
    - gateway `email.send` payload translation validates and forwards attachment descriptors to outbound requests
    - SMTP and relay MIME rendering paths now include outbound attachments
+22. OH6 design completed:
+   - bounded tool-failure recovery loop policy frozen via ADR-0029
+   - recovery budget and stop conditions are now explicitly defined before implementation
 
 ## ADR Coverage
 
@@ -198,3 +201,4 @@ Recent status-aligned ADRs:
 17. `docs/adr/0026-tool-config-manifest-deep-merge.md`
 18. `docs/adr/0027-secrets-env-and-single-config-surface.md`
 19. `docs/adr/0028-init-wizard-guided-onboarding.md`
+20. `docs/adr/0029-bounded-tool-failure-recovery-loop.md`
