@@ -9,10 +9,12 @@ import { readGatewayRuntimeConfig } from '@engine/gateway/index';
 let tempRootPath = '';
 let validConfigMode = '';
 let validConfigRelayEnabled = false;
+let validConfigAttachmentMaxBytes = -1;
 let missingMailDomainThrows = false;
 let invalidRelayUrlThrows = false;
 let invalidRelayDelayThrows = false;
 let relayWithLocalhostMailDomainThrows = false;
+let invalidAttachmentLimitThrows = false;
 
 beforeAll((): void => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-gateway-config-'));
@@ -24,6 +26,11 @@ beforeAll((): void => {
     host: '127.0.0.1',
     port: 2525,
     mailDomain: 'mail.protege.bot',
+    attachmentLimits: {
+      maxAttachmentBytes: 10485760,
+      maxAttachmentsPerMessage: 10,
+      maxTotalAttachmentBytes: 26214400,
+    },
     relay: {
       enabled: true,
       relayWsUrl: 'ws://127.0.0.1:8080/ws',
@@ -37,6 +44,7 @@ beforeAll((): void => {
   });
   validConfigMode = validConfig.mode;
   validConfigRelayEnabled = validConfig.relay?.enabled === true;
+  validConfigAttachmentMaxBytes = validConfig.attachmentLimits?.maxAttachmentBytes ?? -1;
 
   const missingMailDomainPath = join(tempRootPath, 'config', 'gateway-missing-mail-domain.json');
   writeFileSync(missingMailDomainPath, JSON.stringify({
@@ -117,6 +125,24 @@ beforeAll((): void => {
   } catch {
     relayWithLocalhostMailDomainThrows = true;
   }
+
+  const invalidAttachmentLimitPath = join(tempRootPath, 'config', 'gateway-invalid-attachment-limit.json');
+  writeFileSync(invalidAttachmentLimitPath, JSON.stringify({
+    mode: 'dev',
+    host: '127.0.0.1',
+    port: 2525,
+    mailDomain: 'mail.protege.bot',
+    attachmentLimits: {
+      maxAttachmentBytes: 0,
+    },
+  }));
+  try {
+    readGatewayRuntimeConfig({
+      configPath: invalidAttachmentLimitPath,
+    });
+  } catch {
+    invalidAttachmentLimitThrows = true;
+  }
 });
 
 afterAll((): void => {
@@ -130,6 +156,10 @@ describe('gateway runtime config validation', () => {
 
   it('keeps relay enabled when valid relay config is provided', () => {
     expect(validConfigRelayEnabled).toBe(true);
+  });
+
+  it('loads attachment limits when provided in gateway config', () => {
+    expect(validConfigAttachmentMaxBytes).toBe(10485760);
   });
 
   it('fails fast when mail domain is missing', () => {
@@ -146,5 +176,9 @@ describe('gateway runtime config validation', () => {
 
   it('fails fast when relay is enabled with localhost mail domain', () => {
     expect(relayWithLocalhostMailDomainThrows).toBe(true);
+  });
+
+  it('fails fast when attachment limit fields are not positive integers', () => {
+    expect(invalidAttachmentLimitThrows).toBe(true);
   });
 });

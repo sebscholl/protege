@@ -9,31 +9,119 @@ Includes model/provider settings and prompts. It should not contain runtime-gene
 Current top-level config files:
 
 1. `gateway.json` for SMTP gateway runtime behavior.
-2. `gateway.example.json` as a copy-ready gateway config template.
-3. `inference.json` for harness/provider behavior.
-4. `system.json` for global runtime behavior (for example unified log path).
+2. `inference.json` for harness/provider behavior.
+3. `system.json` for global runtime behavior (for example unified log path).
+4. `system-prompt.md` for the base system prompt text.
 
-Inference config includes provider-specific credentials:
+## `gateway.json`
 
-1. `providers.openai.api_key_env`
-2. Future providers follow the same `providers.{provider}.api_key_env` shape.
-3. Credentials are resolved from process environment variables loaded from `.env`, `.env.local`, or shell env.
+Required fields:
 
-Gateway config includes attachment safety limits:
+1. `mode`: `"dev"` or `"default"`.
+2. `host`: non-empty string.
+3. `port`: integer in `1..65535`.
+4. `mailDomain`: lowercase domain string.  
+When `relay.enabled = true`, `mailDomain` must not be `localhost`.
 
-1. `attachmentLimits.maxAttachmentBytes`
-2. `attachmentLimits.maxAttachmentsPerMessage`
-3. `attachmentLimits.maxTotalAttachmentBytes`
+Optional fields:
 
-Gateway config supports optional relay-client runtime mode:
+1. `transport` object:
+   1. `host`: non-empty string.
+   2. `port`: integer in `1..65535`.
+   3. `secure`: boolean.
+   4. `auth` object:
+      1. `user`: non-empty string.
+      2. `pass`: non-empty string.
+2. `relay` object:
+   1. `enabled`: boolean.
+   2. `relayWsUrl`: `ws://...` or `wss://...`.
+   3. `reconnectBaseDelayMs`: positive integer.
+   4. `reconnectMaxDelayMs`: positive integer.
+   5. `heartbeatTimeoutMs`: positive integer.
+3. `attachmentLimits` object:
+   1. `maxAttachmentBytes`
+   2. `maxAttachmentsPerMessage`
+   3. `maxTotalAttachmentBytes`
 
-1. `relay.enabled`
-2. `relay.relayWsUrl`
-3. `relay.reconnectBaseDelayMs`
-4. `relay.reconnectMaxDelayMs`
-5. `relay.heartbeatTimeoutMs`
+## `inference.json`
 
-Example `config/gateway.json` relay block:
+Required fields:
+
+1. `provider`: currently `openai | anthropic | gemini | grok`.
+2. `model`: provider model id string.
+
+Optional fields:
+
+1. `recursion_depth`: number (default `3`).
+2. `whitelist`: string array (default `[]`).
+3. `temperature`: number.
+4. `max_output_tokens`: number.
+5. `providers` object:
+   1. `openai`:
+      1. `api_key_env`: env var key name (recommended).
+      2. `api_key`: literal API key (legacy fallback).
+      3. `base_url`: optional override base URL.
+   2. `anthropic`:
+      1. `api_key_env`
+      2. `api_key` (legacy fallback)
+   3. `gemini`:
+      1. `api_key_env`
+      2. `api_key` (legacy fallback)
+   4. `grok`:
+      1. `api_key_env`
+      2. `api_key` (legacy fallback)
+
+Credential resolution order per provider:
+
+1. `providers.{provider}.api_key` when set.
+2. `providers.{provider}.api_key_env` resolved from process env when set.
+3. otherwise undefined (doctor/runtime will fail for selected provider).
+
+## `system.json`
+
+Global fields:
+
+1. `logs_dir_path`: string path (default `tmp/logs`).
+2. `console_log_format`: `json | pretty` (default `json` when missing).
+3. `admin_contact_email`: optional email for runtime failure alerts.
+
+`chat` fields:
+
+1. `default_display_mode`: `light | verbose` (default `light`).
+2. `poll_interval_ms`: positive integer (default `1500`).
+3. `keymap` object required keys:
+   1. `send`
+   2. `refresh`
+   3. `toggle_display_mode`
+   4. `quit`
+   5. `move_selection_up`
+   6. `move_selection_down`
+   7. `open_thread`
+   8. `back_to_inbox`
+   9. `new_local_thread`
+   10. `enter_compose_mode`
+
+`scheduler` fields:
+
+1. `poll_interval_ms`: positive integer (default `1000`).
+2. `max_global_concurrent_runs`: positive integer (default `4`).
+3. `max_per_persona_concurrent_runs`: positive integer (default `2`).
+4. `admin_contact_email`: optional scheduler-local override.
+
+## Secrets and Env
+
+`config/` is canonical non-secret config. Secrets belong in process env (`.env`, `.env.local`, or shell env).
+
+The current `.env.example` keys are:
+
+1. `OPENAI_API_KEY`
+2. `ANTHROPIC_API_KEY`
+3. `GEMINI_API_KEY`
+4. `GROK_API_KEY`
+5. `PERPLEXITY_API_KEY`
+6. `TAVILY_API_KEY`
+
+## Relay Example
 
 ```json
 {
@@ -46,32 +134,3 @@ Example `config/gateway.json` relay block:
   }
 }
 ```
-
-Relay field behavior:
-
-1. `relay.enabled`: Starts one relay websocket client per local persona.
-2. `relay.relayWsUrl`: Relay websocket endpoint used for auth and SMTP tunneling.
-3. `relay.reconnectBaseDelayMs`: Initial reconnect delay after disconnect.
-4. `relay.reconnectMaxDelayMs`: Maximum reconnect delay cap during exponential backoff.
-5. `relay.heartbeatTimeoutMs`: Idle timeout before forcing reconnect if relay traffic stops.
-
-System config includes unified runtime logging path:
-
-1. `logs_dir_path`
-2. `console_log_format` (`json` or `pretty`)
-
-System config also includes chat session defaults:
-
-1. `chat.default_display_mode` (`light` or `verbose`)
-2. `chat.poll_interval_ms` (positive integer)
-3. `chat.keymap` required bindings:
-   - `send`
-   - `refresh`
-   - `toggle_display_mode`
-   - `quit`
-   - `move_selection_up`
-   - `move_selection_down`
-   - `open_thread`
-   - `back_to_inbox`
-   - `new_local_thread`
-   - `enter_compose_mode`

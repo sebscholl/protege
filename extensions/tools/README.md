@@ -35,3 +35,26 @@ Each tool must be implemented as:
 9. `web-search`: Searches the web through `web_search` using config-selected providers.
 
 Each tool lives in its own directory with `index.ts` and `README.md`. Optional static assets/config files are allowed when needed, but config defaults should live in tool code and overrides belong in `extensions/extensions.json`.
+
+## Tool Config Options
+
+Tool-specific configuration options are documented in each tool README.
+
+Current configurable first-party tool:
+
+1. `web-search`:
+   1. `provider`: `perplexity | tavily`
+   2. `defaultMaxResults`: positive integer
+   3. `providers.{name}.apiKeyEnv`: env var key
+   4. `providers.{name}.baseUrl`: optional base URL override
+
+Tools with no runtime config options (v1):
+
+1. `shell`
+2. `glob`
+3. `search`
+4. `read-file`
+5. `write-file`
+6. `edit-file`
+7. `send-email`
+8. `web-fetch`

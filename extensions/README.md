@@ -5,7 +5,32 @@ Extension Surface: Yes
 This directory contains installable capability extensions for Protege.
 
 It includes tools and hooks loaded through `extensions/extensions.json`.
-Tool entries may be either a string (`\"tool-name\"`) or an object (`{ \"name\": \"tool-name\", \"config\": { ... } }`).
+
+## `extensions/extensions.json` schema
+
+Top-level fields:
+
+1. `tools`: array of tool entries.
+2. `hooks`: array of hook names.
+
+Tool entry forms:
+
+1. String entry:
+   1. `"web-search"`
+2. Object entry:
+   1. `name`: non-empty tool directory name.
+   2. `enabled`: optional boolean (`false` disables entry).
+   3. `config`: optional object deep-merged with the tool default config.
+
+Tool config merge semantics:
+
+1. objects: recursive merge
+2. scalars: override
+3. arrays: replace
+
+Current hook entry form:
+
+1. String entry with hook directory name.
 
 ## Extension Isolation Rules
 

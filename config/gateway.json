@@ -1,16 +1,21 @@
 {
-  "mode": "default",
+  "mode": "dev",
   "host": "127.0.0.1",
   "port": 2525,
+  "transport": {
+    "host": "127.0.0.1",
+    "port": 1025,
+    "secure": false
+  },
   "attachmentLimits": {
     "maxAttachmentBytes": 10485760,
     "maxAttachmentsPerMessage": 10,
     "maxTotalAttachmentBytes": 26214400
   },
-  "mailDomain": "mail.protege.bot",
+  "mailDomain": "localhost",
   "relay": {
-    "enabled": true,
-    "relayWsUrl": "wss://relay.protege.bot/ws",
+    "enabled": false,
+    "relayWsUrl": "ws://127.0.0.1:8080/ws",
     "reconnectBaseDelayMs": 250,
     "reconnectMaxDelayMs": 8000,
     "heartbeatTimeoutMs": 30000

@@ -2,7 +2,7 @@ import type { GatewayRuntimeConfig } from '@engine/gateway/index';
 import type { PersonaMetadata } from '@engine/shared/personas';
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 
 import { resolveDefaultGatewayConfigPath } from '@engine/gateway/index';
 import { readPositiveIntOrFallback } from '@engine/shared/number';
@@ -225,11 +225,4 @@ export function synchronizeBootstrapPersonaMailboxAddress(
     personaId: args.persona.personaId,
     emailAddress: `${args.persona.emailLocalPart}@${args.mailDomain}`,
   });
-}
-
-/**
- * Resolves the default gateway example config path.
- */
-export function resolveDefaultGatewayExampleConfigPath(): string {
-  return join(process.cwd(), 'config', 'gateway.example.json');
 }

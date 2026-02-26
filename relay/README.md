@@ -13,7 +13,8 @@ This directory contains the open-source implementation of the optional relay ser
 
 ## Local Run
 
-1. Copy `relay/config.example.json` to `relay/config.json` and edit as needed.
+1. Optionally create `relay/config.json` and edit as needed.  
+If omitted, relay uses built-in defaults (`127.0.0.1:8080`, SMTP `127.0.0.1:2526`).
 2. Run `npm run relay:start`.
 3. Run `npm run relay:test:ws-auth` to perform a manual websocket challenge-response auth check.
 4. Run `npm run relay:listen:ws-inbox` in a second terminal and keep it open.

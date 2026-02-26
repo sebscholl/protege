@@ -96,12 +96,12 @@ export function resolvePackageRootDirPath(): string {
   for (let depth = 0; depth < 6; depth += 1) {
     const candidatePackagePath = join(currentDirPath, 'package.json');
     const candidateEnvExamplePath = join(currentDirPath, '.env.example');
-    const candidateGatewayExamplePath = join(currentDirPath, 'config', 'gateway.example.json');
+    const candidateGatewayConfigPath = join(currentDirPath, 'config', 'gateway.json');
     const candidateExtensionsManifestPath = join(currentDirPath, 'extensions', 'extensions.json');
     if (
       existsSync(candidatePackagePath)
       && existsSync(candidateEnvExamplePath)
-      && existsSync(candidateGatewayExamplePath)
+      && existsSync(candidateGatewayConfigPath)
       && existsSync(candidateExtensionsManifestPath)
     ) {
       return currentDirPath;
@@ -134,7 +134,7 @@ export function buildInitCopyMappings(
       targetRelativePath: '.env.example',
     },
     {
-      sourceFilePath: join(args.packageRootDirPath, 'config', 'gateway.example.json'),
+      sourceFilePath: join(args.packageRootDirPath, 'config', 'gateway.json'),
       targetRelativePath: 'config/gateway.json',
     },
     {

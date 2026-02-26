@@ -2327,6 +2327,10 @@ export function validateGatewayRuntimeConfig(
     value: parsed.transport,
     configPath: args.configPath,
   });
+  const attachmentLimits = validateGatewayAttachmentLimits({
+    value: parsed.attachmentLimits,
+    configPath: args.configPath,
+  });
   const relay = validateGatewayRelayConfig({
     value: parsed.relay,
     configPath: args.configPath,
@@ -2340,6 +2344,7 @@ export function validateGatewayRuntimeConfig(
     host,
     port,
     mailDomain,
+    attachmentLimits,
     transport,
     relay,
   };
@@ -2427,6 +2432,51 @@ export function validateGatewayTransportConfig(
     secure,
     auth,
   };
+}
+
+/**
+ * Validates optional gateway attachment limit config section.
+ */
+export function validateGatewayAttachmentLimits(
+  args: {
+    value: unknown;
+    configPath: string;
+  },
+): Partial<AttachmentLimits> | undefined {
+  if (args.value === undefined) {
+    return undefined;
+  }
+  if (!isRecord({
+    value: args.value,
+  })) {
+    throw new Error(`Gateway config at ${args.configPath} field attachmentLimits must be an object.`);
+  }
+
+  const limits = args.value as Record<string, unknown>;
+  const output: Partial<AttachmentLimits> = {};
+  if (limits.maxAttachmentBytes !== undefined) {
+    output.maxAttachmentBytes = readPositiveInteger({
+      value: limits.maxAttachmentBytes,
+      fieldPath: 'attachmentLimits.maxAttachmentBytes',
+      configPath: args.configPath,
+    });
+  }
+  if (limits.maxAttachmentsPerMessage !== undefined) {
+    output.maxAttachmentsPerMessage = readPositiveInteger({
+      value: limits.maxAttachmentsPerMessage,
+      fieldPath: 'attachmentLimits.maxAttachmentsPerMessage',
+      configPath: args.configPath,
+    });
+  }
+  if (limits.maxTotalAttachmentBytes !== undefined) {
+    output.maxTotalAttachmentBytes = readPositiveInteger({
+      value: limits.maxTotalAttachmentBytes,
+      fieldPath: 'attachmentLimits.maxTotalAttachmentBytes',
+      configPath: args.configPath,
+    });
+  }
+
+  return output;
 }
 
 /**
