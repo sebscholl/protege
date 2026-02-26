@@ -170,6 +170,10 @@ Planning updates:
    - relay now emits delivery control messages (`relay_delivery_result`) back to originating websocket sessions
    - gateway relay clients consume delivery control messages and resolve strict runtime delivery status when available
    - relay runtime action path now distinguishes queued-vs-sent semantics based on delivery signal capability
+21. OH5 implemented:
+   - `send_email` now supports attachment descriptors (`path`, optional `filename`, optional `contentType`)
+   - gateway `email.send` payload translation validates and forwards attachment descriptors to outbound requests
+   - SMTP and relay MIME rendering paths now include outbound attachments
 
 ## ADR Coverage
 

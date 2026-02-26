@@ -85,7 +85,7 @@ Status: Complete
 
 ## OH5. `send_email` Attachments Support (Issue #8)
 
-Status: Planned
+Status: Complete
 
 ### Tasks
 

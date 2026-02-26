@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
+import { join } from 'node:path';
 
 import {
   chunkBuffer,
@@ -24,6 +25,7 @@ let retrySucceededAfterTransientFailure = false;
 let retryAttemptCount = 0;
 let strictDeliverySignalSucceeded = false;
 let strictDeliverySignalFailureMessage = '';
+let relayMimeContainsAttachmentFilename = false;
 
 beforeAll(async (): Promise<void> => {
   envelopeRecipientCount = deriveEnvelopeRecipients({
@@ -50,6 +52,27 @@ beforeAll(async (): Promise<void> => {
     },
   });
   renderedMimeContainsSubject = rendered.message.toString('utf8').includes('Subject: Relay Render Test');
+
+  const renderedWithAttachment = await renderGatewayReplyMime({
+    request: {
+      to: [{ address: 'receiver@example.com' }],
+      from: { address: 'persona@example.com' },
+      subject: 'Relay Render Attachment Test',
+      text: 'relay render attachment body',
+      inReplyTo: '<inbound@example.com>',
+      references: ['<root@example.com>'],
+      attachments: [
+        {
+          path: join(process.cwd(), 'tests', 'fixtures', 'email', 'email-plain.eml'),
+          filename: 'relay-fixture.eml',
+          contentType: 'message/rfc822',
+        },
+      ],
+    },
+  });
+  relayMimeContainsAttachmentFilename = renderedWithAttachment.message
+    .toString('utf8')
+    .includes('filename=relay-fixture.eml');
 
   const sentFrames: Buffer[] = [];
   const result = await sendGatewayReplyViaRelay({
@@ -270,6 +293,10 @@ describe('gateway outbound relay helpers', () => {
 
   it('renders MIME output with subject for relay forwarding', () => {
     expect(renderedMimeContainsSubject).toBe(true);
+  });
+
+  it('renders MIME output with attachment metadata for relay forwarding', () => {
+    expect(relayMimeContainsAttachmentFilename).toBe(true);
   });
 
   it('sends relay tunnel frames for outbound relay delivery', () => {
