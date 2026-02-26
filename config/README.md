@@ -12,14 +12,12 @@ Current top-level config files:
 2. `gateway.example.json` as a copy-ready gateway config template.
 3. `inference.json` for harness/provider behavior.
 4. `system.json` for global runtime behavior (for example unified log path).
-5. Optional `inference.local.json` for untracked local overrides merged on top of `inference.json`.
 
 Inference config includes provider-specific credentials:
 
-1. `providers.openai.api_key`
-2. Future providers follow the same `providers.{provider}.api_key` shape.
-3. Local credential overrides should be placed in `inference.local.json`.
-4. `inference.local.example.json` provides the expected override shape.
+1. `providers.openai.api_key_env`
+2. Future providers follow the same `providers.{provider}.api_key_env` shape.
+3. Credentials are resolved from process environment variables loaded from `.env`, `.env.local`, or shell env.
 
 Gateway config includes attachment safety limits:
 

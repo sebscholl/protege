@@ -100,7 +100,7 @@ protege/
 
 Extensions (tools and hooks) are self-contained directories. To enable or disable extensions, the user edits the `extensions/extensions.json` manifest file. This provides a single, clear control panel for all add-ons.
 
-For local machine-specific overrides (for example API credentials), optional untracked config overlay files (such as `config/inference.local.json`) can be merged on top of base config files at runtime.
+Local machine-specific secrets (for example provider API keys) should be stored in environment variables loaded from `.env`/`.env.local` or shell environment, while `config/` remains the canonical non-secret runtime configuration surface.
 
 ## 4. Gateway (Email)
 

@@ -289,7 +289,7 @@ export function checkProviderConfigPresent(): DoctorCheckResult {
       id: 'provider.config_present_for_selected_provider',
       status: 'fail',
       message: `missing credentials for selected provider ${config.provider}.`,
-      hint: 'Set provider API key in config/inference.local.json.',
+      hint: 'Set provider api_key_env in config/inference.json and ensure the env var is set.',
     };
   } catch (error) {
     return {

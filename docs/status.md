@@ -156,6 +156,12 @@ Planning updates:
    - `extensions/extensions.json` now supports object tool entries with `{ name, config }`
    - `web_search` now resolves default config in code and deep-merges manifest overrides
    - invalid tool manifest object entry shapes now fail with explicit validation errors
+18. OH2 implemented:
+   - scaffolded `config/inference.json` now uses provider `api_key_env` references
+   - scaffolded `config/system.json` now defaults `admin_contact_email` to blank
+   - `protege init` no longer scaffolds `config/inference.local.example.json`
+   - `.env.example` reduced to secret credential keys only
+   - CLI dotenv loading now applies `.env` then `.env.local`, while preserving shell-defined env values
 
 ## ADR Coverage
 

@@ -15,6 +15,9 @@ let secondSkippedCount = 0;
 let forceCreatedCount = 0;
 let gatewayConfigExists = false;
 let toolsReadmeExists = false;
+let inferenceLocalExampleExists = false;
+let initializedInferenceUsesEnv = false;
+let initializedAdminContactEmailBlank = false;
 let sentinelPreserved = false;
 
 beforeAll(async (): Promise<void> => {
@@ -33,6 +36,19 @@ beforeAll(async (): Promise<void> => {
   firstCreatedCount = firstResult.createdFiles.length;
   gatewayConfigExists = existsSync(join(projectPath, 'config', 'gateway.json'));
   toolsReadmeExists = existsSync(join(projectPath, 'extensions', 'tools', 'README.md'));
+  inferenceLocalExampleExists = existsSync(join(projectPath, 'config', 'inference.local.example.json'));
+  const inferenceJson = JSON.parse(readFileSync(join(projectPath, 'config', 'inference.json'), 'utf8')) as {
+    providers?: {
+      openai?: {
+        api_key_env?: string;
+      };
+    };
+  };
+  initializedInferenceUsesEnv = inferenceJson.providers?.openai?.api_key_env === 'OPENAI_API_KEY';
+  const systemJson = JSON.parse(readFileSync(join(projectPath, 'config', 'system.json'), 'utf8')) as {
+    admin_contact_email?: unknown;
+  };
+  initializedAdminContactEmailBlank = systemJson.admin_contact_email === '';
 
   const sentinelPath = join(projectPath, 'config', 'gateway.json');
   const sentinelValue = '{"sentinel":"keep"}\n';
@@ -74,6 +90,18 @@ describe('init cli command', () => {
 
   it('writes extensions tools directory readme scaffold into target path', () => {
     expect(toolsReadmeExists).toBe(true);
+  });
+
+  it('does not scaffold inference.local example config files', () => {
+    expect(inferenceLocalExampleExists).toBe(false);
+  });
+
+  it('scaffolds inference provider credentials as env indirection', () => {
+    expect(initializedInferenceUsesEnv).toBe(true);
+  });
+
+  it('scaffolds blank admin contact email by default', () => {
+    expect(initializedAdminContactEmailBlank).toBe(true);
   });
 
   it('skips existing files when --force is omitted', () => {

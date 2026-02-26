@@ -1,7 +1,0 @@
-{
-  "providers": {
-    "openai": {
-      "api_key": "sk-your-local-key"
-    }
-  }
-}

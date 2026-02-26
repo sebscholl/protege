@@ -14,16 +14,20 @@ export type InferenceRuntimeConfig = {
   providers: {
     openai?: {
       apiKey?: string;
+      apiKeyEnv?: string;
       baseUrl?: string;
     };
     anthropic?: {
       apiKey?: string;
+      apiKeyEnv?: string;
     };
     gemini?: {
       apiKey?: string;
+      apiKeyEnv?: string;
     };
     grok?: {
       apiKey?: string;
+      apiKeyEnv?: string;
     };
   };
   temperature?: number;
@@ -35,13 +39,6 @@ export type InferenceRuntimeConfig = {
  */
 export function resolveDefaultInferenceConfigPath(): string {
   return join(process.cwd(), 'config', 'inference.json');
-}
-
-/**
- * Resolves the default local inference override path in repository config.
- */
-export function resolveDefaultInferenceLocalConfigPath(): string {
-  return join(process.cwd(), 'config', 'inference.local.json');
 }
 
 /**
@@ -57,7 +54,6 @@ export function resolveDefaultSystemPromptPath(): string {
 export function readInferenceRuntimeConfig(
   args: {
     configPath?: string;
-    localConfigPath?: string;
   } = {},
 ): InferenceRuntimeConfig {
   const configPath = args.configPath ?? resolveDefaultInferenceConfigPath();
@@ -65,16 +61,8 @@ export function readInferenceRuntimeConfig(
     throw new Error(`Inference config not found at ${configPath}`);
   }
 
-  const localConfigPath = args.localConfigPath ?? resolveDefaultInferenceLocalConfigPath();
-  const baseConfig = readJsonRecord({
+  const parsed = readJsonRecord({
     filePath: configPath,
-  });
-  const localConfig = existsSync(localConfigPath)
-    ? readJsonRecord({ filePath: localConfigPath })
-    : undefined;
-  const parsed = mergeConfigRecords({
-    base: baseConfig,
-    overlay: localConfig,
   });
 
   if (typeof parsed.provider !== 'string' || typeof parsed.model !== 'string') {
@@ -109,45 +97,6 @@ export function readJsonRecord(
 }
 
 /**
- * Deep-merges base config with overlay config for local overrides.
- */
-export function mergeConfigRecords(
-  args: {
-    base: Record<string, unknown>;
-    overlay?: Record<string, unknown>;
-  },
-): Record<string, unknown> {
-  if (!args.overlay) {
-    return args.base;
-  }
-
-  const output: Record<string, unknown> = { ...args.base };
-  for (const [key, value] of Object.entries(args.overlay)) {
-    const baseValue = output[key];
-    if (isPlainRecordValue(baseValue) && isPlainRecordValue(value)) {
-      output[key] = mergeConfigRecords({
-        base: baseValue,
-        overlay: value,
-      });
-      continue;
-    }
-
-    output[key] = value;
-  }
-
-  return output;
-}
-
-/**
- * Returns true when value is a non-null plain object record.
- */
-export function isPlainRecordValue(
-  value: unknown,
-): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/**
  * Parses provider-specific inference settings from config json shape.
  */
 export function parseProviderSettings(
@@ -164,26 +113,71 @@ export function parseProviderSettings(
   return {
     openai: openai
       ? {
-          apiKey: readString({ value: openai.api_key }),
+          apiKey: resolveApiKey({
+            providerName: 'openai',
+            providerConfig: openai,
+          }),
+          apiKeyEnv: readString({ value: openai.api_key_env }),
           baseUrl: readString({ value: openai.base_url }),
         }
       : undefined,
     anthropic: anthropic
       ? {
-          apiKey: readString({ value: anthropic.api_key }),
+          apiKey: resolveApiKey({
+            providerName: 'anthropic',
+            providerConfig: anthropic,
+          }),
+          apiKeyEnv: readString({ value: anthropic.api_key_env }),
         }
       : undefined,
     gemini: gemini
       ? {
-          apiKey: readString({ value: gemini.api_key }),
+          apiKey: resolveApiKey({
+            providerName: 'gemini',
+            providerConfig: gemini,
+          }),
+          apiKeyEnv: readString({ value: gemini.api_key_env }),
         }
       : undefined,
     grok: grok
       ? {
-          apiKey: readString({ value: grok.api_key }),
+          apiKey: resolveApiKey({
+            providerName: 'grok',
+            providerConfig: grok,
+          }),
+          apiKeyEnv: readString({ value: grok.api_key_env }),
         }
       : undefined,
   };
+}
+
+/**
+ * Resolves one provider API key from literal config or env-key indirection.
+ */
+export function resolveApiKey(
+  args: {
+    providerName: string;
+    providerConfig: Record<string, unknown>;
+  },
+): string | undefined {
+  const directApiKey = readString({
+    value: args.providerConfig.api_key,
+  });
+  if (directApiKey) {
+    return directApiKey;
+  }
+
+  const apiKeyEnv = readString({
+    value: args.providerConfig.api_key_env,
+  });
+  if (!apiKeyEnv) {
+    return undefined;
+  }
+
+  const envValue = process.env[apiKeyEnv];
+  return typeof envValue === 'string' && envValue.trim().length > 0
+    ? envValue
+    : undefined;
 }
 
 /**

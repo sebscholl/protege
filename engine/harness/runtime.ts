@@ -622,7 +622,7 @@ export function createProviderAdapter(
   if (args.provider === 'openai') {
     const apiKey = args.inferenceConfig.providers.openai?.apiKey;
     if (!apiKey) {
-      throw new Error('Missing providers.openai.api_key in config/inference.json.');
+      throw new Error('Missing OpenAI API key. Set providers.openai.api_key_env and export that env var.');
     }
 
     return createOpenAiProviderAdapter({

@@ -37,7 +37,7 @@ Status: Complete
 
 ## OH2. Secrets and Canonical Config Cleanup (Issues #1, #2, #3, #4)
 
-Status: Planned
+Status: Complete
 
 ### Tasks
 

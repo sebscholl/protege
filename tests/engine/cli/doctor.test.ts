@@ -43,7 +43,7 @@ beforeAll(async (): Promise<void> => {
     model: 'gpt-4.1',
     providers: {
       openai: {
-        api_key: 'test-key',
+        api_key_env: 'OPENAI_API_KEY',
       },
     },
     recursion_depth: 3,
@@ -58,6 +58,7 @@ beforeAll(async (): Promise<void> => {
     console_log_format: 'json',
     admin_contact_email: 'ops@example.com',
   }, null, 2));
+  process.env.OPENAI_API_KEY = 'test-key';
   createPersona({});
 
   process.exitCode = 0;
@@ -83,7 +84,7 @@ beforeAll(async (): Promise<void> => {
     model: 'gpt-4.1',
     providers: {
       openai: {
-        api_key: '',
+        api_key_env: 'OPENAI_API_KEY_MISSING',
       },
     },
     recursion_depth: 3,
@@ -105,6 +106,7 @@ afterAll((): void => {
   process.exitCode = 0;
   process.chdir(previousCwd);
   rmSync(tempRootPath, { recursive: true, force: true });
+  delete process.env.OPENAI_API_KEY;
 });
 
 describe('doctor cli command', () => {

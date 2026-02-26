@@ -107,6 +107,7 @@ export function resolveCliEnvFilePaths(): string[] {
  * Loads dotenv key/value entries into process.env without overriding existing values.
  */
 export function loadCliEnvFiles(): void {
+  const shellDefinedKeys = new Set(Object.keys(process.env));
   const filePaths = resolveCliEnvFilePaths();
   for (const filePath of filePaths) {
     if (!existsSync(filePath)) {
@@ -118,7 +119,7 @@ export function loadCliEnvFiles(): void {
       text,
     });
     for (const [key, value] of Object.entries(parsed)) {
-      if (process.env[key] !== undefined) {
+      if (shellDefinedKeys.has(key)) {
         continue;
       }
 

@@ -66,6 +66,7 @@ let envTempRootPath = '';
 let previousCwd = '';
 let loadedEnvValue = '';
 let preservedEnvValue = '';
+let envLocalOverrideValue = '';
 
 beforeAll(async (): Promise<void> => {
   helpOutput = await captureStdout({
@@ -107,13 +108,19 @@ beforeAll(async (): Promise<void> => {
   process.chdir(envTempRootPath);
   writeFileSync(join(envTempRootPath, '.env'), [
     'PROTEGE_ENV_LOAD_TEST=loaded-from-dotenv',
-    'PROTEGE_ENV_OVERRIDE_TEST=from-dotenv',
+    'PROTEGE_ENV_LOCAL_OVERRIDE_TEST=from-dotenv',
+  ].join('\n'), 'utf8');
+  writeFileSync(join(envTempRootPath, '.env.local'), [
+    'PROTEGE_ENV_LOCAL_OVERRIDE_TEST=from-dotenv-local',
+    'PROTEGE_ENV_OVERRIDE_TEST=from-dotenv-local',
   ].join('\n'), 'utf8');
 
   delete process.env.PROTEGE_ENV_LOAD_TEST;
+  delete process.env.PROTEGE_ENV_LOCAL_OVERRIDE_TEST;
   process.env.PROTEGE_ENV_OVERRIDE_TEST = 'pre-existing';
   await runCli({ argv: ['--help'] });
   loadedEnvValue = String(process.env.PROTEGE_ENV_LOAD_TEST ?? '');
+  envLocalOverrideValue = String(process.env.PROTEGE_ENV_LOCAL_OVERRIDE_TEST ?? '');
   preservedEnvValue = String(process.env.PROTEGE_ENV_OVERRIDE_TEST ?? '');
 });
 
@@ -121,6 +128,7 @@ afterAll((): void => {
   process.chdir(previousCwd);
   rmSync(envTempRootPath, { recursive: true, force: true });
   delete process.env.PROTEGE_ENV_LOAD_TEST;
+  delete process.env.PROTEGE_ENV_LOCAL_OVERRIDE_TEST;
   delete process.env.PROTEGE_ENV_OVERRIDE_TEST;
 });
 
@@ -131,5 +139,9 @@ describe('cli dotenv loading behavior', () => {
 
   it('does not override pre-existing environment values', () => {
     expect(preservedEnvValue).toBe('pre-existing');
+  });
+
+  it('allows .env.local to override .env for non-shell variables', () => {
+    expect(envLocalOverrideValue).toBe('from-dotenv-local');
   });
 });

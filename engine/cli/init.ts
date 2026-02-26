@@ -142,10 +142,6 @@ export function buildInitCopyMappings(
       targetRelativePath: 'config/inference.json',
     },
     {
-      sourceFilePath: join(args.packageRootDirPath, 'config', 'inference.local.example.json'),
-      targetRelativePath: 'config/inference.local.example.json',
-    },
-    {
       sourceFilePath: join(args.packageRootDirPath, 'config', 'system-prompt.md'),
       targetRelativePath: 'config/system-prompt.md',
     },
