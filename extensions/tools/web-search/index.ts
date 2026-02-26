@@ -3,9 +3,6 @@ import type {
   HarnessToolExecutionContext,
 } from '@engine/harness/tool-contract';
 
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 /**
  * Represents the supported web search provider names in v1.
  */
@@ -42,42 +39,35 @@ export type WebSearchToolInput = {
 export class WebSearchToolInputError extends Error {}
 
 /**
- * Resolves the default configuration path for the web-search extension.
+ * Default web_search configuration used when no manifest override is provided.
  */
-export function resolveDefaultWebSearchToolConfigPath(): string {
-  return join(process.cwd(), 'extensions', 'tools', 'web-search', 'config.json');
-}
+export const defaultWebSearchToolConfig: WebSearchToolConfig = {
+  provider: 'perplexity',
+  defaultMaxResults: 5,
+  providers: {
+    perplexity: {
+      apiKeyEnv: 'PERPLEXITY_API_KEY',
+      baseUrl: 'https://api.perplexity.ai',
+    },
+    tavily: {
+      apiKeyEnv: 'TAVILY_API_KEY',
+      baseUrl: 'https://api.tavily.com',
+    },
+  },
+};
 
 /**
- * Reads web-search extension configuration from disk.
- */
-export function readWebSearchToolConfig(
-  args: {
-    configPath?: string;
-  } = {},
-): WebSearchToolConfig {
-  const configPath = args.configPath ?? resolveDefaultWebSearchToolConfigPath();
-  if (!existsSync(configPath)) {
-    throw new WebSearchToolInputError(`web_search config not found at ${configPath}.`);
-  }
-
-  const parsed = JSON.parse(readFileSync(configPath, 'utf8')) as unknown;
-  return normalizeWebSearchToolConfig({
-    value: parsed,
-  });
-}
-
-/**
- * Creates one web_search tool definition with config-driven provider selection.
+ * Creates one web_search tool definition with default and override config support.
  */
 export function createWebSearchTool(
   args: {
-    configPath?: string;
+    configOverride?: Record<string, unknown>;
   } = {},
 ): HarnessToolDefinition {
-  const config = readWebSearchToolConfig({
-    configPath: args.configPath,
+  const effectiveConfig = resolveWebSearchToolConfig({
+    configOverride: args.configOverride,
   });
+
   return {
     name: 'web_search',
     description: 'Search the web for relevant results using the configured provider.',
@@ -100,14 +90,30 @@ export function createWebSearchTool(
         input: Record<string, unknown>;
         context: HarnessToolExecutionContext;
       },
-    ): Promise<Record<string, unknown>> => {
-      return executeWebSearchTool({
-        input: executeArgs.input,
-        context: executeArgs.context,
-        config,
-      });
-    },
+    ): Promise<Record<string, unknown>> => executeWebSearchTool({
+      input: executeArgs.input,
+      context: executeArgs.context,
+      config: effectiveConfig,
+    }),
   };
+}
+
+/**
+ * Resolves normalized web_search config from defaults and optional manifest override.
+ */
+export function resolveWebSearchToolConfig(
+  args: {
+    configOverride?: Record<string, unknown>;
+  },
+): WebSearchToolConfig {
+  const mergedConfig = mergeRecordWithOverride({
+    base: defaultWebSearchToolConfig as unknown as Record<string, unknown>,
+    override: args.configOverride,
+  });
+
+  return normalizeWebSearchToolConfig({
+    value: mergedConfig,
+  });
 }
 
 /**
@@ -281,6 +287,51 @@ export function readProvidersRecord(
   }
 
   return providers;
+}
+
+/**
+ * Deep merges two record values with array replacement semantics for override values.
+ */
+export function mergeRecordWithOverride(
+  args: {
+    base: Record<string, unknown>;
+    override: Record<string, unknown> | undefined;
+  },
+): Record<string, unknown> {
+  if (!args.override) {
+    return { ...args.base };
+  }
+
+  const merged: Record<string, unknown> = { ...args.base };
+  for (const [key, overrideValue] of Object.entries(args.override)) {
+    const baseValue = merged[key];
+    if (Array.isArray(overrideValue)) {
+      merged[key] = [...overrideValue];
+      continue;
+    }
+    if (isRecord(baseValue) && isRecord(overrideValue)) {
+      merged[key] = mergeRecordWithOverride({
+        base: baseValue,
+        override: overrideValue,
+      });
+      continue;
+    }
+
+    merged[key] = overrideValue;
+  }
+
+  return merged;
+}
+
+/**
+ * Returns true when one unknown value is a non-null non-array record.
+ */
+export function isRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return typeof value === 'object'
+    && value !== null
+    && !Array.isArray(value);
 }
 
 /**

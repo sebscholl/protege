@@ -5,6 +5,7 @@ Extension Surface: Yes
 This directory contains installable capability extensions for Protege.
 
 It includes tools and hooks loaded through `extensions/extensions.json`.
+Tool entries may be either a string (`\"tool-name\"`) or an object (`{ \"name\": \"tool-name\", \"config\": { ... } }`).
 
 ## Extension Isolation Rules
 

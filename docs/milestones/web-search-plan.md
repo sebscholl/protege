@@ -28,7 +28,7 @@ Status: Complete
 ### Tasks
 
 1. Define tool schema in `extensions/tools/web-search/index.ts`.
-2. Define config shape in `extensions/tools/web-search/config.json`:
+2. Define config shape in tool defaults + `extensions/extensions.json` override:
    - `provider`
    - `defaultMaxResults`
    - `providers.<provider>.apiKeyEnv`
@@ -124,7 +124,7 @@ Status: In Progress
    - `tests/fixtures/api/perplexity/search/401.json`
 2. Extend fixture helper usage for both providers through `tests/network/`.
 3. Add manual verification checklist in development docs:
-   - switch provider in tool config
+   - switch provider in extension manifest override
    - verify identical normalized result shape
    - verify missing-key and auth-failure behavior
 

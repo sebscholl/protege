@@ -126,6 +126,11 @@ Remaining:
 4. Scheduler hardening follow-up:
    - add explicit no-overlap and global concurrency controls
    - expand gateway+scheduler E2E reliability coverage
+5. Onboarding/configuration hardening milestone:
+   - tool manifest config deep-merge
+   - env-only secret policy cleanup
+   - relay-first default outbound validation
+   - guided init wizard
 
 Planning updates:
 
@@ -143,6 +148,14 @@ Planning updates:
 10. `web_search` tests-first plan created: `docs/milestones/web-search-plan.md`.
 11. `web_search` runtime/tool implementation completed with Tavily + Perplexity adapter coverage.
 12. File/discovery runtime actions are unsandboxed in v1 (ADR-0025), while shell `workdir` boundary remains enforced.
+13. Onboarding hardening plan created: `docs/milestones/onboarding-hardening-plan.md`.
+14. Tool config model frozen to manifest-driven deep-merge overrides via ADR-0026.
+15. Secrets/config surface cleanup policy frozen via ADR-0027.
+16. Guided init wizard scope frozen via ADR-0028.
+17. OH1 implemented:
+   - `extensions/extensions.json` now supports object tool entries with `{ name, config }`
+   - `web_search` now resolves default config in code and deep-merges manifest overrides
+   - invalid tool manifest object entry shapes now fail with explicit validation errors
 
 ## ADR Coverage
 
@@ -164,3 +177,6 @@ Recent status-aligned ADRs:
 14. `docs/adr/0023-web-fetch-tool-v1.md`
 15. `docs/adr/0024-web-search-provider-agnostic-v1.md`
 16. `docs/adr/0025-file-and-discovery-runtime-actions-unsandboxed-v1.md`
+17. `docs/adr/0026-tool-config-manifest-deep-merge.md`
+18. `docs/adr/0027-secrets-env-and-single-config-surface.md`
+19. `docs/adr/0028-init-wizard-guided-onboarding.md`

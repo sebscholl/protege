@@ -15,7 +15,7 @@ import { tool as searchTool } from '@extensions/tools/search/index';
 import { tool as sendEmailTool } from '@extensions/tools/send-email/index';
 import { tool as shellTool } from '@extensions/tools/shell/index';
 import { tool as webFetchTool } from '@extensions/tools/web-fetch/index';
-import { tool as webSearchTool } from '@extensions/tools/web-search/index';
+import { createWebSearchTool } from '@extensions/tools/web-search/index';
 import { tool as writeFileTool } from '@extensions/tools/write-file/index';
 
 /**
@@ -24,6 +24,15 @@ import { tool as writeFileTool } from '@extensions/tools/write-file/index';
 export type ToolManifestEntry = string | {
   name: string;
   enabled?: boolean;
+  config?: Record<string, unknown>;
+};
+
+/**
+ * Represents one normalized enabled tool manifest entry.
+ */
+export type NormalizedToolManifestEntry = {
+  name: string;
+  config?: Record<string, unknown>;
 };
 
 /**
@@ -78,13 +87,14 @@ export async function loadToolRegistry(
   const manifest = readExtensionManifest({
     manifestPath: args.manifestPath,
   });
-  const enabledToolNames = normalizeEnabledToolNames({
+  const enabledToolEntries = normalizeEnabledToolEntries({
     tools: manifest.tools,
   });
   const registry: HarnessToolRegistry = {};
-  for (const toolName of enabledToolNames) {
+  for (const entry of enabledToolEntries) {
     const tool = await loadToolDefinition({
-      toolName,
+      toolName: entry.name,
+      configOverride: entry.config,
     });
     registry[tool.name] = tool;
   }
@@ -115,33 +125,51 @@ export async function executeRegisteredTool(
 }
 
 /**
- * Normalizes tool manifest entries into unique enabled tool names.
+ * Normalizes tool manifest entries into unique enabled tool entries.
  */
-export function normalizeEnabledToolNames(
+export function normalizeEnabledToolEntries(
   args: {
     tools: ToolManifestEntry[];
   },
-): string[] {
+): NormalizedToolManifestEntry[] {
   const seen = new Set<string>();
-  const names: string[] = [];
-  for (const entry of args.tools) {
+  const entries: NormalizedToolManifestEntry[] = [];
+  for (const [index, entry] of args.tools.entries()) {
     if (typeof entry === 'string') {
-      if (entry.trim().length > 0 && !seen.has(entry)) {
-        seen.add(entry);
-        names.push(entry);
+      const normalizedName = entry.trim();
+      if (normalizedName.length > 0 && !seen.has(normalizedName)) {
+        seen.add(normalizedName);
+        entries.push({ name: normalizedName });
       }
       continue;
     }
 
-    if (entry.enabled === false || entry.name.trim().length === 0 || seen.has(entry.name)) {
+    if (!isRecord(entry)) {
+      throw new Error(`Invalid tool manifest entry at index ${index}: expected string or object.`);
+    }
+    if (typeof entry.name !== 'string' || entry.name.trim().length === 0) {
+      throw new Error(`Invalid tool manifest entry at index ${index}: "name" must be a non-empty string.`);
+    }
+    if (entry.enabled !== undefined && typeof entry.enabled !== 'boolean') {
+      throw new Error(`Invalid tool manifest entry "${entry.name}": "enabled" must be boolean when provided.`);
+    }
+    if (entry.config !== undefined && !isRecord(entry.config)) {
+      throw new Error(`Invalid tool manifest entry "${entry.name}": "config" must be an object when provided.`);
+    }
+
+    const normalizedName = entry.name.trim();
+    if (entry.enabled === false || seen.has(normalizedName)) {
       continue;
     }
 
-    seen.add(entry.name);
-    names.push(entry.name);
+    seen.add(normalizedName);
+    entries.push({
+      name: normalizedName,
+      config: entry.config,
+    });
   }
 
-  return names;
+  return entries;
 }
 
 /**
@@ -150,10 +178,12 @@ export function normalizeEnabledToolNames(
 export async function loadToolDefinition(
   args: {
     toolName: string;
+    configOverride?: Record<string, unknown>;
   },
 ): Promise<HarnessToolDefinition> {
   const builtInToolDefinition = readBuiltInToolDefinition({
     toolName: args.toolName,
+    configOverride: args.configOverride,
   });
   if (builtInToolDefinition) {
     return builtInToolDefinition;
@@ -168,6 +198,12 @@ export async function loadToolDefinition(
 
   const moduleUrl = pathToFileURL(modulePath).href;
   const moduleRecord = await import(moduleUrl) as Record<string, unknown>;
+  const factoryCandidate = moduleRecord.createTool;
+  if (isToolFactoryFunction(factoryCandidate)) {
+    return factoryCandidate({
+      configOverride: args.configOverride,
+    });
+  }
   const candidate = moduleRecord.tool ?? moduleRecord.default;
   if (!isHarnessToolDefinition(candidate)) {
     throw new Error(`Tool module ${args.toolName} does not export a valid tool definition.`);
@@ -199,6 +235,7 @@ export function resolveToolModulePath(
 export function readBuiltInToolDefinition(
   args: {
     toolName: string;
+    configOverride?: Record<string, unknown>;
   },
 ): HarnessToolDefinition | undefined {
   if (args.toolName === 'shell') {
@@ -226,10 +263,25 @@ export function readBuiltInToolDefinition(
     return webFetchTool;
   }
   if (args.toolName === 'web-search') {
-    return webSearchTool;
+    return createWebSearchTool({
+      configOverride: args.configOverride,
+    });
   }
 
   return undefined;
+}
+
+/**
+ * Returns true when one unknown value is a supported tool factory function.
+ */
+export function isToolFactoryFunction(
+  value: unknown,
+): value is (
+  args: {
+    configOverride?: Record<string, unknown>;
+  },
+) => HarnessToolDefinition {
+  return typeof value === 'function';
 }
 
 /**

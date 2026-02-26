@@ -27,6 +27,9 @@ Accepted ADRs:
 23. `0023-web-fetch-tool-v1.md`
 24. `0024-web-search-provider-agnostic-v1.md`
 25. `0025-file-and-discovery-runtime-actions-unsandboxed-v1.md`
+26. `0026-tool-config-manifest-deep-merge.md`
+27. `0027-secrets-env-and-single-config-surface.md`
+28. `0028-init-wizard-guided-onboarding.md`
 
 Notes:
 
