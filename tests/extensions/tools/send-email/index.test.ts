@@ -22,6 +22,8 @@ let missingTopLevelDomainMessage = '';
 let threadingModePayloadValue = '';
 let invalidThreadingModeMessage = '';
 let forwardedThreadingMode = '';
+let forwardedAttachmentPath = '';
+let invalidAttachmentMessage = '';
 
 beforeAll(async (): Promise<void> => {
   void readSendEmailToolConfig();
@@ -278,6 +280,64 @@ beforeAll(async (): Promise<void> => {
   } catch (error) {
     invalidThreadingModeMessage = (error as Error).message;
   }
+
+  try {
+    await tool.execute({
+      input: {
+        to: ['sender@example.com'],
+        subject: 'Attachment forwarding',
+        text: 'Hello.',
+        attachments: [
+          {
+            path: '/tmp/report.txt',
+          },
+        ],
+      },
+      context: {
+        runtime: {
+          invoke: async (
+            args: {
+              action: string;
+              payload: Record<string, unknown>;
+            },
+          ): Promise<Record<string, unknown>> => {
+            if (args.action !== 'email.send') {
+              throw new Error(`Unsupported action: ${args.action}`);
+            }
+            const attachments = Array.isArray(args.payload.attachments)
+              ? args.payload.attachments as Array<Record<string, unknown>>
+              : [];
+            forwardedAttachmentPath = String(attachments[0]?.path ?? '');
+            return { messageId: 'attachment-forwarded' };
+          },
+        },
+      },
+    });
+  } catch {
+    forwardedAttachmentPath = '';
+  }
+
+  try {
+    await tool.execute({
+      input: {
+        to: ['sender@example.com'],
+        subject: 'Invalid attachment path',
+        text: 'Hello.',
+        attachments: [
+          {
+            path: '',
+          },
+        ],
+      },
+      context: {
+        runtime: {
+          invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'unused' }),
+        },
+      },
+    });
+  } catch (error) {
+    invalidAttachmentMessage = (error as Error).message;
+  }
 });
 
 describe('send-email tool extension', () => {
@@ -343,5 +403,13 @@ describe('send-email tool extension', () => {
 
   it('forwards explicit new_thread threading mode to runtime payloads', () => {
     expect(forwardedThreadingMode).toBe('new_thread');
+  });
+
+  it('forwards attachment descriptors to runtime email.send payloads', () => {
+    expect(forwardedAttachmentPath).toBe('/tmp/report.txt');
+  });
+
+  it('rejects attachments missing required file paths', () => {
+    expect(invalidAttachmentMessage.includes('attachments[0].path')).toBe(true);
   });
 });

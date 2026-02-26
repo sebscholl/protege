@@ -2073,6 +2073,7 @@ export function buildEmailSendRequestFromAction(
       ? (toStringArray({ value: args.payload.references }) ?? [])
       : args.message.references,
     headers: toStringRecord({ value: args.payload.headers }),
+    attachments: toOutboundAttachments({ value: args.payload.attachments }),
   };
 }
 
@@ -2229,6 +2230,54 @@ export function toStringRecord(
   }
 
   return Object.keys(output).length > 0 ? output : undefined;
+}
+
+/**
+ * Converts unknown payload attachment values into validated outbound attachment descriptors.
+ */
+export function toOutboundAttachments(
+  args: {
+    value: unknown;
+  },
+): Array<{
+  path: string;
+  filename?: string;
+  contentType?: string;
+}> | undefined {
+  if (args.value === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(args.value)) {
+    throw new Error('email.send payload.attachments must be an array.');
+  }
+
+  const attachments = args.value.map((item, index) => {
+    if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+      throw new Error(`email.send payload.attachments[${index}] must be an object.`);
+    }
+
+    const record = item as Record<string, unknown>;
+    const path = typeof record.path === 'string'
+      ? record.path.trim()
+      : '';
+    if (path.length === 0) {
+      throw new Error(`email.send payload.attachments[${index}].path is required.`);
+    }
+
+    const filename = typeof record.filename === 'string' && record.filename.trim().length > 0
+      ? record.filename
+      : undefined;
+    const contentType = typeof record.contentType === 'string' && record.contentType.trim().length > 0
+      ? record.contentType
+      : undefined;
+    return {
+      path,
+      filename,
+      contentType,
+    };
+  });
+
+  return attachments.length > 0 ? attachments : undefined;
 }
 
 /**

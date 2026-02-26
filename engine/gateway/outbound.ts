@@ -83,6 +83,11 @@ export async function sendGatewayReply(
         inReplyTo: parentId,
         references,
         headers: args.request.headers,
+        attachments: args.request.attachments?.map((attachment) => ({
+          path: attachment.path,
+          filename: attachment.filename,
+          contentType: attachment.contentType,
+        })),
       });
 
       args.logger.info({
@@ -363,6 +368,11 @@ export async function renderGatewayReplyMime(
     inReplyTo: args.request.inReplyTo,
     references: args.request.references,
     headers: args.request.headers,
+    attachments: args.request.attachments?.map((attachment) => ({
+      path: attachment.path,
+      filename: attachment.filename,
+      contentType: attachment.contentType,
+    })),
   }) as SentMessageInfo;
   return {
     message: info.message as Buffer,

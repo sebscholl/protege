@@ -26,6 +26,9 @@ let forcedReplyModeInReplyTo = '';
 let forcedReplyModeSubject = '';
 let newThreadModeInReplyTo = '';
 let newThreadModeSubject = '';
+let forwardedAttachmentPath = '';
+let invalidAttachmentShapeError = '';
+let invalidAttachmentPathError = '';
 
 beforeAll(async (): Promise<void> => {
   const streamTransport = createTransport({
@@ -336,6 +339,101 @@ beforeAll(async (): Promise<void> => {
   });
   newThreadModeInReplyTo = newThreadModeRequest.inReplyTo;
   newThreadModeSubject = newThreadModeRequest.subject;
+
+  const attachmentRequest = buildEmailSendRequestFromAction({
+    message: {
+      personaId: 'persona-test',
+      messageId: '<inbound@example.com>',
+      threadId: 'thread-1',
+      from: [{ address: 'sender@example.com' }],
+      to: [{ address: 'agent@example.com' }],
+      cc: [],
+      bcc: [],
+      envelopeRcptTo: [{ address: 'persona@example.com' }],
+      subject: 'Manual Test',
+      text: 'Body',
+      references: ['<root@example.com>', '<parent@example.com>'],
+      receivedAt: '2026-02-14T00:00:00.000Z',
+      rawMimePath: '/tmp/inbound.eml',
+      attachments: [],
+    },
+    payload: {
+      to: ['sender@example.com'],
+      subject: 'Attachment test',
+      text: 'Reply body',
+      attachments: [
+        {
+          path: '/tmp/report.txt',
+        },
+      ],
+    },
+    personaSenderAddress: 'persona@example.com',
+  });
+  forwardedAttachmentPath = String(attachmentRequest.attachments?.[0]?.path ?? '');
+
+  try {
+    buildEmailSendRequestFromAction({
+      message: {
+        personaId: 'persona-test',
+        messageId: '<inbound@example.com>',
+        threadId: 'thread-1',
+        from: [{ address: 'sender@example.com' }],
+        to: [{ address: 'agent@example.com' }],
+        cc: [],
+        bcc: [],
+        envelopeRcptTo: [{ address: 'persona@example.com' }],
+        subject: 'Manual Test',
+        text: 'Body',
+        references: [],
+        receivedAt: '2026-02-14T00:00:00.000Z',
+        rawMimePath: '/tmp/inbound.eml',
+        attachments: [],
+      },
+      payload: {
+        to: ['sender@example.com'],
+        subject: 'Invalid attachment',
+        text: 'Reply body',
+        attachments: ['not-an-object'],
+      },
+      personaSenderAddress: 'persona@example.com',
+    });
+  } catch (error) {
+    invalidAttachmentShapeError = (error as Error).message;
+  }
+
+  try {
+    buildEmailSendRequestFromAction({
+      message: {
+        personaId: 'persona-test',
+        messageId: '<inbound@example.com>',
+        threadId: 'thread-1',
+        from: [{ address: 'sender@example.com' }],
+        to: [{ address: 'agent@example.com' }],
+        cc: [],
+        bcc: [],
+        envelopeRcptTo: [{ address: 'persona@example.com' }],
+        subject: 'Manual Test',
+        text: 'Body',
+        references: [],
+        receivedAt: '2026-02-14T00:00:00.000Z',
+        rawMimePath: '/tmp/inbound.eml',
+        attachments: [],
+      },
+      payload: {
+        to: ['sender@example.com'],
+        subject: 'Missing attachment path',
+        text: 'Reply body',
+        attachments: [
+          {
+            path: '',
+          },
+        ],
+      },
+      personaSenderAddress: 'persona@example.com',
+    });
+  } catch (error) {
+    invalidAttachmentPathError = (error as Error).message;
+  }
 });
 
 describe('gateway runtime action invoker hardening', () => {
@@ -409,5 +507,17 @@ describe('gateway runtime action invoker hardening', () => {
 
   it('allows custom subject when threading mode is explicitly new_thread', () => {
     expect(newThreadModeSubject).toBe('Intentional New Thread');
+  });
+
+  it('forwards attachment descriptors when provided in email.send payload', () => {
+    expect(forwardedAttachmentPath).toBe('/tmp/report.txt');
+  });
+
+  it('rejects attachment entries that are not objects', () => {
+    expect(invalidAttachmentShapeError.includes('attachments[0]')).toBe(true);
+  });
+
+  it('rejects attachment entries missing required path', () => {
+    expect(invalidAttachmentPathError.includes('attachments[0].path')).toBe(true);
   });
 });

@@ -23,6 +23,11 @@ export type SendEmailToolInput = {
   references?: string[];
   threadingMode?: 'reply_current' | 'new_thread';
   headers?: Record<string, string>;
+  attachments?: Array<{
+    path: string;
+    filename?: string;
+    contentType?: string;
+  }>;
 };
 
 /**
@@ -115,6 +120,19 @@ export function createSendEmailTool(
             type: 'string',
           },
         },
+        attachments: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['path'],
+            properties: {
+              path: { type: 'string' },
+              filename: { type: 'string' },
+              contentType: { type: 'string' },
+            },
+          },
+        },
       },
     },
     execute: async (
@@ -199,7 +217,47 @@ export function normalizeSendEmailInput(
     references: readOptionalStringArray({ value: args.input.references, fieldName: 'references' }),
     threadingMode: readOptionalThreadingMode({ value: args.input.threadingMode }),
     headers: readOptionalStringRecord({ value: args.input.headers }),
+    attachments: readOptionalAttachmentDescriptors({ value: args.input.attachments }),
   };
+}
+
+/**
+ * Reads one optional attachment descriptor array and validates per-item shape.
+ */
+export function readOptionalAttachmentDescriptors(
+  args: {
+    value: unknown;
+  },
+): Array<{
+  path: string;
+  filename?: string;
+  contentType?: string;
+}> | undefined {
+  if (args.value === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(args.value)) {
+    throw new SendEmailToolInputError('send_email input field "attachments" must be an array.');
+  }
+
+  const attachments = args.value.map((item, index) => {
+    if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+      throw new SendEmailToolInputError(`send_email attachments[${index}] must be an object.`);
+    }
+
+    const record = item as Record<string, unknown>;
+    const path = readRequiredString({
+      value: record.path,
+      fieldName: `attachments[${index}].path`,
+    });
+    return {
+      path,
+      filename: readOptionalString({ value: record.filename }),
+      contentType: readOptionalString({ value: record.contentType }),
+    };
+  });
+
+  return attachments.length > 0 ? attachments : undefined;
 }
 
 /**

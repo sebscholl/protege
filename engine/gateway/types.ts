@@ -55,6 +55,16 @@ export type OutboundReplyRequest = {
   inReplyTo: string;
   references: string[];
   headers?: Record<string, string>;
+  attachments?: OutboundAttachment[];
+};
+
+/**
+ * Represents one outbound attachment descriptor for runtime-driven email sends.
+ */
+export type OutboundAttachment = {
+  path: string;
+  filename?: string;
+  contentType?: string;
 };
 
 /**

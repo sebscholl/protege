@@ -33,6 +33,7 @@ Optional:
 6. `references: string[]`
 7. `threadingMode: "reply_current" | "new_thread"`
 8. `headers: Record<string, string>`
+9. `attachments: Array<{ path: string; filename?: string; contentType?: string }>`
 
 ## Notes
 
@@ -42,3 +43,4 @@ Optional:
 4. Runtime enforces canonical persona sender identity.
 5. Runtime defaults to same-thread replies; use `threadingMode: "new_thread"` only when intentionally starting a separate conversation.
 6. Runtime may normalize same-thread reply subjects to preserve thread semantics.
+7. Attachment descriptors are file-path based and resolved by runtime transport.
