@@ -31,6 +31,7 @@ let setupResult = {} as {
 let inferenceProvider = '';
 let gatewayRelayEnabled = false;
 let gatewayRelayWsUrl = '';
+let gatewayTransportDefined = true;
 let systemAdminContactEmail = '';
 let webSearchToolConfigProvider = '';
 let anthropicEnvPresent = false;
@@ -84,9 +85,15 @@ beforeAll(async (): Promise<void> => {
       enabled?: boolean;
       relayWsUrl?: string;
     };
+    transport?: {
+      host: string;
+      port: number;
+      secure: boolean;
+    };
   };
   gatewayRelayEnabled = gatewayConfig.relay?.enabled === true;
   gatewayRelayWsUrl = gatewayConfig.relay?.relayWsUrl ?? '';
+  gatewayTransportDefined = gatewayConfig.transport !== undefined;
 
   const systemConfig = JSON.parse(readFileSync(join(projectPath, 'config', 'system.json'), 'utf8')) as {
     admin_contact_email?: string;
@@ -174,6 +181,10 @@ describe('setup cli command', () => {
     expect(gatewayRelayWsUrl).toBe('wss://relay.protege.bot/ws');
   });
 
+  it('removes local smtp transport config when relay mode is selected', () => {
+    expect(gatewayTransportDefined).toBe(false);
+  });
+
   it('writes configured admin contact email into system config', () => {
     expect(systemAdminContactEmail).toBe('ops@example.com');
   });
@@ -225,6 +236,8 @@ let localSetupResult = {} as {
   webSearchProvider: string;
 };
 let localGatewayRelayEnabled = true;
+let localGatewayTransportHost = '';
+let localGatewayTransportPort = -1;
 let localWebSearchEntryExists = true;
 
 beforeAll(async (): Promise<void> => {
@@ -248,8 +261,14 @@ beforeAll(async (): Promise<void> => {
     relay?: {
       enabled?: boolean;
     };
+    transport?: {
+      host?: string;
+      port?: number;
+    };
   };
   localGatewayRelayEnabled = gatewayConfig.relay?.enabled === true;
+  localGatewayTransportHost = gatewayConfig.transport?.host ?? '';
+  localGatewayTransportPort = gatewayConfig.transport?.port ?? -1;
 
   const extensionsManifest = JSON.parse(readFileSync(join(localProjectPath, 'extensions', 'extensions.json'), 'utf8')) as {
     tools: Array<string | {
@@ -276,6 +295,10 @@ describe('setup cli local mode and optional tool behavior', () => {
 
   it('disables relay in gateway config when local outbound is selected', () => {
     expect(localGatewayRelayEnabled).toBe(false);
+  });
+
+  it('keeps local smtp transport configured in local outbound mode', () => {
+    expect([localGatewayTransportHost, localGatewayTransportPort]).toEqual(['127.0.0.1', 1025]);
   });
 
   it('removes web-search tool entry when provider is none', () => {

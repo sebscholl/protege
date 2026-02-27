@@ -775,10 +775,14 @@ export function applyOutboundModeToGatewayConfig(
   const relayDefaults = readRelayConfigWithDefaults({
     gatewayConfig: args.gatewayConfig,
   });
+  const localTransportDefaults = readLocalTransportConfigWithDefaults({
+    gatewayConfig: args.gatewayConfig,
+  });
 
   if (args.options.outboundMode === 'local') {
     return {
       ...args.gatewayConfig,
+      transport: localTransportDefaults,
       relay: {
         ...relayDefaults,
         enabled: false,
@@ -796,12 +800,29 @@ export function applyOutboundModeToGatewayConfig(
 
   return {
     ...args.gatewayConfig,
+    transport: undefined,
     mailDomain,
     relay: {
       ...relayDefaults,
       enabled: true,
       relayWsUrl: args.options.relayWsUrl,
     },
+  };
+}
+
+/**
+ * Returns one complete local SMTP transport config with required defaults filled.
+ */
+export function readLocalTransportConfigWithDefaults(
+  args: {
+    gatewayConfig: GatewayRuntimeConfig;
+  },
+): NonNullable<GatewayRuntimeConfig['transport']> {
+  return {
+    host: args.gatewayConfig.transport?.host ?? '127.0.0.1',
+    port: args.gatewayConfig.transport?.port ?? 1025,
+    secure: args.gatewayConfig.transport?.secure ?? false,
+    auth: args.gatewayConfig.transport?.auth,
   };
 }
 
