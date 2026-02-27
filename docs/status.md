@@ -190,6 +190,10 @@ Planning updates:
    - `init` remains scaffold-only
    - setup currently supports non-interactive flags for provider, outbound mode, relay URL, web-search provider, env key writes, persona bootstrap, and optional doctor report
    - bare `protege setup` now runs interactive prompts by default; `--non-interactive` is available for automation
+25. Scheduler hardening planning initialized:
+   - concurrency/no-overlap policy frozen via ADR-0031
+   - run outcome/observability policy frozen via ADR-0032
+   - detailed execution checklist created in `docs/milestones/scheduler-hardening-checklist.md`
 
 ## ADR Coverage
 
@@ -216,3 +220,5 @@ Recent status-aligned ADRs:
 19. `docs/adr/0028-init-wizard-guided-onboarding.md`
 20. `docs/adr/0029-bounded-tool-failure-recovery-loop.md`
 21. `docs/adr/0030-setup-wizard-command-separation.md`
+22. `docs/adr/0031-scheduler-concurrency-and-no-overlap-policy.md`
+23. `docs/adr/0032-scheduler-run-outcome-and-observability-policy.md`

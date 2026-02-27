@@ -328,8 +328,12 @@ export function claimNextQueuedRun(
     db: ProtegeDatabase;
     personaId?: string;
     startedAt?: string;
+    excludedResponsibilityIds?: string[];
   },
 ): SchedulerResponsibilityRun | undefined {
+  const exclusionSql = buildResponsibilityExclusionSql({
+    excludedResponsibilityIds: args.excludedResponsibilityIds,
+  });
   const queued = (args.personaId
     ? args.db.prepare(`
     SELECT
@@ -347,11 +351,22 @@ export function claimNextQueuedRun(
       prompt_path_at_run,
       prompt_hash_at_run,
       prompt_snapshot
-    FROM responsibility_runs
-    WHERE status = 'queued' AND persona_id = ?
+    FROM responsibility_runs AS queued
+    WHERE queued.status = 'queued'
+      AND queued.persona_id = ?
+      AND NOT EXISTS (
+        SELECT 1
+        FROM responsibility_runs AS running
+        WHERE running.responsibility_id = queued.responsibility_id
+          AND running.status = 'running'
+      )
+      ${exclusionSql}
     ORDER BY triggered_at ASC
     LIMIT 1
-  `).get(args.personaId)
+  `).get(...buildClaimQueryParams({
+      personaId: args.personaId,
+      excludedResponsibilityIds: args.excludedResponsibilityIds,
+    }))
     : args.db.prepare(`
     SELECT
       id,
@@ -368,11 +383,20 @@ export function claimNextQueuedRun(
       prompt_path_at_run,
       prompt_hash_at_run,
       prompt_snapshot
-    FROM responsibility_runs
-    WHERE status = 'queued'
+    FROM responsibility_runs AS queued
+    WHERE queued.status = 'queued'
+      AND NOT EXISTS (
+        SELECT 1
+        FROM responsibility_runs AS running
+        WHERE running.responsibility_id = queued.responsibility_id
+          AND running.status = 'running'
+      )
+      ${exclusionSql}
     ORDER BY triggered_at ASC
     LIMIT 1
-  `).get()) as Record<string, string | null> | undefined;
+  `).get(...buildClaimQueryParams({
+      excludedResponsibilityIds: args.excludedResponsibilityIds,
+    }))) as Record<string, string | null> | undefined;
   if (!queued) {
     return undefined;
   }
@@ -409,6 +433,42 @@ export function claimNextQueuedRun(
   return toSchedulerResponsibilityRun({
     row: updated,
   });
+}
+
+/**
+ * Builds one SQL clause excluding specific responsibility ids from queued-run claims.
+ */
+export function buildResponsibilityExclusionSql(
+  args: {
+    excludedResponsibilityIds?: string[];
+  },
+): string {
+  if (!args.excludedResponsibilityIds || args.excludedResponsibilityIds.length === 0) {
+    return '';
+  }
+
+  const placeholders = args.excludedResponsibilityIds.map(() => '?').join(', ');
+  return `AND queued.responsibility_id NOT IN (${placeholders})`;
+}
+
+/**
+ * Builds positional parameters for queued-run claim queries.
+ */
+export function buildClaimQueryParams(
+  args: {
+    personaId?: string;
+    excludedResponsibilityIds?: string[];
+  },
+): string[] {
+  const output: string[] = [];
+  if (args.personaId) {
+    output.push(args.personaId);
+  }
+  if (args.excludedResponsibilityIds && args.excludedResponsibilityIds.length > 0) {
+    output.push(...args.excludedResponsibilityIds);
+  }
+
+  return output;
 }
 
 /**

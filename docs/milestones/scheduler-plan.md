@@ -24,6 +24,12 @@ Scope: Global scheduler runtime executing persona-owned responsibilities driven 
    - `docs/adr/0017-scheduler-v1-run-policy.md`
 3. runtime ownership boundary:
    - `docs/adr/0018-scheduler-runtime-owned-by-gateway.md`
+4. concurrency and no-overlap policy:
+   - `docs/adr/0031-scheduler-concurrency-and-no-overlap-policy.md`
+5. run outcome and observability policy:
+   - `docs/adr/0032-scheduler-run-outcome-and-observability-policy.md`
+6. hardening execution checklist:
+   - `docs/milestones/scheduler-hardening-checklist.md`
 
 ## Migration Plan: Gateway-Owned Scheduler Runtime
 
