@@ -1,6 +1,6 @@
 # Project Status
 
-Last Updated: 2026-02-26
+Last Updated: 2026-02-27
 
 This file tracks implementation progress against `docs/protege-development-sequencing-v2.md` and `docs/protege-implementation-plan-v3.md`.
 
@@ -170,6 +170,7 @@ Planning updates:
    - relay now emits delivery control messages (`relay_delivery_result`) back to originating websocket sessions
    - gateway relay clients consume delivery control messages and resolve strict runtime delivery status when available
    - relay runtime action path now distinguishes queued-vs-sent semantics based on delivery signal capability
+   - delivery-signal timeout no longer triggers duplicate resend loops; timeout now downgrades to queued/indeterminate with explicit timeout logging
 21. OH5 implemented:
    - `send_email` now supports attachment descriptors (`path`, optional `filename`, optional `contentType`)
    - gateway `email.send` payload translation validates and forwards attachment descriptors to outbound requests
@@ -177,6 +178,11 @@ Planning updates:
 22. OH6 design completed:
    - bounded tool-failure recovery loop policy frozen via ADR-0029
    - recovery budget and stop conditions are now explicitly defined before implementation
+23. Harness tool-loop recovery implemented:
+   - tool-call failures are now returned to the model as structured tool-result errors (including stack preview) instead of immediate run termination
+   - provider loop can continue after recoverable tool failures, allowing follow-up tool selection/correction in the same run
+   - non-recoverable tool failures still fail fast (unknown tool, unsupported runtime action, missing outbound transport)
+   - tool-loop max turn budget is now configurable via `inference.max_tool_turns` (default `8`)
 
 ## ADR Coverage
 

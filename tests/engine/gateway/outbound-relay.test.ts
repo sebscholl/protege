@@ -26,6 +26,8 @@ let retryAttemptCount = 0;
 let strictDeliverySignalSucceeded = false;
 let strictDeliverySignalFailureMessage = '';
 let relayMimeContainsAttachmentFilename = false;
+let timeoutFallbackMessageIdLength = 0;
+let timeoutFallbackStartFrameCount = 0;
 
 beforeAll(async (): Promise<void> => {
   envelopeRecipientCount = deriveEnvelopeRecipients({
@@ -284,6 +286,51 @@ beforeAll(async (): Promise<void> => {
   } catch (error) {
     strictDeliverySignalFailureMessage = (error as Error).message;
   }
+
+  const timeoutFrames: Buffer[] = [];
+  const timeoutClient = {
+    stop: (): void => undefined,
+    sendTextMessage: (): void => undefined,
+    sendBinaryFrame: (
+      args: {
+        frame: Buffer;
+      },
+    ): void => {
+      timeoutFrames.push(args.frame);
+    },
+    readStatus: (): { connected: boolean; authenticated: boolean; reconnectAttempt: number } => ({
+      connected: true,
+      authenticated: true,
+      reconnectAttempt: 0,
+    }),
+  };
+  registerRelayClientDeliverySignals({
+    relayClient: timeoutClient,
+  });
+  const timeoutResult = await sendGatewayReplyViaRelay({
+    relayClient: timeoutClient,
+    logger: {
+      info: (): void => undefined,
+      error: (): void => undefined,
+    },
+    request: {
+      to: [{ address: 'receiver@example.com' }],
+      from: { address: 'persona@example.com' },
+      subject: 'Relay Strict Delivery Timeout Test',
+      text: 'relay strict delivery timeout body',
+      inReplyTo: '<inbound@example.com>',
+      references: ['<root@example.com>'],
+    },
+    retryPolicy: {
+      maxAttempts: 2,
+      baseDelayMs: 1,
+    },
+    deliverySignalTimeoutMs: 1,
+  });
+  timeoutFallbackMessageIdLength = timeoutResult.messageId.length;
+  timeoutFallbackStartFrameCount = timeoutFrames.filter((frame) => parseRelayTunnelFrame({
+    payload: frame,
+  })?.type === 'smtp_start').length;
 });
 
 describe('gateway outbound relay helpers', () => {
@@ -345,5 +392,13 @@ describe('gateway outbound relay helpers', () => {
 
   it('fails strict relay sends when delivery signal reports failed', () => {
     expect(strictDeliverySignalFailureMessage.includes('mx_rejected')).toBe(true);
+  });
+
+  it('returns a message id when strict delivery signal times out', () => {
+    expect(timeoutFallbackMessageIdLength > 0).toBe(true);
+  });
+
+  it('does not retry timed-out strict relay sends to avoid duplicate delivery', () => {
+    expect(timeoutFallbackStartFrameCount).toBe(1);
   });
 });

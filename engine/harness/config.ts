@@ -10,6 +10,7 @@ export type InferenceRuntimeConfig = {
   provider: HarnessProviderId;
   model: string;
   recursionDepth: number;
+  maxToolTurns: number;
   whitelist: string[];
   providers: {
     openai?: {
@@ -73,6 +74,10 @@ export function readInferenceRuntimeConfig(
     provider: parsed.provider as HarnessProviderId,
     model: parsed.model,
     recursionDepth: Number(parsed.recursion_depth ?? 3),
+    maxToolTurns: readPositiveInteger({
+      value: parsed.max_tool_turns,
+      fallback: 8,
+    }),
     whitelist: Array.isArray(parsed.whitelist) ? parsed.whitelist as string[] : [],
     providers: parseProviderSettings({
       providers: parsed.providers,
@@ -82,6 +87,20 @@ export function readInferenceRuntimeConfig(
       ? parsed.max_output_tokens
       : undefined,
   };
+}
+
+/**
+ * Reads one positive integer config value with fallback when invalid or absent.
+ */
+export function readPositiveInteger(
+  args: {
+    value: unknown;
+    fallback: number;
+  },
+): number {
+  return typeof args.value === 'number' && Number.isInteger(args.value) && args.value > 0
+    ? args.value
+    : args.fallback;
 }
 
 /**

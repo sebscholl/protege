@@ -22,6 +22,12 @@ let failingMultiToolInvokedActions: string[] = [];
 let failingMultiToolFailedEvents = 0;
 let failingMultiToolCompletedEvents = 0;
 let failingMultiToolErrorMessage = '';
+let recoveryResponseText = '';
+let recoveryFirstToolErrorHasStackPreview = false;
+let recoveryFirstToolErrorCode = '';
+let recoveryFirstToolErrorMessage = '';
+let recoveryFirstToolInputPath = '';
+let recoveryToolInvokedActions: string[] = [];
 
 beforeAll(async (): Promise<void> => {
   const adapter = createOpenAiProviderAdapter({
@@ -309,6 +315,131 @@ beforeAll(async (): Promise<void> => {
   } catch (error) {
     failingMultiToolErrorMessage = (error as Error).message;
   }
+
+  const recoveryAdapter: HarnessProviderAdapter = {
+    providerId: 'openai',
+    capabilities: {
+      tools: true,
+      structuredOutput: false,
+      streaming: false,
+    },
+    generate: async (
+      args: {
+        request: HarnessProviderGenerateRequest;
+      },
+    ) => {
+      const toolMessages = args.request.messages.filter((message) => message.role === 'tool');
+      if (toolMessages.length === 0) {
+        return {
+          text: '',
+          toolCalls: [
+            {
+              id: 'call_read_missing_file',
+              name: 'read_file',
+              input: {
+                path: '/tmp/does-not-exist.txt',
+              },
+            },
+          ],
+        };
+      }
+
+      const firstToolText = toolMessages[0]?.parts?.[0]?.text;
+      const parsed = typeof firstToolText === 'string'
+        ? JSON.parse(firstToolText) as Record<string, unknown>
+        : {};
+      const stackPreview = (
+        typeof parsed.error === 'object'
+        && parsed.error !== null
+        && Array.isArray((parsed.error as Record<string, unknown>).stackPreview)
+      )
+        ? (parsed.error as Record<string, unknown>).stackPreview as unknown[]
+        : [];
+      recoveryFirstToolErrorHasStackPreview = stackPreview.length > 0;
+      recoveryFirstToolErrorCode = (
+        typeof parsed.error === 'object'
+        && parsed.error !== null
+        && typeof (parsed.error as Record<string, unknown>).code === 'string'
+      )
+        ? (parsed.error as Record<string, unknown>).code as string
+        : '';
+      recoveryFirstToolErrorMessage = (
+        typeof parsed.error === 'object'
+        && parsed.error !== null
+        && typeof (parsed.error as Record<string, unknown>).message === 'string'
+      )
+        ? (parsed.error as Record<string, unknown>).message as string
+        : '';
+      recoveryFirstToolInputPath = (
+        typeof parsed.input === 'object'
+        && parsed.input !== null
+        && typeof (parsed.input as Record<string, unknown>).path === 'string'
+      )
+        ? (parsed.input as Record<string, unknown>).path as string
+        : '';
+
+      if (toolMessages.length > 1) {
+        return {
+          text: 'Recovered successfully after tool failure.',
+          toolCalls: [],
+        };
+      }
+
+      return {
+        text: '',
+        toolCalls: [
+          {
+            id: 'call_send_recovery_email',
+            name: 'send_email',
+            input: {
+              to: ['receiver@example.com'],
+              subject: 'Recovered after tool error',
+              text: 'I recovered by taking a different action.',
+            },
+          },
+        ],
+      };
+    },
+  };
+
+  recoveryResponseText = (await executeProviderToolLoop({
+    adapter: recoveryAdapter,
+    modelId: 'openai/gpt-4.1',
+    messages: [{ role: 'user', parts: [{ type: 'text', text: 'Recover after tool failure.' }] }],
+    tools: [{
+      name: 'read_file',
+      description: 'Read one file.',
+      inputSchema: { type: 'object' },
+    }, {
+      name: 'send_email',
+      description: 'Send email.',
+      inputSchema: { type: 'object' },
+    }],
+    registry,
+    maxTurns: 3,
+    toolContext: {
+      runtime: {
+        invoke: async (
+          args: {
+            action: string;
+            payload: Record<string, unknown>;
+          },
+        ): Promise<Record<string, unknown>> => {
+          recoveryToolInvokedActions.push(args.action);
+          if (args.action === 'file.read') {
+            throw new Error('ENOENT: no such file or directory');
+          }
+          return {
+            messageId: 'recovered-message-id',
+          };
+        },
+      },
+      logger: {
+        info: (): void => undefined,
+        error: (): void => undefined,
+      },
+    },
+  })).responseText;
 });
 
 describe('harness provider tool loop hardening', () => {
@@ -353,6 +484,30 @@ describe('harness provider tool loop hardening', () => {
   });
 
   it('propagates first tool failure error message to the caller', () => {
-    expect(failingMultiToolErrorMessage.includes('smtp unavailable')).toBe(true);
+    expect(failingMultiToolErrorMessage.includes('maximum tool loop turns')).toBe(true);
+  });
+
+  it('includes stack preview details in structured tool failure feedback', () => {
+    expect(recoveryFirstToolErrorHasStackPreview).toBe(true);
+  });
+
+  it('includes structured tool failure error code in feedback', () => {
+    expect(recoveryFirstToolErrorCode).toBe('tool_execution_failed');
+  });
+
+  it('includes original tool error message in feedback', () => {
+    expect(recoveryFirstToolErrorMessage.includes('ENOENT')).toBe(true);
+  });
+
+  it('includes original tool input payload in feedback', () => {
+    expect(recoveryFirstToolInputPath).toBe('/tmp/does-not-exist.txt');
+  });
+
+  it('allows the model to recover after one failed tool call and continue execution', () => {
+    expect(recoveryToolInvokedActions.join(',')).toBe('file.read,email.send');
+  });
+
+  it('returns final assistant text after recovery tool execution', () => {
+    expect(recoveryResponseText).toBe('Recovered successfully after tool failure.');
   });
 });

@@ -34,6 +34,7 @@ If the websocket client for that persona is authenticated, the inbox terminal wi
 Relay now also processes outbound tunnel frames (`smtp_start` + `smtp_chunk` + `smtp_end`) and attempts SMTP egress delivery from the relay host.
 Outbound egress is direct-to-MX SMTP (no third-party SMTP provider required).
 For websocket clients that support it, relay emits delivery control messages (`relay_delivery_result`) so callers can distinguish queued vs sent/failed outcomes.
+If delivery control signaling is delayed, gateway may classify the send as queued/indeterminate rather than hard-failed to avoid duplicate resend behavior.
 
 ## Relay Service Config
 

@@ -8,7 +8,7 @@ import type { SMTPServerDataStream, SMTPServerSession } from 'smtp-server';
 
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 
 import { handleInboundData, startInboundServer } from '@engine/gateway/inbound';
@@ -656,6 +656,16 @@ export function createGatewayRuntimeActionInvoker(
       context: {
         correlationId: args.correlationId ?? null,
         action: runtimeArgs.action,
+        ...(runtimeArgs.action === 'email.send' ? {
+          to: toStringArray({ value: runtimeArgs.payload.to }) ?? [],
+          subject: typeof runtimeArgs.payload.subject === 'string' ? runtimeArgs.payload.subject : null,
+          attachmentCount: readAttachmentCountFromRuntimePayload({
+            value: runtimeArgs.payload.attachments,
+          }),
+          attachmentNames: readAttachmentNamesFromRuntimePayload({
+            value: runtimeArgs.payload.attachments,
+          }),
+        } : {}),
       },
     });
     if (runtimeArgs.action === 'file.read') {
@@ -739,12 +749,57 @@ export function createGatewayRuntimeActionInvoker(
         correlationId: args.correlationId ?? null,
         action: runtimeArgs.action,
         messageId,
+        ...(runtimeArgs.action === 'email.send' ? {
+          to: request.to.map((item) => item.address),
+          subject: request.subject,
+          attachmentCount: request.attachments?.length ?? 0,
+          attachmentNames: (request.attachments ?? []).map((attachment) => attachment.filename ?? basename(attachment.path)),
+        } : {}),
       },
     });
     return {
       messageId,
     };
   };
+}
+
+/**
+ * Reads one attachment count from unknown runtime payload value.
+ */
+export function readAttachmentCountFromRuntimePayload(
+  args: {
+    value: unknown;
+  },
+): number {
+  return Array.isArray(args.value) ? args.value.length : 0;
+}
+
+/**
+ * Reads attachment display names from unknown runtime payload value for structured logs.
+ */
+export function readAttachmentNamesFromRuntimePayload(
+  args: {
+    value: unknown;
+  },
+): string[] {
+  if (!Array.isArray(args.value) || args.value.length === 0) {
+    return [];
+  }
+
+  return args.value.map((item) => {
+    const record = typeof item === 'object' && item !== null
+      ? item as Record<string, unknown>
+      : {};
+    const filename = record.filename;
+    if (typeof filename === 'string' && filename.trim().length > 0) {
+      return filename;
+    }
+
+    const path = record.path;
+    return typeof path === 'string' && path.trim().length > 0
+      ? basename(path)
+      : 'unknown';
+  });
 }
 
 /**

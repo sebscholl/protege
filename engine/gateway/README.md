@@ -44,6 +44,7 @@ Responsible for SMTP parsing/sending and relay tunneling behavior.
 5. Gateway and harness logs now propagate a shared `correlationId` per inbound message across receive, persistence, inference, tool calls, and runtime actions.
 6. Relay lifecycle logging includes per-persona `gateway.relay.client_starting`, `gateway.relay.authenticated`, `gateway.relay.disconnected`, and `gateway.relay.control_message` events.
 7. Relay-capable clients now process relay delivery control messages (`relay_delivery_result`) for strict runtime send success/failure when available.
+8. Relay delivery-signal timeout is treated as queued/indeterminate (with timeout log event) to avoid duplicate outbound resends when relay confirmation is delayed.
 
 ## Config Validation
 

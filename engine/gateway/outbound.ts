@@ -132,6 +132,7 @@ export async function sendGatewayReplyViaRelay(
     logger: GatewayLogger;
     retryPolicy?: RetryPolicy;
     correlationId?: string;
+    deliverySignalTimeoutMs?: number;
   },
 ): Promise<{
   messageId: string;
@@ -170,6 +171,7 @@ export async function sendGatewayReplyViaRelay(
           deliveryWaiters.push(waitForRelayDeliverySignal({
             relayClient: args.relayClient,
             streamId,
+            timeoutMs: args.deliverySignalTimeoutMs,
           }));
         }
         args.relayClient.sendBinaryFrame({
@@ -197,10 +199,43 @@ export async function sendGatewayReplyViaRelay(
         });
       }
       if (shouldAwaitDeliverySignals) {
-        const signals = await Promise.all(deliveryWaiters);
-        const failedSignal = signals.find((signal) => signal.status === 'failed');
-        if (failedSignal) {
-          throw new Error(failedSignal.errorMessage ?? 'Relay outbound delivery failed.');
+        try {
+          const signals = await Promise.all(deliveryWaiters);
+          const failedSignal = signals.find((signal) => signal.status === 'failed');
+          if (failedSignal) {
+            throw new Error(failedSignal.errorMessage ?? 'Relay outbound delivery failed.');
+          }
+        } catch (error) {
+          if (!isRelayDeliverySignalTimeoutError({ error })) {
+            throw error;
+          }
+          const timeoutError = error as RelayDeliverySignalTimeoutError;
+
+          args.logger.error({
+            event: 'gateway.outbound.relay_delivery_signal_timeout',
+            context: {
+              correlationId: args.correlationId ?? null,
+              attempt,
+              message: timeoutError.message,
+              recipients: envelopeRecipients,
+              inReplyTo: parentId,
+              messageId: mime.messageId,
+            },
+          });
+          args.logger.info({
+            event: 'gateway.outbound.queued_via_relay',
+            context: {
+              correlationId: args.correlationId ?? null,
+              attempt,
+              recipients: envelopeRecipients,
+              inReplyTo: parentId,
+              messageId: mime.messageId,
+              deliverySignalTimedOut: true,
+            },
+          });
+          return {
+            messageId: mime.messageId,
+          };
         }
       }
 
@@ -247,6 +282,11 @@ type RelayDeliverySignal = {
   status: 'sent' | 'failed';
   errorMessage?: string;
 };
+
+/**
+ * Represents one timeout while waiting for relay delivery control signaling.
+ */
+export class RelayDeliverySignalTimeoutError extends Error {}
 
 const RELAY_DELIVERY_SIGNAL_TIMEOUT_MS = 20_000;
 const relayClientsWithDeliverySignals = new WeakSet<RelayClientController>();
@@ -324,6 +364,7 @@ export function waitForRelayDeliverySignal(
   args: {
     relayClient: RelayClientController;
     streamId: string;
+    timeoutMs?: number;
   },
 ): Promise<RelayDeliverySignal> {
   const waiters = relayPendingSignalsByClient.get(args.relayClient) ?? new Map();
@@ -331,14 +372,27 @@ export function waitForRelayDeliverySignal(
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       waiters.delete(args.streamId);
-      reject(new Error(`Timed out waiting for relay delivery signal for stream ${args.streamId}.`));
-    }, RELAY_DELIVERY_SIGNAL_TIMEOUT_MS);
+      reject(new RelayDeliverySignalTimeoutError(`Timed out waiting for relay delivery signal for stream ${args.streamId}.`));
+    }, args.timeoutMs ?? RELAY_DELIVERY_SIGNAL_TIMEOUT_MS);
     waiters.set(args.streamId, {
       resolve,
       reject,
       timeout,
     });
   });
+}
+
+/**
+ * Returns true when one unknown error is a relay delivery signal timeout.
+ */
+export function isRelayDeliverySignalTimeoutError(
+  args: {
+    error: unknown;
+  },
+): args is {
+  error: RelayDeliverySignalTimeoutError;
+} {
+  return args.error instanceof RelayDeliverySignalTimeoutError;
 }
 
 /**

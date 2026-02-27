@@ -44,3 +44,4 @@ Optional:
 5. Runtime defaults to same-thread replies; use `threadingMode: "new_thread"` only when intentionally starting a separate conversation.
 6. Runtime may normalize same-thread reply subjects to preserve thread semantics.
 7. Attachment descriptors are file-path based and resolved by runtime transport.
+8. Completion logs include `attachmentCount` and `attachmentNames` for delivery debugging.

@@ -1,4 +1,5 @@
 import { createTransport } from 'nodemailer';
+import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -29,6 +30,10 @@ let newThreadModeSubject = '';
 let forwardedAttachmentPath = '';
 let invalidAttachmentShapeError = '';
 let invalidAttachmentPathError = '';
+let invokingAttachmentCount = -1;
+let invokingAttachmentName = '';
+let completedAttachmentCount = -1;
+let completedAttachmentName = '';
 
 beforeAll(async (): Promise<void> => {
   const streamTransport = createTransport({
@@ -363,7 +368,7 @@ beforeAll(async (): Promise<void> => {
       text: 'Reply body',
       attachments: [
         {
-          path: '/tmp/report.txt',
+          path: join(process.cwd(), 'tests', 'fixtures', 'email', 'email-plain.eml'),
         },
       ],
     },
@@ -434,6 +439,72 @@ beforeAll(async (): Promise<void> => {
   } catch (error) {
     invalidAttachmentPathError = (error as Error).message;
   }
+
+  const loggerEvents: Array<{
+    event: string;
+    context: Record<string, unknown>;
+  }> = [];
+  const invokeWithAttachmentLogging = createGatewayRuntimeActionInvoker({
+    message: {
+      personaId: 'persona-test',
+      messageId: '<inbound@example.com>',
+      threadId: 'thread-1',
+      from: [{ address: 'sender@example.com' }],
+      to: [{ address: 'agent@example.com' }],
+      cc: [],
+      bcc: [],
+      envelopeRcptTo: [{ address: 'agent@example.com' }],
+      subject: 'Hello',
+      text: 'Body',
+      references: [],
+      receivedAt: '2026-02-14T00:00:00.000Z',
+      rawMimePath: '/tmp/inbound.eml',
+      attachments: [],
+    },
+    logger: {
+      info: (
+        loggerArgs: {
+          event: string;
+          context: Record<string, unknown>;
+        },
+      ): void => {
+        loggerEvents.push({
+          event: loggerArgs.event,
+          context: loggerArgs.context,
+        });
+      },
+      error: (): void => undefined,
+    },
+    transport: streamTransport,
+    personaSenderAddress: 'persona@example.com',
+  });
+  await invokeWithAttachmentLogging({
+    action: 'email.send',
+    payload: {
+      to: ['receiver@example.com'],
+      subject: 'Attachment Log Test',
+      text: 'Body',
+      attachments: [
+        {
+          path: join(process.cwd(), 'tests', 'fixtures', 'email', 'email-plain.eml'),
+        },
+      ],
+    },
+  });
+  const invokingEvent = loggerEvents.find((event) => event.event === 'gateway.runtime_action.invoking');
+  const completedEvent = loggerEvents.find((event) => event.event === 'gateway.runtime_action.completed');
+  invokingAttachmentCount = typeof invokingEvent?.context.attachmentCount === 'number'
+    ? invokingEvent.context.attachmentCount
+    : -1;
+  invokingAttachmentName = Array.isArray(invokingEvent?.context.attachmentNames)
+    ? String((invokingEvent?.context.attachmentNames as unknown[])[0] ?? '')
+    : '';
+  completedAttachmentCount = typeof completedEvent?.context.attachmentCount === 'number'
+    ? completedEvent.context.attachmentCount
+    : -1;
+  completedAttachmentName = Array.isArray(completedEvent?.context.attachmentNames)
+    ? String((completedEvent?.context.attachmentNames as unknown[])[0] ?? '')
+    : '';
 });
 
 describe('gateway runtime action invoker hardening', () => {
@@ -510,7 +581,7 @@ describe('gateway runtime action invoker hardening', () => {
   });
 
   it('forwards attachment descriptors when provided in email.send payload', () => {
-    expect(forwardedAttachmentPath).toBe('/tmp/report.txt');
+    expect(forwardedAttachmentPath.endsWith('/tests/fixtures/email/email-plain.eml')).toBe(true);
   });
 
   it('rejects attachment entries that are not objects', () => {
@@ -519,5 +590,21 @@ describe('gateway runtime action invoker hardening', () => {
 
   it('rejects attachment entries missing required path', () => {
     expect(invalidAttachmentPathError.includes('attachments[0].path')).toBe(true);
+  });
+
+  it('logs attachment count for email.send runtime action invocation', () => {
+    expect(invokingAttachmentCount).toBe(1);
+  });
+
+  it('logs attachment names for email.send runtime action invocation', () => {
+    expect(invokingAttachmentName).toBe('email-plain.eml');
+  });
+
+  it('logs attachment count for completed email.send runtime actions', () => {
+    expect(completedAttachmentCount).toBe(1);
+  });
+
+  it('logs attachment names for completed email.send runtime actions', () => {
+    expect(completedAttachmentName).toBe('email-plain.eml');
   });
 });

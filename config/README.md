@@ -56,7 +56,8 @@ Optional fields:
 2. `whitelist`: string array (default `[]`).
 3. `temperature`: number.
 4. `max_output_tokens`: number.
-5. `providers` object:
+5. `max_tool_turns`: positive integer max provider/tool loop turns per run (default `8`).
+6. `providers` object:
    1. `openai`:
       1. `api_key_env`: env var key name (recommended).
       2. `api_key`: literal API key (legacy fallback).

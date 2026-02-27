@@ -4,7 +4,7 @@ import type {
 } from '@engine/harness/tool-contract';
 
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import { isValidEmailAddress } from '@engine/shared/email';
 
@@ -174,11 +174,43 @@ export async function executeSendEmailTool(
       to: normalized.to,
       subject: normalized.subject,
       messageId: typeof result.messageId === 'string' ? result.messageId : null,
+      attachmentCount: Array.isArray(normalized.attachments) ? normalized.attachments.length : 0,
+      attachmentNames: readAttachmentLogNames({
+        value: normalized.attachments,
+      }),
     },
   });
   return {
     messageId: typeof result.messageId === 'string' ? result.messageId : null,
   };
+}
+
+/**
+ * Builds attachment display names for structured logs without requiring transport inspection.
+ */
+export function readAttachmentLogNames(
+  args: {
+    value: unknown;
+  },
+): string[] {
+  if (!Array.isArray(args.value) || args.value.length === 0) {
+    return [];
+  }
+
+  return args.value.map((item) => {
+    const attachment = typeof item === 'object' && item !== null
+      ? item as Record<string, unknown>
+      : {};
+    const filename = attachment.filename;
+    if (typeof filename === 'string' && filename.trim().length > 0) {
+      return filename;
+    }
+
+    const path = attachment.path;
+    return typeof path === 'string' && path.trim().length > 0
+      ? basename(path)
+      : 'unknown';
+  });
 }
 
 /**

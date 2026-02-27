@@ -12,6 +12,8 @@ let parsedOpenAiBaseUrl = '';
 let parsedOverrideModel = '';
 let parsedOverrideTemperature = 0;
 let missingEnvApiKey = '';
+let parsedMaxToolTurns = 0;
+let parsedFallbackMaxToolTurns = 0;
 
 beforeAll((): void => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-harness-config-'));
@@ -27,6 +29,7 @@ beforeAll((): void => {
       },
     },
     recursion_depth: 3,
+    max_tool_turns: 12,
     whitelist: ['*@example.com'],
   }));
 
@@ -35,6 +38,7 @@ beforeAll((): void => {
   });
   parsedOpenAiApiKey = parsed.providers.openai?.apiKey ?? '';
   parsedOpenAiBaseUrl = parsed.providers.openai?.baseUrl ?? '';
+  parsedMaxToolTurns = parsed.maxToolTurns;
 
   const directConfigPath = join(tempRootPath, 'inference.direct.json');
   writeFileSync(directConfigPath, JSON.stringify({
@@ -73,6 +77,24 @@ beforeAll((): void => {
     configPath: missingEnvConfigPath,
   });
   missingEnvApiKey = missingEnvConfig.providers.openai?.apiKey ?? '';
+
+  const invalidTurnsConfigPath = join(tempRootPath, 'inference.invalid-turns.json');
+  writeFileSync(invalidTurnsConfigPath, JSON.stringify({
+    provider: 'openai',
+    model: 'gpt-4.1',
+    providers: {
+      openai: {
+        api_key_env: 'OPENAI_API_KEY',
+      },
+    },
+    recursion_depth: 3,
+    max_tool_turns: 0,
+    whitelist: ['*@example.com'],
+  }));
+  const invalidTurnsConfig = readInferenceRuntimeConfig({
+    configPath: invalidTurnsConfigPath,
+  });
+  parsedFallbackMaxToolTurns = invalidTurnsConfig.maxToolTurns;
 });
 
 afterAll((): void => {
@@ -99,5 +121,13 @@ describe('harness inference config parsing', () => {
 
   it('returns undefined api key when api_key_env is unset in process env', () => {
     expect(missingEnvApiKey).toBe('');
+  });
+
+  it('parses max_tool_turns from inference config', () => {
+    expect(parsedMaxToolTurns).toBe(12);
+  });
+
+  it('falls back to default max_tool_turns when configured value is invalid', () => {
+    expect(parsedFallbackMaxToolTurns).toBe(8);
   });
 });

@@ -24,6 +24,8 @@ let invalidThreadingModeMessage = '';
 let forwardedThreadingMode = '';
 let forwardedAttachmentPath = '';
 let invalidAttachmentMessage = '';
+let loggedAttachmentCount = -1;
+let loggedAttachmentName = '';
 
 beforeAll(async (): Promise<void> => {
   void readSendEmailToolConfig();
@@ -294,6 +296,26 @@ beforeAll(async (): Promise<void> => {
         ],
       },
       context: {
+        logger: {
+          info: (
+            loggerArgs: {
+              event: string;
+              context: Record<string, unknown>;
+            },
+          ): void => {
+            if (loggerArgs.event !== 'harness.tool.send_email.completed') {
+              return;
+            }
+
+            loggedAttachmentCount = typeof loggerArgs.context.attachmentCount === 'number'
+              ? loggerArgs.context.attachmentCount
+              : -1;
+            loggedAttachmentName = Array.isArray(loggerArgs.context.attachmentNames)
+              ? String((loggerArgs.context.attachmentNames as unknown[])[0] ?? '')
+              : '';
+          },
+          error: (): void => undefined,
+        },
         runtime: {
           invoke: async (
             args: {
@@ -411,5 +433,13 @@ describe('send-email tool extension', () => {
 
   it('rejects attachments missing required file paths', () => {
     expect(invalidAttachmentMessage.includes('attachments[0].path')).toBe(true);
+  });
+
+  it('logs attachment count for completed send_email tool calls', () => {
+    expect(loggedAttachmentCount).toBe(1);
+  });
+
+  it('logs attachment names for completed send_email tool calls', () => {
+    expect(loggedAttachmentName).toBe('report.txt');
   });
 });

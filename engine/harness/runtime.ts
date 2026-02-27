@@ -138,6 +138,7 @@ export async function runHarnessForPersistedInboundMessage(
         correlationId: args.correlationId,
       }),
       registry,
+      maxTurns: inferenceConfig.maxToolTurns,
     });
 
     const responseText = toolResult.responseText.trim();
@@ -352,7 +353,23 @@ export async function executeProviderToolLoop(
             message: (error as Error).message,
           },
         });
-        throw error;
+        if (isNonRecoverableToolError({ error })) {
+          throw error;
+        }
+        providerMessages.push({
+          role: 'tool',
+          toolCallId: toolCall.id,
+          parts: [{
+            type: 'text',
+            text: JSON.stringify(buildToolFailureResult({
+              toolName: toolCall.name,
+              toolCallId: toolCall.id,
+              input: toolCall.input,
+              error,
+            })),
+          }],
+        });
+        break;
       }
       args.toolContext.logger?.info({
         event: 'harness.tool.call.completed',
@@ -377,6 +394,72 @@ export async function executeProviderToolLoop(
     code: 'response_parse_failed',
     message: `Provider exceeded maximum tool loop turns (${maxTurns}).`,
   });
+}
+
+/**
+ * Returns true when one tool error should terminate the run immediately.
+ */
+export function isNonRecoverableToolError(
+  args: {
+    error: unknown;
+  },
+): boolean {
+  if (!(args.error instanceof Error)) {
+    return false;
+  }
+
+  return args.error.message.startsWith('Tool not found:')
+    || args.error.message.startsWith('Unsupported runtime action:')
+    || args.error.message.startsWith('Outbound transport is not configured for email.send.');
+}
+
+/**
+ * Builds one structured tool-failure payload for provider feedback and recovery planning.
+ */
+export function buildToolFailureResult(
+  args: {
+    toolName: string;
+    toolCallId: string;
+    input: Record<string, unknown>;
+    error: unknown;
+  },
+): Record<string, unknown> {
+  const errorObject = args.error instanceof Error
+    ? args.error
+    : new Error(String(args.error));
+  return {
+    ok: false,
+    toolName: args.toolName,
+    toolCallId: args.toolCallId,
+    input: args.input,
+    error: {
+      code: 'tool_execution_failed',
+      name: errorObject.name,
+      message: errorObject.message,
+      stackPreview: toErrorStackPreview({
+        stack: errorObject.stack,
+      }),
+    },
+  };
+}
+
+/**
+ * Converts one stack string into a short line array for model-visible troubleshooting context.
+ */
+export function toErrorStackPreview(
+  args: {
+    stack: string | undefined;
+  },
+): string[] {
+  if (!args.stack || args.stack.trim().length === 0) {
+    return [];
+  }
+
+  return args.stack
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .slice(0, 6);
 }
 
 /**
