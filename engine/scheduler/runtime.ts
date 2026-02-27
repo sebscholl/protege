@@ -16,7 +16,7 @@ import { listPersonas, readPersonaMetadata, resolvePersonaMemoryPaths } from '@e
 import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
 import { startPersonaSchedulerCron } from '@engine/scheduler/cron';
 import { runNextQueuedResponsibility } from '@engine/scheduler/runner';
-import { hasQueuedRunForPersona } from '@engine/scheduler/storage';
+import { finalizeInterruptedRunningRuns, hasQueuedRunForPersona } from '@engine/scheduler/storage';
 import { syncPersonaResponsibilities } from '@engine/scheduler/sync';
 import { resolveMigrationsDirPath } from '@engine/harness/runtime';
 
@@ -291,12 +291,23 @@ export function createSchedulerPersonaState(
     personaId: args.personaId,
     roots: args.roots,
   });
+  const recoveredRunCount = finalizeInterruptedRunningRuns({
+    db,
+    personaId: args.personaId,
+  });
   args.logger.info({
     event: 'scheduler.sync.completed',
     context: {
       personaId: args.personaId,
       upsertedCount: syncResult.upsertedCount,
       disabledCount: syncResult.disabledCount,
+    },
+  });
+  args.logger.info({
+    event: 'scheduler.recovery.interrupted_runs_finalized',
+    context: {
+      personaId: args.personaId,
+      recoveredRunCount,
     },
   });
   const cronController = startPersonaSchedulerCron({

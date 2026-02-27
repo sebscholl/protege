@@ -1,14 +1,16 @@
 import type { GatewayLogger } from '@engine/gateway/types';
 import type { ProtegeDatabase } from '@engine/shared/database';
 
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { createPersona } from '@engine/shared/personas';
-import { buildSchedulerFailureAlertInboundMessage, runSchedulerCycle, stopSchedulerPersonaStates } from '@engine/scheduler/runtime';
+import { createSchedulerPersonaState, buildSchedulerFailureAlertInboundMessage, runSchedulerCycle, stopSchedulerPersonaStates } from '@engine/scheduler/runtime';
+import { claimNextQueuedRun, enqueueResponsibilityRun, listResponsibilityRunsByPersona } from '@engine/scheduler/storage';
+import { syncPersonaResponsibilities } from '@engine/scheduler/sync';
 
 let schedulerCycleContinuesAfterPersonaFailure = false;
 let schedulerStopClosesPersonaResources = false;
@@ -18,6 +20,8 @@ let observedMaxInFlight = 0;
 let personaARuns = 0;
 let personaBRuns = 0;
 let schedulerThrottleLogEmitted = false;
+let startupRecoveredInterruptedRun = false;
+let startupRecoveryLogHasRecoveredCount = false;
 
 /**
  * Creates one no-op gateway logger for scheduler runtime tests.
@@ -211,6 +215,82 @@ beforeAll(async (): Promise<void> => {
     },
   });
   schedulerThrottleLogEmitted = throttleLogs.includes('scheduler.cycle.throttled');
+
+  const recoveryResponsibilitiesDirPath = join(roots.personasDirPath, persona.personaId, 'responsibilities');
+  mkdirSync(recoveryResponsibilitiesDirPath, { recursive: true });
+  writeFileSync(join(recoveryResponsibilitiesDirPath, 'runtime-recovery.md'), [
+    '---',
+    'name: Runtime Recovery',
+    'schedule: * * * * *',
+    'enabled: true',
+    '---',
+    'Recovery test prompt.',
+  ].join('\n'));
+  const initialState = createSchedulerPersonaState({
+    personaId: persona.personaId,
+    roots,
+    logger: createSilentLogger(),
+  });
+  const recoverySyncResult = syncPersonaResponsibilities({
+    db: initialState.db,
+    personaId: persona.personaId,
+    roots,
+  });
+  if (recoverySyncResult.upsertedCount === 0) {
+    throw new Error('Expected recovery responsibility sync to upsert at least one row.');
+  }
+  enqueueResponsibilityRun({
+    db: initialState.db,
+    run: {
+      responsibilityId: 'runtime-recovery',
+      personaId: persona.personaId,
+      triggeredAt: '2026-02-27T21:00:00.000Z',
+    },
+    runId: 'run-runtime-recovery',
+  });
+  const claimedRecoveryRun = claimNextQueuedRun({
+    db: initialState.db,
+    personaId: persona.personaId,
+    startedAt: '2026-02-27T21:00:01.000Z',
+  });
+  if (!claimedRecoveryRun || claimedRecoveryRun.status !== 'running') {
+    throw new Error('Expected recovery run to be running before startup recovery.');
+  }
+  initialState.cronController.stop();
+  initialState.db.close();
+
+  const restartedInfoEvents: Array<{
+    event: string;
+    context: Record<string, unknown>;
+  }> = [];
+  const restartedState = createSchedulerPersonaState({
+    personaId: persona.personaId,
+    roots,
+    logger: {
+      info: (
+        args: {
+          event: string;
+          context: Record<string, unknown>;
+        },
+      ): void => {
+        restartedInfoEvents.push(args);
+      },
+      error: (): void => undefined,
+    },
+  });
+  const recoveredRun = listResponsibilityRunsByPersona({
+    db: restartedState.db,
+    personaId: persona.personaId,
+  }).find((run) => run.id === 'run-runtime-recovery');
+  startupRecoveredInterruptedRun = recoveredRun?.status === 'failed'
+    && recoveredRun.failureCategory === 'runtime';
+  startupRecoveryLogHasRecoveredCount = restartedInfoEvents.some((event) => {
+    return event.event === 'scheduler.recovery.interrupted_runs_finalized'
+      && typeof event.context.recoveredRunCount === 'number'
+      && event.context.recoveredRunCount === 1;
+  });
+  restartedState.cronController.stop();
+  restartedState.db.close();
 });
 
 afterAll((): void => {
@@ -252,5 +332,15 @@ describe('scheduler runtime parallel dispatch controls', () => {
 
   it('emits throttling visibility logs when queued work is blocked by concurrency limits', () => {
     expect(schedulerThrottleLogEmitted).toBe(true);
+  });
+});
+
+describe('scheduler startup recovery behavior', () => {
+  it('finalizes interrupted running rows when runtime restarts', () => {
+    expect(startupRecoveredInterruptedRun).toBe(true);
+  });
+
+  it('emits startup recovery log with recovered interrupted run count', () => {
+    expect(startupRecoveryLogHasRecoveredCount).toBe(true);
   });
 });

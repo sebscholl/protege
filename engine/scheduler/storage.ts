@@ -569,6 +569,52 @@ export function markRunFailed(
 }
 
 /**
+ * Marks interrupted running rows as failed so scheduler startup can recover from process restarts.
+ */
+export function finalizeInterruptedRunningRuns(
+  args: {
+    db: ProtegeDatabase;
+    personaId?: string;
+    finishedAt?: string;
+    errorMessage?: string;
+  },
+): number {
+  const finishedAt = args.finishedAt ?? new Date().toISOString();
+  const errorMessage = args.errorMessage ?? 'Interrupted: scheduler process stopped before run completion.';
+  if (args.personaId) {
+    const result = args.db.prepare(`
+      UPDATE responsibility_runs
+      SET
+        status = 'failed',
+        finished_at = ?,
+        error_message = ?,
+        failure_category = 'runtime'
+      WHERE persona_id = ?
+        AND status = 'running'
+    `).run(
+      finishedAt,
+      errorMessage,
+      args.personaId,
+    );
+    return Number(result.changes ?? 0);
+  }
+
+  const result = args.db.prepare(`
+    UPDATE responsibility_runs
+    SET
+      status = 'failed',
+      finished_at = ?,
+      error_message = ?,
+      failure_category = 'runtime'
+    WHERE status = 'running'
+  `).run(
+    finishedAt,
+    errorMessage,
+  );
+  return Number(result.changes ?? 0);
+}
+
+/**
  * Persists one skipped run outcome row for one responsibility tick that was intentionally not executed.
  */
 export function recordSkippedRun(

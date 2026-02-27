@@ -12,6 +12,7 @@ import {
   disableResponsibility,
   enqueueResponsibilityRun,
   enqueueResponsibilityRunIfIdle,
+  finalizeInterruptedRunningRuns,
   hasQueuedRunForPersona,
   listEnabledResponsibilitiesByPersona,
   listResponsibilitiesByPersona,
@@ -35,6 +36,9 @@ let personaHasQueuedAfterOverlap = false;
 let overlapClaimBlockedByRunning = false;
 let failedRunCategory = '';
 let skippedOverlapRunStatus = '';
+let interruptedRecoveryCount = 0;
+let recoveredRunStatus = '';
+let recoveredFailureCategory = '';
 
 beforeAll((): void => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-scheduler-storage-'));
@@ -193,6 +197,18 @@ beforeAll((): void => {
     startedAt: '2026-02-20T13:00:04.000Z',
   });
   overlapClaimBlockedByRunning = blockedClaim === undefined;
+
+  interruptedRecoveryCount = finalizeInterruptedRunningRuns({
+    db: db as ProtegeDatabase,
+    personaId: 'persona-a',
+    finishedAt: '2026-02-20T13:00:05.000Z',
+  });
+  const recoveredRuns = listResponsibilityRunsByPersona({
+    db: db as ProtegeDatabase,
+    personaId: 'persona-a',
+  });
+  recoveredRunStatus = recoveredRuns.find((run) => run.id === overlapRunningClaim.id)?.status ?? '';
+  recoveredFailureCategory = recoveredRuns.find((run) => run.id === overlapRunningClaim.id)?.failureCategory ?? '';
 });
 
 afterAll((): void => {
@@ -243,5 +259,13 @@ describe('scheduler storage', () => {
 
   it('does not claim queued runs for a responsibility that already has a running row', () => {
     expect(overlapClaimBlockedByRunning).toBe(true);
+  });
+
+  it('finalizes interrupted running runs during startup recovery', () => {
+    expect(interruptedRecoveryCount > 0 && recoveredRunStatus === 'failed').toBe(true);
+  });
+
+  it('marks recovered interrupted runs with runtime failure category', () => {
+    expect(recoveredFailureCategory).toBe('runtime');
   });
 });

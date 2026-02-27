@@ -23,6 +23,9 @@ Runtime behavior:
 3. Failure alerts use global admin contact:
    - `admin_contact_email` in `config/system.json`.
    - if missing, failures are logged and alert send is skipped.
+4. Startup recovery finalizes interrupted runs:
+   - `running` rows left behind by a stopped gateway process are marked `failed` with `failure_category=runtime` during scheduler persona startup.
+   - this prevents permanent overlap-lock conditions after restarts.
 
 Responsibility authoring:
 

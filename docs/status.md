@@ -213,6 +213,8 @@ Planning updates:
 31. Pretty-log theming improvements:
    - pretty console mode now renders multiline, indented key/value context rows for readability
    - ANSI styling is now theme-driven via `config/theme.json` and `theme_config_path` in `config/system.json`
+32. Scheduler restart recovery hardening:
+   - scheduler startup now finalizes interrupted `running` rows as `failed` (`failure_category=runtime`) to prevent permanent overlap-lock after gateway restarts
 
 ## ADR Coverage
 
