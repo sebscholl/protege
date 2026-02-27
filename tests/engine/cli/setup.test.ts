@@ -5,7 +5,14 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runCli } from '@engine/cli/index';
-import { hasSetupConfigFlags, parseSetupArgs } from '@engine/cli/setup';
+import {
+  hasSetupConfigFlags,
+  parseSetupArgs,
+  readSetupNextCommand,
+  runSetupCommand,
+  validateEmailAddress,
+  validateRelayWsUrl,
+} from '@engine/cli/setup';
 import { listPersonas } from '@engine/shared/personas';
 import { captureStdout } from '@tests/helpers/stdout';
 
@@ -29,6 +36,11 @@ let webSearchToolConfigProvider = '';
 let anthropicEnvPresent = false;
 let tavilyEnvPresent = false;
 let personaCount = 0;
+let rerunProvider = '';
+let rerunOutboundMode = '';
+let rerunWebSearchProvider = '';
+let rerunAdminContactEmail = '';
+let rerunNextCommand = '';
 
 beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-setup-'));
@@ -106,6 +118,22 @@ beforeAll(async (): Promise<void> => {
 
   process.chdir(projectPath);
   personaCount = listPersonas().length;
+
+  const rerunResult = await runSetupCommand({
+    argv: [
+      '--path',
+      projectPath,
+      '--non-interactive',
+    ],
+  });
+  rerunProvider = rerunResult.provider;
+  rerunOutboundMode = rerunResult.outboundMode;
+  rerunWebSearchProvider = rerunResult.webSearchProvider;
+  rerunNextCommand = rerunResult.nextCommand;
+  const rerunSystemConfig = JSON.parse(readFileSync(join(projectPath, 'config', 'system.json'), 'utf8')) as {
+    admin_contact_email?: string;
+  };
+  rerunAdminContactEmail = rerunSystemConfig.admin_contact_email ?? '';
 });
 
 afterAll((): void => {
@@ -168,6 +196,26 @@ describe('setup cli command', () => {
 
   it('writes .env file into target project path', () => {
     expect(existsSync(join(tempRootPath, 'sample-project', '.env'))).toBe(true);
+  });
+
+  it('preserves provider selection on non-interactive rerun without flags', () => {
+    expect(rerunProvider).toBe('anthropic');
+  });
+
+  it('preserves outbound mode selection on non-interactive rerun without flags', () => {
+    expect(rerunOutboundMode).toBe('relay');
+  });
+
+  it('preserves web-search provider on non-interactive rerun without flags', () => {
+    expect(rerunWebSearchProvider).toBe('tavily');
+  });
+
+  it('preserves admin contact email on non-interactive rerun without flags', () => {
+    expect(rerunAdminContactEmail).toBe('ops@example.com');
+  });
+
+  it('returns deterministic next command when doctor is not requested', () => {
+    expect(rerunNextCommand).toBe('protege doctor && protege gateway start');
   });
 });
 
@@ -246,5 +294,19 @@ describe('setup arg parsing behavior', () => {
 
   it('marks parse as non-interactive when --non-interactive is set', () => {
     expect(parseSetupArgs({ argv: ['--non-interactive'] }).interactive).toBe(false);
+  });
+});
+
+describe('setup option validation', () => {
+  it('rejects invalid relay websocket urls', () => {
+    expect(() => validateRelayWsUrl({ relayWsUrl: 'https://relay.protege.bot/ws' })).toThrow('Invalid --relay-ws-url value');
+  });
+
+  it('rejects invalid admin email values', () => {
+    expect(() => validateEmailAddress({ emailAddress: 'ops_at_example.com', label: '--admin-contact-email' })).toThrow('Invalid --admin-contact-email value');
+  });
+
+  it('returns gateway start next command when doctor has already run', () => {
+    expect(readSetupNextCommand({ runDoctor: true })).toBe('protege gateway start');
   });
 });

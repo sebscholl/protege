@@ -139,6 +139,9 @@ Completed (partial):
 2. `init` preserved as scaffold-only command.
 3. Relay/local outbound selection, provider selection, web-search provider selection, env key writing, and persona bootstrap are wired in non-interactive flag mode.
 4. Bare `protege setup` now prompts interactively by default when setup config flags are not provided.
+5. Wizard interaction contract frozen in `docs/milestones/setup-wizard-spec.md`.
+6. Setup option validation hardened (relay websocket URL + admin email).
+7. Setup rerun defaults are now hydrated from existing project state to avoid accidental resets.
 
 ### Tests
 

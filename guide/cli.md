@@ -170,6 +170,13 @@ protege setup \
 protege setup --non-interactive
 ```
 
+Setup validation and rerun behavior:
+
+1. `--relay-ws-url` must be a valid `ws://` or `wss://` URL when outbound mode is `relay`.
+2. `--admin-contact-email` is optional, but when provided must be a valid email address.
+3. Rerunning `setup` reuses current project settings as defaults (provider, outbound mode, relay URL, web-search provider, admin contact email) instead of resetting to scaffold defaults.
+4. Setup result now includes `nextCommand` to guide immediate next action.
+
 ## Status
 
 1. Human-readable status:

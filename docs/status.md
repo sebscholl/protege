@@ -206,6 +206,10 @@ Planning updates:
 29. Scheduler SH4 reliability coverage expanded:
    - explicit e2e validation for concurrent execution of two distinct responsibilities under global scheduler cap
    - explicit e2e validation that long-running responsibilities block duplicate enqueue attempts via overlap guardrail
+30. Setup wizard hardening (OH7 slice):
+   - wizard interaction contract frozen in `docs/milestones/setup-wizard-spec.md`
+   - setup validation now enforces relay websocket URL protocol and admin-contact email shape
+   - setup reruns now hydrate defaults from existing project config/env/manifest to prevent accidental reset drift
 
 ## ADR Coverage
 

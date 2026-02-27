@@ -69,6 +69,7 @@ export type SetupCommandResult = {
   createdPersona: boolean;
   webSearchProvider: SetupWebSearchProvider;
   wroteEnvKeys: string[];
+  nextCommand: string;
   doctor?: DoctorReport;
 };
 
@@ -80,14 +81,20 @@ export async function runSetupCommand(
     argv: string[];
   },
 ): Promise<SetupCommandResult> {
-  const parsed = parseSetupArgs({
+  const parsedArgs = parseSetupArgs({
     argv: args.argv,
   });
-  const options = parsed.interactive
+  const seededOptions = hydrateSetupSeedFromExistingProject({
+    options: parsedArgs.options,
+  });
+  const options = parsedArgs.interactive
     ? await promptSetupCommandOptions({
-      seed: parsed.options,
+      seed: seededOptions,
     })
-    : parsed.options;
+    : seededOptions;
+  validateSetupCommandOptions({
+    options,
+  });
   const init = runInitCommand({
     argv: buildInitArgv({
       options,
@@ -226,6 +233,63 @@ export function parseSetupArgs(
 }
 
 /**
+ * Validates one setup options object and throws actionable errors for invalid values.
+ */
+export function validateSetupCommandOptions(
+  args: {
+    options: SetupCommandOptions;
+  },
+): void {
+  if (args.options.outboundMode === 'relay') {
+    validateRelayWsUrl({
+      relayWsUrl: args.options.relayWsUrl,
+    });
+  }
+  if (typeof args.options.adminContactEmail === 'string' && args.options.adminContactEmail.trim().length > 0) {
+    validateEmailAddress({
+      emailAddress: args.options.adminContactEmail,
+      label: '--admin-contact-email',
+    });
+  }
+}
+
+/**
+ * Validates one relay websocket url value.
+ */
+export function validateRelayWsUrl(
+  args: {
+    relayWsUrl: string;
+  },
+): void {
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(args.relayWsUrl);
+  } catch {
+    throw new Error('Invalid --relay-ws-url value. Expected a valid ws:// or wss:// URL.');
+  }
+
+  if (parsedUrl.protocol !== 'ws:' && parsedUrl.protocol !== 'wss:') {
+    throw new Error('Invalid --relay-ws-url value. Expected ws:// or wss:// protocol.');
+  }
+}
+
+/**
+ * Validates one email address value using a pragmatic v1 format check.
+ */
+export function validateEmailAddress(
+  args: {
+    emailAddress: string;
+    label: string;
+  },
+): void {
+  const candidate = args.emailAddress.trim();
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailPattern.test(candidate)) {
+    throw new Error(`Invalid ${args.label} value. Expected a valid email address.`);
+  }
+}
+
+/**
  * Returns true when setup should run interactive prompts for missing onboarding inputs.
  */
 export function shouldRunInteractiveSetup(
@@ -346,6 +410,126 @@ export async function promptSetupCommandOptions(
   } finally {
     prompt.close();
   }
+}
+
+/**
+ * Hydrates setup option defaults from existing project config/env state when available.
+ */
+export function hydrateSetupSeedFromExistingProject(
+  args: {
+    options: SetupCommandOptions;
+  },
+): SetupCommandOptions {
+  const targetPath = args.options.targetPath;
+  const seeded: SetupCommandOptions = {
+    ...args.options,
+  };
+  const inferenceConfigPath = join(targetPath, 'config', 'inference.json');
+  if (existsSync(inferenceConfigPath)) {
+    const inferenceConfig = readJsonFile({
+      filePath: inferenceConfigPath,
+    }) as {
+      provider?: string;
+    };
+    if (inferenceConfig.provider === 'openai'
+      || inferenceConfig.provider === 'anthropic'
+      || inferenceConfig.provider === 'gemini'
+      || inferenceConfig.provider === 'grok') {
+      seeded.provider = inferenceConfig.provider;
+    }
+  }
+
+  const gatewayConfigPath = join(targetPath, 'config', 'gateway.json');
+  if (existsSync(gatewayConfigPath)) {
+    const gatewayConfig = readJsonFile({
+      filePath: gatewayConfigPath,
+    }) as GatewayRuntimeConfig;
+    if (gatewayConfig.relay?.enabled === true) {
+      seeded.outboundMode = 'relay';
+      if (typeof gatewayConfig.relay.relayWsUrl === 'string' && gatewayConfig.relay.relayWsUrl.trim().length > 0) {
+        seeded.relayWsUrl = gatewayConfig.relay.relayWsUrl;
+      }
+    } else if (gatewayConfig.relay?.enabled === false) {
+      seeded.outboundMode = 'local';
+    }
+  }
+
+  const systemConfigPath = join(targetPath, 'config', 'system.json');
+  if (existsSync(systemConfigPath)) {
+    const systemConfig = readJsonFile({
+      filePath: systemConfigPath,
+    }) as {
+      admin_contact_email?: string;
+    };
+    if (typeof systemConfig.admin_contact_email === 'string') {
+      seeded.adminContactEmail = systemConfig.admin_contact_email;
+    }
+  }
+
+  const extensionsManifestPath = join(targetPath, 'extensions', 'extensions.json');
+  if (existsSync(extensionsManifestPath)) {
+    const manifest = readJsonFile({
+      filePath: extensionsManifestPath,
+    }) as ExtensionManifest;
+    const webSearchProvider = readWebSearchProviderFromManifest({
+      manifest,
+    });
+    seeded.webSearchProvider = webSearchProvider;
+  }
+
+  const envPath = join(targetPath, '.env');
+  if (existsSync(envPath)) {
+    const envValues = parseDotEnvText({
+      text: readFileSync(envPath, 'utf8'),
+    });
+    const providerEnvName = readProviderApiKeyEnvName({
+      provider: seeded.provider,
+    });
+    const providerEnvValue = envValues[providerEnvName];
+    if (typeof providerEnvValue === 'string' && providerEnvValue.length > 0) {
+      seeded.inferenceApiKey = providerEnvValue;
+    }
+
+    if (seeded.webSearchProvider === 'perplexity') {
+      const webSearchEnvValue = envValues.PERPLEXITY_API_KEY;
+      if (typeof webSearchEnvValue === 'string' && webSearchEnvValue.length > 0) {
+        seeded.webSearchApiKey = webSearchEnvValue;
+      }
+    }
+    if (seeded.webSearchProvider === 'tavily') {
+      const webSearchEnvValue = envValues.TAVILY_API_KEY;
+      if (typeof webSearchEnvValue === 'string' && webSearchEnvValue.length > 0) {
+        seeded.webSearchApiKey = webSearchEnvValue;
+      }
+    }
+  }
+
+  return seeded;
+}
+
+/**
+ * Reads current web-search provider selection from one extensions manifest.
+ */
+export function readWebSearchProviderFromManifest(
+  args: {
+    manifest: ExtensionManifest;
+  },
+): SetupWebSearchProvider {
+  const webSearchEntry = args.manifest.tools.find((toolEntry) => isWebSearchToolEntry({
+    entry: toolEntry,
+  }));
+  if (!webSearchEntry) {
+    return 'none';
+  }
+  if (typeof webSearchEntry === 'string') {
+    return 'perplexity';
+  }
+
+  if (webSearchEntry.config?.provider === 'tavily') {
+    return 'tavily';
+  }
+
+  return 'perplexity';
 }
 
 /**
@@ -557,8 +741,26 @@ export function applySetup(
     createdPersona: personaSelection.created,
     webSearchProvider: args.options.webSearchProvider,
     wroteEnvKeys,
+    nextCommand: readSetupNextCommand({
+      runDoctor: args.options.runDoctor,
+    }),
     doctor,
   };
+}
+
+/**
+ * Returns one deterministic next command recommendation after setup completes.
+ */
+export function readSetupNextCommand(
+  args: {
+    runDoctor: boolean;
+  },
+): string {
+  if (args.runDoctor) {
+    return 'protege gateway start';
+  }
+
+  return 'protege doctor && protege gateway start';
 }
 
 /**
