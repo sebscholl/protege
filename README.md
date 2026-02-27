@@ -28,13 +28,13 @@ npm install -g protege
 mkdir my-protege
 cd my-protege
 ```
-3. Scaffold project files:
+3. Run guided setup (recommended):
+```bash
+protege setup
+```
+4. Or scaffold only (advanced/manual setup):
 ```bash
 protege init
-```
-4. Create a persona:
-```bash
-protege persona create --name "Primary"
 ```
 5. Bootstrap relay mode:
 ```bash
@@ -60,7 +60,11 @@ protege doctor
 6. `protege status [--json]`
 7. `protege logs [--follow] [--tail <n>] [--scope <scope>] [--json]`
 8. `protege doctor [--json]`
-9. `protege chat --persona <persona_id_or_prefix> [--thread <thread_id>]`
+9. `protege init [--path <dir>] [--force]`
+10. `protege setup [--path <dir>] [--force] [--provider <openai|anthropic|gemini|grok>] [--outbound <relay|local>] [--non-interactive] ...`
+11. `protege chat --persona <persona_id_or_prefix> [--thread <thread_id>]`
+
+`protege setup` prompts interactively by default when setup config flags are omitted.
 
 ## User Guides
 

@@ -1,0 +1,250 @@
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { runCli } from '@engine/cli/index';
+import { hasSetupConfigFlags, parseSetupArgs } from '@engine/cli/setup';
+import { listPersonas } from '@engine/shared/personas';
+import { captureStdout } from '@tests/helpers/stdout';
+
+let tempRootPath = '';
+let previousCwd = '';
+let setupResult = {} as {
+  provider: string;
+  outboundMode: string;
+  relayWsUrl?: string;
+  mailDomain: string;
+  personaEmailAddress: string;
+  createdPersona: boolean;
+  webSearchProvider: string;
+  wroteEnvKeys: string[];
+};
+let inferenceProvider = '';
+let gatewayRelayEnabled = false;
+let gatewayRelayWsUrl = '';
+let systemAdminContactEmail = '';
+let webSearchToolConfigProvider = '';
+let anthropicEnvPresent = false;
+let tavilyEnvPresent = false;
+let personaCount = 0;
+
+beforeAll(async (): Promise<void> => {
+  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-setup-'));
+  previousCwd = process.cwd();
+  process.chdir(tempRootPath);
+
+  const output = await captureStdout({
+    run: async (): Promise<void> => runCli({
+      argv: [
+        'setup',
+        '--path',
+        join(tempRootPath, 'sample-project'),
+        '--provider',
+        'anthropic',
+        '--inference-api-key',
+        'anthropic-key-123',
+        '--outbound',
+        'relay',
+        '--relay-ws-url',
+        'wss://relay.protege.bot/ws',
+        '--web-search-provider',
+        'tavily',
+        '--web-search-api-key',
+        'tavily-key-123',
+        '--admin-contact-email',
+        'ops@example.com',
+      ],
+    }),
+  });
+
+  setupResult = JSON.parse(output.trim()) as typeof setupResult;
+
+  const projectPath = join(tempRootPath, 'sample-project');
+  const inferenceConfig = JSON.parse(readFileSync(join(projectPath, 'config', 'inference.json'), 'utf8')) as {
+    provider: string;
+  };
+  inferenceProvider = inferenceConfig.provider;
+
+  const gatewayConfig = JSON.parse(readFileSync(join(projectPath, 'config', 'gateway.json'), 'utf8')) as {
+    relay?: {
+      enabled?: boolean;
+      relayWsUrl?: string;
+    };
+  };
+  gatewayRelayEnabled = gatewayConfig.relay?.enabled === true;
+  gatewayRelayWsUrl = gatewayConfig.relay?.relayWsUrl ?? '';
+
+  const systemConfig = JSON.parse(readFileSync(join(projectPath, 'config', 'system.json'), 'utf8')) as {
+    admin_contact_email?: string;
+  };
+  systemAdminContactEmail = systemConfig.admin_contact_email ?? '';
+
+  const extensionsManifest = JSON.parse(readFileSync(join(projectPath, 'extensions', 'extensions.json'), 'utf8')) as {
+    tools: Array<string | {
+      name: string;
+      config?: {
+        provider?: string;
+      };
+    }>;
+  };
+  const webSearchEntry = extensionsManifest.tools.find((toolEntry) => {
+    if (typeof toolEntry === 'string') {
+      return toolEntry === 'web-search';
+    }
+
+    return toolEntry.name === 'web-search';
+  });
+  webSearchToolConfigProvider = typeof webSearchEntry === 'object'
+    ? webSearchEntry.config?.provider ?? ''
+    : '';
+
+  const envText = readFileSync(join(projectPath, '.env'), 'utf8');
+  anthropicEnvPresent = envText.includes('ANTHROPIC_API_KEY=anthropic-key-123');
+  tavilyEnvPresent = envText.includes('TAVILY_API_KEY=tavily-key-123');
+
+  process.chdir(projectPath);
+  personaCount = listPersonas().length;
+});
+
+afterAll((): void => {
+  process.chdir(previousCwd);
+  rmSync(tempRootPath, { recursive: true, force: true });
+});
+
+describe('setup cli command', () => {
+  it('rejects unknown setup flags', async () => {
+    await expect(runCli({ argv: ['setup', '--wat'] })).rejects.toThrow('Unknown setup option');
+  });
+
+  it('returns configured provider and outbound mode in setup result payload', () => {
+    expect([setupResult.provider, setupResult.outboundMode]).toEqual(['anthropic', 'relay']);
+  });
+
+  it('returns configured relay ws url in setup result payload', () => {
+    expect(setupResult.relayWsUrl).toBe('wss://relay.protege.bot/ws');
+  });
+
+  it('returns inferred relay mail domain in setup result payload', () => {
+    expect(setupResult.mailDomain).toBe('mail.protege.bot');
+  });
+
+  it('returns persona mailbox address in setup result payload', () => {
+    expect(setupResult.personaEmailAddress.endsWith('@mail.protege.bot')).toBe(true);
+  });
+
+  it('writes selected inference provider into inference config', () => {
+    expect(inferenceProvider).toBe('anthropic');
+  });
+
+  it('enables relay outbound mode in gateway config', () => {
+    expect(gatewayRelayEnabled).toBe(true);
+  });
+
+  it('writes configured relay ws url into gateway config', () => {
+    expect(gatewayRelayWsUrl).toBe('wss://relay.protege.bot/ws');
+  });
+
+  it('writes configured admin contact email into system config', () => {
+    expect(systemAdminContactEmail).toBe('ops@example.com');
+  });
+
+  it('writes web-search provider override as manifest object config', () => {
+    expect(webSearchToolConfigProvider).toBe('tavily');
+  });
+
+  it('writes inference api key into target project env file', () => {
+    expect(anthropicEnvPresent).toBe(true);
+  });
+
+  it('writes web-search api key into target project env file', () => {
+    expect(tavilyEnvPresent).toBe(true);
+  });
+
+  it('creates one bootstrap persona during setup flow', () => {
+    expect(personaCount).toBe(1);
+  });
+
+  it('writes .env file into target project path', () => {
+    expect(existsSync(join(tempRootPath, 'sample-project', '.env'))).toBe(true);
+  });
+});
+
+let localSetupResult = {} as {
+  outboundMode: string;
+  relayWsUrl?: string;
+  webSearchProvider: string;
+};
+let localGatewayRelayEnabled = true;
+let localWebSearchEntryExists = true;
+
+beforeAll(async (): Promise<void> => {
+  const localProjectPath = join(tempRootPath, 'sample-local-project');
+  const output = await captureStdout({
+    run: async (): Promise<void> => runCli({
+      argv: [
+        'setup',
+        '--path',
+        localProjectPath,
+        '--outbound',
+        'local',
+        '--web-search-provider',
+        'none',
+      ],
+    }),
+  });
+  localSetupResult = JSON.parse(output.trim()) as typeof localSetupResult;
+
+  const gatewayConfig = JSON.parse(readFileSync(join(localProjectPath, 'config', 'gateway.json'), 'utf8')) as {
+    relay?: {
+      enabled?: boolean;
+    };
+  };
+  localGatewayRelayEnabled = gatewayConfig.relay?.enabled === true;
+
+  const extensionsManifest = JSON.parse(readFileSync(join(localProjectPath, 'extensions', 'extensions.json'), 'utf8')) as {
+    tools: Array<string | {
+      name: string;
+    }>;
+  };
+  localWebSearchEntryExists = extensionsManifest.tools.some((toolEntry) => {
+    if (typeof toolEntry === 'string') {
+      return toolEntry === 'web-search';
+    }
+
+    return toolEntry.name === 'web-search';
+  });
+});
+
+describe('setup cli local mode and optional tool behavior', () => {
+  it('returns local outbound mode in setup result payload', () => {
+    expect(localSetupResult.outboundMode).toBe('local');
+  });
+
+  it('does not return relay ws url for local outbound mode', () => {
+    expect(localSetupResult.relayWsUrl).toBe(undefined);
+  });
+
+  it('disables relay in gateway config when local outbound is selected', () => {
+    expect(localGatewayRelayEnabled).toBe(false);
+  });
+
+  it('removes web-search tool entry when provider is none', () => {
+    expect(localWebSearchEntryExists).toBe(false);
+  });
+});
+
+describe('setup arg parsing behavior', () => {
+  it('detects explicit setup config flags', () => {
+    expect(hasSetupConfigFlags({ argv: ['--provider', 'openai'] })).toBe(true);
+  });
+
+  it('does not treat path and force as setup config flags', () => {
+    expect(hasSetupConfigFlags({ argv: ['--path', '/tmp/x', '--force'] })).toBe(false);
+  });
+
+  it('marks parse as non-interactive when --non-interactive is set', () => {
+    expect(parseSetupArgs({ argv: ['--non-interactive'] }).interactive).toBe(false);
+  });
+});

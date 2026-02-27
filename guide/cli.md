@@ -23,11 +23,17 @@ Global install:
 npm install -g protege
 ```
 
-Initialize a project:
+Initialize with guided setup (recommended):
 
 ```bash
 mkdir my-protege
 cd my-protege
+protege setup
+```
+
+Scaffold only (manual setup path):
+
+```bash
 protege init
 ```
 
@@ -134,6 +140,34 @@ protege init --path ./my-protege
 3. Overwrite scaffold files:
 ```bash
 protege init --force
+```
+
+`init` is scaffold-only and does not apply onboarding choices.
+
+## Setup
+
+1. Run guided setup in current directory:
+```bash
+protege setup
+```
+By default (when no setup config flags are provided), `setup` runs interactively and prompts for onboarding choices.
+2. Setup in another directory:
+```bash
+protege setup --path ./my-protege
+```
+3. Apply relay-first setup with explicit provider and keys:
+```bash
+protege setup \
+  --provider openai \
+  --inference-api-key "$OPENAI_API_KEY" \
+  --outbound relay \
+  --relay-ws-url wss://relay.protege.bot/ws \
+  --web-search-provider perplexity \
+  --web-search-api-key "$PERPLEXITY_API_KEY"
+```
+4. Force non-interactive mode:
+```bash
+protege setup --non-interactive
 ```
 
 ## Status

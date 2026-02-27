@@ -16,6 +16,7 @@ Scope: Resolve first-run setup friction and stabilize defaults, secrets, tool co
 2. `docs/adr/0027-secrets-env-and-single-config-surface.md`
 3. `docs/adr/0028-init-wizard-guided-onboarding.md`
 4. `docs/adr/0029-bounded-tool-failure-recovery-loop.md`
+5. `docs/adr/0030-setup-wizard-command-separation.md`
 
 ## OH1. Tool Config Surface Unification (Issue #5 + extension pattern)
 
@@ -116,11 +117,11 @@ Status: Complete
 
 ## OH7. Setup Wizard Implementation (Issue #10 + web-search provider choice)
 
-Status: Planned
+Status: In Progress
 
 ### Tasks
 
-1. Build guided `protege init` wizard flow:
+1. Build guided `protege setup` wizard flow:
    - inference provider
    - inference API key
    - relay vs transport
@@ -131,6 +132,13 @@ Status: Planned
    - summary with persona email
    - optional gateway start
 2. Add non-interactive flag path for automation use.
+
+Completed (partial):
+
+1. Dedicated `setup` command introduced as a separate CLI module with scaffold + config orchestration.
+2. `init` preserved as scaffold-only command.
+3. Relay/local outbound selection, provider selection, web-search provider selection, env key writing, and persona bootstrap are wired in non-interactive flag mode.
+4. Bare `protege setup` now prompts interactively by default when setup config flags are not provided.
 
 ### Tests
 

@@ -42,6 +42,8 @@ Completed:
    - `protege doctor`
 8. Project scaffolding command:
    - `protege init`
+9. Guided onboarding command foundation:
+   - `protege setup` (discrete onboarding command; non-interactive flag flow)
 
 Remaining:
 
@@ -183,6 +185,11 @@ Planning updates:
    - provider loop can continue after recoverable tool failures, allowing follow-up tool selection/correction in the same run
    - non-recoverable tool failures still fail fast (unknown tool, unsupported runtime action, missing outbound transport)
    - tool-loop max turn budget is now configurable via `inference.max_tool_turns` (default `8`)
+24. OH7 started:
+   - dedicated `protege setup` command added as isolated onboarding module
+   - `init` remains scaffold-only
+   - setup currently supports non-interactive flags for provider, outbound mode, relay URL, web-search provider, env key writes, persona bootstrap, and optional doctor report
+   - bare `protege setup` now runs interactive prompts by default; `--non-interactive` is available for automation
 
 ## ADR Coverage
 
@@ -208,3 +215,4 @@ Recent status-aligned ADRs:
 18. `docs/adr/0027-secrets-env-and-single-config-surface.md`
 19. `docs/adr/0028-init-wizard-guided-onboarding.md`
 20. `docs/adr/0029-bounded-tool-failure-recovery-loop.md`
+21. `docs/adr/0030-setup-wizard-command-separation.md`

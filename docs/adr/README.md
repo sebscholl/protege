@@ -31,6 +31,7 @@ Accepted ADRs:
 27. `0027-secrets-env-and-single-config-surface.md`
 28. `0028-init-wizard-guided-onboarding.md`
 29. `0029-bounded-tool-failure-recovery-loop.md`
+30. `0030-setup-wizard-command-separation.md`
 
 Notes:
 
