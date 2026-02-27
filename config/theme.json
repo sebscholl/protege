@@ -33,5 +33,59 @@
         "white"
       ]
     }
+  },
+  "chat_ui": {
+    "inbox": {
+      "title_tag": [
+        "bold",
+        "blue-fg"
+      ],
+      "timestamp_tag": [
+        "bold",
+        "gray-fg"
+      ],
+      "participants_tag": [
+        "white-fg"
+      ],
+      "preview_tag": [
+        "gray-fg"
+      ],
+      "read_only_mode_tag": [
+        "yellow-fg"
+      ],
+      "writable_mode_tag": [
+        "green-fg"
+      ],
+      "selected_marker_tag": [
+        "blue-bg"
+      ],
+      "unselected_marker_tag": [
+        "white-bg"
+      ],
+      "marker_glyph": " ",
+      "row_gap_lines": 1
+    },
+    "status": {
+      "prefix_tag": [
+        "bold",
+        "cyan-fg"
+      ],
+      "divider_tag": [
+        "gray-fg"
+      ],
+      "command_key_tag": [
+        "bold",
+        "blue-fg"
+      ],
+      "command_text_tag": [
+        "white-fg"
+      ],
+      "command_border_tag": [
+        "gray-fg"
+      ],
+      "message_tag": [
+        "green-fg"
+      ]
+    }
   }
 }

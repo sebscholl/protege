@@ -106,6 +106,14 @@ export type ChatUiTheme = {
     markerGlyph: string;
     rowGapLines: number;
   };
+  status: {
+    prefixTag: string[];
+    dividerTag: string[];
+    commandKeyTag: string[];
+    commandTextTag: string[];
+    commandBorderTag: string[];
+    messageTag: string[];
+  };
 };
 
 /**
@@ -260,6 +268,14 @@ export function getDefaultChatUiTheme(): ChatUiTheme {
       markerGlyph: '│',
       rowGapLines: 1,
     },
+    status: {
+      prefixTag: ['bold', 'cyan-fg'],
+      dividerTag: ['gray-fg'],
+      commandKeyTag: ['bold', 'blue-fg'],
+      commandTextTag: ['white-fg'],
+      commandBorderTag: ['gray-fg'],
+      messageTag: ['green-fg'],
+    },
   };
 }
 
@@ -351,6 +367,7 @@ export function readChatUiTheme(
 
   const chatUi = parsed.chat_ui;
   const inbox = isRecord(chatUi.inbox) ? chatUi.inbox : {};
+  const status = isRecord(chatUi.status) ? chatUi.status : {};
   return {
     inbox: {
       titleTag: parseThemeTagString({
@@ -392,6 +409,32 @@ export function readChatUiTheme(
       rowGapLines: parseThemePositiveInt({
         value: inbox.row_gap_lines,
         defaultValue: defaults.inbox.rowGapLines,
+      }),
+    },
+    status: {
+      prefixTag: parseThemeTagString({
+        value: status.prefix_tag,
+        defaultValue: defaults.status.prefixTag,
+      }),
+      dividerTag: parseThemeTagString({
+        value: status.divider_tag,
+        defaultValue: defaults.status.dividerTag,
+      }),
+      commandKeyTag: parseThemeTagString({
+        value: status.command_key_tag,
+        defaultValue: defaults.status.commandKeyTag,
+      }),
+      commandTextTag: parseThemeTagString({
+        value: status.command_text_tag,
+        defaultValue: defaults.status.commandTextTag,
+      }),
+      commandBorderTag: parseThemeTagString({
+        value: status.command_border_tag,
+        defaultValue: defaults.status.commandBorderTag,
+      }),
+      messageTag: parseThemeTagString({
+        value: status.message_tag,
+        defaultValue: defaults.status.messageTag,
       }),
     },
   };

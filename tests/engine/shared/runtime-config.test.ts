@@ -24,6 +24,8 @@ let parsedChatUiInboxTitleTagCount = 0;
 let parsedChatUiInboxSelectedMarkerTag = '';
 let parsedChatUiInboxRowGapLines = 0;
 let parsedChatUiInboxMarkerGlyphLength = 0;
+let parsedChatUiStatusPrefixTag = '';
+let defaultChatUiStatusDividerTag = '';
 let defaultChatDisplayMode = '';
 let defaultChatPollIntervalMs = 0;
 let defaultChatSendBinding = '';
@@ -54,6 +56,9 @@ beforeAll((): void => {
         selected_marker_tag: 'magenta-fg',
         marker_glyph: '  ',
         row_gap_lines: 2,
+      },
+      status: {
+        prefix_tag: ['white-fg'],
       },
     },
   }));
@@ -103,6 +108,7 @@ beforeAll((): void => {
   parsedChatUiInboxSelectedMarkerTag = parsed.chatUiTheme.inbox.selectedMarkerTag[0] ?? '';
   parsedChatUiInboxRowGapLines = parsed.chatUiTheme.inbox.rowGapLines;
   parsedChatUiInboxMarkerGlyphLength = parsed.chatUiTheme.inbox.markerGlyph.length;
+  parsedChatUiStatusPrefixTag = parsed.chatUiTheme.status.prefixTag[0] ?? '';
 
   const defaultConfigPath = join(tempRootPath, 'default-system.json');
   writeFileSync(defaultConfigPath, JSON.stringify({
@@ -118,6 +124,7 @@ beforeAll((): void => {
   defaultSchedulerMaxGlobalConcurrentRuns = defaultParsed.scheduler.maxGlobalConcurrentRuns;
   defaultPrettyThemeEnabled = defaultParsed.prettyLogTheme.enabled;
   defaultChatUiUnselectedMarkerTag = defaultParsed.chatUiTheme.inbox.unselectedMarkerTag[0] ?? '';
+  defaultChatUiStatusDividerTag = defaultParsed.chatUiTheme.status.dividerTag[0] ?? '';
 
   const invalidModePath = join(tempRootPath, 'invalid-mode-system.json');
   writeFileSync(invalidModePath, JSON.stringify({
@@ -245,8 +252,16 @@ describe('global runtime config', () => {
     ]).toEqual(['cyan-fg', 1, 'magenta-fg', 2, 2]);
   });
 
+  it('parses configured chat-ui status theme values from theme config path', () => {
+    expect(parsedChatUiStatusPrefixTag).toBe('white-fg');
+  });
+
   it('applies default chat-ui theme values when theme config path is absent', () => {
     expect(defaultChatUiUnselectedMarkerTag).toBe('gray-fg');
+  });
+
+  it('applies default chat-ui status theme values when theme config path is absent', () => {
+    expect(defaultChatUiStatusDividerTag).toBe('gray-fg');
   });
 });
 

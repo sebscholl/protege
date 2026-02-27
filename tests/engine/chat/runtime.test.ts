@@ -11,13 +11,19 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   applyHorizontalPadding,
   buildStatusLine,
+  computeNextInboxTopRowIndex,
   createChatRuntimeActionInvoker,
+  formatInboxListRow,
+  parseStatusHintCommands,
+  readVisibleInboxRowCount,
+  renderInboxRows,
   resolvePersonaBySelector,
   scrollThreadBoxToBottom,
   resolveThreadScrollDelta,
 } from '@engine/chat/runtime';
 import { createPersona } from '@engine/shared/personas';
 import { initializeDatabase } from '@engine/shared/database';
+import { getDefaultChatUiTheme } from '@engine/shared/runtime-config';
 
 let originalCwd = '';
 let tempRootPath = '';
@@ -31,11 +37,19 @@ let fileWriteContent = '';
 let fileEditContent = '';
 let createdPersonaId = '';
 let statusLine = '';
+let statusLineWithoutMessage = '';
 let scrollUpDelta = 0;
 let scrollPageDownDelta = 0;
 let scrollUnknownDelta: number | undefined;
 let capturedScrollPercent = -1;
 let paddedContent = '';
+let formattedInboxRow = '';
+let renderedInboxRows = '';
+let topRowMovesUpToSelection = -1;
+let topRowMovesDownToKeepVisible = -1;
+let topRowUnchangedWhenVisible = -1;
+let visibleInboxRowCount = 0;
+let parsedStatusHintCommandsCount = 0;
 
 const inboundMessage: InboundNormalizedMessage = {
   personaId: 'persona-test',
@@ -150,13 +164,21 @@ beforeAll(async (): Promise<void> => {
 
   statusLine = buildStatusLine({
     view: 'thread',
-    mode: 'compose',
     displayModeLabel: 'LIGHT',
-    footerHint: 'Ctrl+Enter=send',
+    footerHint: 'Ctrl+S=send  Ctrl+R=refresh',
     statusMessage: 'Sending...',
-    lastBinding: 'ctrl+enter',
-    lastRawKey: 'name=enter full=C-m ctrl=1 meta=0 seq="\\r"',
+    theme: getDefaultChatUiTheme(),
   });
+  statusLineWithoutMessage = buildStatusLine({
+    view: 'inbox',
+    displayModeLabel: 'LIGHT',
+    footerHint: 'Enter=open thread  Ctrl+Q=quit',
+    statusMessage: '',
+    theme: getDefaultChatUiTheme(),
+  });
+  parsedStatusHintCommandsCount = parseStatusHintCommands({
+    footerHint: 'Enter=open thread  Ctrl+N=new local thread  Ctrl+Q=quit',
+  }).length;
   scrollUpDelta = resolveThreadScrollDelta({ binding: 'up' }) ?? 0;
   scrollPageDownDelta = resolveThreadScrollDelta({ binding: 'pagedown' }) ?? 0;
   scrollUnknownDelta = resolveThreadScrollDelta({ binding: 'x' });
@@ -171,6 +193,55 @@ beforeAll(async (): Promise<void> => {
   });
   paddedContent = applyHorizontalPadding({
     content: 'line-one\nline-two',
+  });
+  formattedInboxRow = formatInboxListRow({
+    title: 'Inbox Subject',
+    timestamp: '2026-02-27 21:30',
+    participants: 'user@localhost, persona@localhost',
+    preview: 'This is one preview line.',
+    isReadOnly: false,
+    theme: getDefaultChatUiTheme(),
+  });
+  renderedInboxRows = renderInboxRows({
+    rows: [
+      {
+        title: 'Subject A',
+        timestamp: '2026-02-27 21:30',
+        participants: 'user@localhost',
+        preview: 'preview a',
+        isReadOnly: false,
+      },
+      {
+        title: 'Subject B',
+        timestamp: '2026-02-27 21:31',
+        participants: 'persona@localhost',
+        preview: 'preview b',
+        isReadOnly: true,
+      },
+    ],
+    selectedIndex: 1,
+    theme: getDefaultChatUiTheme(),
+  });
+  topRowMovesUpToSelection = computeNextInboxTopRowIndex({
+    currentTopRowIndex: 2,
+    selectedIndex: 0,
+    visibleRowCount: 2,
+  });
+  topRowMovesDownToKeepVisible = computeNextInboxTopRowIndex({
+    currentTopRowIndex: 0,
+    selectedIndex: 3,
+    visibleRowCount: 2,
+  });
+  topRowUnchangedWhenVisible = computeNextInboxTopRowIndex({
+    currentTopRowIndex: 1,
+    selectedIndex: 1,
+    visibleRowCount: 2,
+  });
+  visibleInboxRowCount = readVisibleInboxRowCount({
+    rowHeightLines: 4,
+    inboxList: {
+      height: 10,
+    },
   });
 });
 
@@ -209,12 +280,24 @@ describe('chat runtime helper behavior', () => {
     expect(fileEditContent).toBe('after after after');
   });
 
-  it('renders explicit mode and key context in status line', () => {
-    expect(statusLine).toContain('[THREAD|COMPOSE|LIGHT]');
+  it('renders simplified view and display mode in status line prefix', () => {
+    expect(statusLine).toContain('[THREAD|LIGHT]');
   });
 
-  it('renders latest key binding context in status line', () => {
-    expect(statusLine).toContain('key=ctrl+enter');
+  it('renders padded command strip in status line', () => {
+    expect(statusLine).toContain('{bold}{blue-fg}Ctrl+S');
+  });
+
+  it('renders command separators with additional spacing', () => {
+    expect(statusLine.includes('send   {bold}{blue-fg}Ctrl+R') || statusLine.includes('send{/white-fg}   {bold}{blue-fg}Ctrl+R')).toBe(true);
+  });
+
+  it('does not duplicate footer commands as trailing status text when status is empty', () => {
+    expect(statusLineWithoutMessage.includes('Enter=open thread')).toBe(false);
+  });
+
+  it('parses command hints into key-action entries', () => {
+    expect(parsedStatusHintCommandsCount).toBe(3);
   });
 
   it('maps up key to negative scroll delta', () => {
@@ -235,5 +318,37 @@ describe('chat runtime helper behavior', () => {
 
   it('adds one-space horizontal padding to each rendered chat line', () => {
     expect(paddedContent).toBe(' line-one \n line-two ');
+  });
+
+  it('formats inbox rows as four-line blocks for improved scanability', () => {
+    expect(formattedInboxRow.split('\n').length).toBe(3);
+  });
+
+  it('styles inbox title and timestamp with blessed color tags', () => {
+    expect(formattedInboxRow.includes('{blue-fg}') && formattedInboxRow.includes('{gray-fg}')).toBe(true);
+  });
+
+  it('renders selected and unselected marker tags in inbox rows', () => {
+    expect(renderedInboxRows.includes('{blue-fg}') && renderedInboxRows.includes('{gray-fg}')).toBe(true);
+  });
+
+  it('inserts a blank line gap between inbox row blocks', () => {
+    expect(renderedInboxRows.includes('\n\n')).toBe(true);
+  });
+
+  it('moves top row upward when selection is above viewport', () => {
+    expect(topRowMovesUpToSelection).toBe(0);
+  });
+
+  it('moves top row downward when selection is below viewport', () => {
+    expect(topRowMovesDownToKeepVisible).toBe(2);
+  });
+
+  it('keeps top row unchanged when selection is already visible', () => {
+    expect(topRowUnchangedWhenVisible).toBe(1);
+  });
+
+  it('derives visible row count from widget height and row block height', () => {
+    expect(visibleInboxRowCount).toBe(2);
   });
 });
