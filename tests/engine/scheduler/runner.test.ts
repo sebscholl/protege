@@ -22,6 +22,8 @@ let failureRunStatus = '';
 let failureAlertCount = 0;
 let inboundMessageSubject = '';
 let successRunSenderAddress = '';
+let overlapFirstRunStatus = '';
+let overlapSecondRunStatus = '';
 
 beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-scheduler-runner-'));
@@ -132,6 +134,72 @@ beforeAll(async (): Promise<void> => {
     personaId: persona.personaId,
   }).find((run) => run.id === 'run-fail');
   failureRunStatus = failedRun?.status ?? '';
+
+  upsertResponsibility({
+    db: db as ProtegeDatabase,
+    responsibility: {
+      id: 'resp-overlap',
+      personaId: persona.personaId,
+      name: 'Overlap Task',
+      schedule: '*/4 * * * *',
+      promptPath,
+      promptHash: 'hash-overlap',
+      enabled: true,
+    },
+  });
+  enqueueResponsibilityRun({
+    db: db as ProtegeDatabase,
+    run: {
+      responsibilityId: 'resp-overlap',
+      personaId: persona.personaId,
+      triggeredAt: '2026-02-20T12:10:00.000Z',
+    },
+    runId: 'run-overlap-a',
+  });
+  enqueueResponsibilityRun({
+    db: db as ProtegeDatabase,
+    run: {
+      responsibilityId: 'resp-overlap',
+      personaId: persona.personaId,
+      triggeredAt: '2026-02-20T12:10:01.000Z',
+    },
+    runId: 'run-overlap-b',
+  });
+  const [overlapResultA, overlapResultB] = await Promise.all([
+    runNextQueuedResponsibility({
+      db: db as ProtegeDatabase,
+      roots,
+      executeRun: async (): Promise<{
+        responseText: string;
+        responseMessageId: string;
+        invokedActions: never[];
+      }> => {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, 10);
+        });
+        return {
+          responseText: 'overlap-ok',
+          responseMessageId: '<overlap@localhost>',
+          invokedActions: [],
+        };
+      },
+    }),
+    runNextQueuedResponsibility({
+      db: db as ProtegeDatabase,
+      roots,
+      executeRun: async (): Promise<{
+        responseText: string;
+        responseMessageId: string;
+        invokedActions: never[];
+      }> => ({
+        responseText: 'second-should-not-run',
+        responseMessageId: '<overlap-second@localhost>',
+        invokedActions: [],
+      }),
+    }),
+  ]);
+  overlapFirstRunStatus = overlapResultA.status;
+  overlapSecondRunStatus = overlapResultB.status;
 });
 
 afterAll((): void => {
@@ -162,5 +230,13 @@ describe('scheduler runner', () => {
 
   it('dispatches one failure alert for failed runs', () => {
     expect(failureAlertCount).toBe(1);
+  });
+
+  it('allows one overlap responsibility run to claim and execute', () => {
+    expect(overlapFirstRunStatus).toBe('succeeded');
+  });
+
+  it('keeps concurrent second overlap claim idle while first run is running', () => {
+    expect(overlapSecondRunStatus).toBe('idle');
   });
 });

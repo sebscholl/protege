@@ -74,12 +74,14 @@ export async function runNextQueuedResponsibility(
     executeRun?: SchedulerRunExecutor;
     sendFailureAlert?: SchedulerFailureAlertFn;
     now?: () => string;
+    excludedResponsibilityIds?: string[];
   },
 ): Promise<SchedulerRunnerCycleResult> {
   const run = claimNextQueuedRun({
     db: args.db,
     personaId: args.personaId,
     startedAt: args.now?.() ?? new Date().toISOString(),
+    excludedResponsibilityIds: args.excludedResponsibilityIds,
   });
   if (!run) {
     return {

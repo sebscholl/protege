@@ -32,6 +32,8 @@ Accepted ADRs:
 28. `0028-init-wizard-guided-onboarding.md`
 29. `0029-bounded-tool-failure-recovery-loop.md`
 30. `0030-setup-wizard-command-separation.md`
+31. `0031-scheduler-concurrency-and-no-overlap-policy.md`
+32. `0032-scheduler-run-outcome-and-observability-policy.md`
 
 Notes:
 

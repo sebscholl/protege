@@ -31,6 +31,7 @@ let failedRunStatus = '';
 let overlapFirstEnqueued = false;
 let overlapSecondEnqueued = true;
 let personaHasQueuedAfterOverlap = false;
+let overlapClaimBlockedByRunning = false;
 
 beforeAll((): void => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-scheduler-storage-'));
@@ -154,6 +155,30 @@ beforeAll((): void => {
     db: db as ProtegeDatabase,
     personaId: 'persona-a',
   });
+
+  const overlapRunningClaim = claimNextQueuedRun({
+    db: db as ProtegeDatabase,
+    personaId: 'persona-a',
+    startedAt: '2026-02-20T13:00:02.000Z',
+  });
+  if (!overlapRunningClaim) {
+    throw new Error('Expected overlap run claim to produce running row.');
+  }
+  enqueueResponsibilityRun({
+    db: db as ProtegeDatabase,
+    run: {
+      responsibilityId: 'resp-1',
+      personaId: 'persona-a',
+      triggeredAt: '2026-02-20T13:00:03.000Z',
+    },
+    runId: 'run-overlap-forced',
+  });
+  const blockedClaim = claimNextQueuedRun({
+    db: db as ProtegeDatabase,
+    personaId: 'persona-a',
+    startedAt: '2026-02-20T13:00:04.000Z',
+  });
+  overlapClaimBlockedByRunning = blockedClaim === undefined;
 });
 
 afterAll((): void => {
@@ -192,5 +217,9 @@ describe('scheduler storage', () => {
 
   it('detects queued runs for one persona', () => {
     expect(personaHasQueuedAfterOverlap).toBe(true);
+  });
+
+  it('does not claim queued runs for a responsibility that already has a running row', () => {
+    expect(overlapClaimBlockedByRunning).toBe(true);
   });
 });
