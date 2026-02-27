@@ -28,7 +28,6 @@ export type SchedulerRuntimeConfig = {
   personaIds?: string[];
   pollIntervalMs?: number;
   maxGlobalConcurrentRuns?: number;
-  maxPerPersonaConcurrentRuns?: number;
   adminContactEmail?: string;
 };
 
@@ -83,7 +82,6 @@ export function startSchedulerRuntime(
   }));
   const pollIntervalMs = args.config.pollIntervalMs ?? globalConfig.scheduler.pollIntervalMs ?? DEFAULT_SCHEDULER_POLL_INTERVAL_MS;
   const maxGlobalConcurrentRuns = args.config.maxGlobalConcurrentRuns ?? globalConfig.scheduler.maxGlobalConcurrentRuns;
-  const maxPerPersonaConcurrentRuns = args.config.maxPerPersonaConcurrentRuns ?? globalConfig.scheduler.maxPerPersonaConcurrentRuns;
   const adminContactEmail = args.config.adminContactEmail
     ?? globalConfig.adminContactEmail
     ?? globalConfig.scheduler.adminContactEmail;
@@ -102,7 +100,6 @@ export function startSchedulerRuntime(
       transport,
       relayClientsByPersonaId,
       maxGlobalConcurrentRuns,
-      maxPerPersonaConcurrentRuns,
       adminContactEmail,
     }).finally(() => {
       processing = false;
@@ -137,7 +134,6 @@ export async function runSchedulerCycle(
     transport?: Transporter;
     relayClientsByPersonaId?: Map<string, RelayClientController>;
     maxGlobalConcurrentRuns: number;
-    maxPerPersonaConcurrentRuns: number;
     adminContactEmail?: string;
     hasQueuedRunForPersonaFn?: typeof hasQueuedRunForPersona;
     runNextQueuedResponsibilityFn?: typeof runNextQueuedResponsibility;
@@ -145,13 +141,12 @@ export async function runSchedulerCycle(
 ): Promise<void> {
   const hasQueuedFn = args.hasQueuedRunForPersonaFn ?? hasQueuedRunForPersona;
   const runNextFn = args.runNextQueuedResponsibilityFn ?? runNextQueuedResponsibility;
-  const inFlightByPersona = new Map<string, number>();
   const inFlightRuns = new Set<Promise<void>>();
   let throttleLogged = false;
 
   const tryDispatchRun = (
     personaState: SchedulerPersonaState,
-  ): 'dispatched' | 'no_queue' | 'global_limit' | 'persona_limit' => {
+  ): 'dispatched' | 'no_queue' | 'global_limit' => {
     const hasQueued = hasQueuedFn({
       db: personaState.db,
       personaId: personaState.personaId,
@@ -161,12 +156,8 @@ export async function runSchedulerCycle(
     }
 
     const globalInFlightCount = inFlightRuns.size;
-    const personaInFlightCount = inFlightByPersona.get(personaState.personaId) ?? 0;
     if (globalInFlightCount >= args.maxGlobalConcurrentRuns) {
       return 'global_limit';
-    }
-    if (personaInFlightCount >= args.maxPerPersonaConcurrentRuns) {
-      return 'persona_limit';
     }
 
     const runPromise = runNextFn({
@@ -234,44 +225,37 @@ export async function runSchedulerCycle(
       });
     }).finally((): void => {
       inFlightRuns.delete(runPromise);
-      inFlightByPersona.set(personaState.personaId, Math.max(0, (inFlightByPersona.get(personaState.personaId) ?? 1) - 1));
     });
 
     inFlightRuns.add(runPromise);
-    inFlightByPersona.set(personaState.personaId, personaInFlightCount + 1);
     return 'dispatched';
   };
 
   while (true) {
     let dispatched = false;
     let blockedByGlobalLimitCount = 0;
-    let blockedByPersonaLimitCount = 0;
     for (const personaState of args.personaStates) {
       const dispatchStatus = tryDispatchRun(personaState);
       if (dispatchStatus === 'dispatched') {
         dispatched = true;
       } else if (dispatchStatus === 'global_limit') {
         blockedByGlobalLimitCount += 1;
-      } else if (dispatchStatus === 'persona_limit') {
-        blockedByPersonaLimitCount += 1;
       }
     }
 
-    if (inFlightRuns.size > 0 && !throttleLogged && (blockedByGlobalLimitCount > 0 || blockedByPersonaLimitCount > 0)) {
+    if (inFlightRuns.size > 0 && !throttleLogged && blockedByGlobalLimitCount > 0) {
       args.logger.info({
         event: 'scheduler.cycle.throttled',
         context: {
           inFlightCount: inFlightRuns.size,
           blockedByGlobalLimitCount,
-          blockedByPersonaLimitCount,
           maxGlobalConcurrentRuns: args.maxGlobalConcurrentRuns,
-          maxPerPersonaConcurrentRuns: args.maxPerPersonaConcurrentRuns,
         },
       });
       throttleLogged = true;
     }
 
-    if (blockedByGlobalLimitCount === 0 && blockedByPersonaLimitCount === 0) {
+    if (blockedByGlobalLimitCount === 0) {
       throttleLogged = false;
     }
 

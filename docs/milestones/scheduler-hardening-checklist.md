@@ -26,7 +26,6 @@ Scope: Finish scheduler reliability hardening before new feature work in schedul
 - [ ] Add deterministic in-memory/runtime tracking for active responsibility runs.
 - [ ] Enforce one active run per responsibility.
 - [ ] Enforce `max_global_concurrent_runs` from `config/system.json`.
-- [ ] Enforce `max_per_persona_concurrent_runs` from `config/system.json`.
 - [ ] Ensure blocked due ticks are handled as explicit skipped outcomes, not silent drops.
 
 ### Target Files

@@ -15,14 +15,12 @@ let parsedChatPollIntervalMs = 0;
 let parsedChatSendBinding = '';
 let parsedSchedulerPollIntervalMs = 0;
 let parsedSchedulerMaxGlobalConcurrentRuns = 0;
-let parsedSchedulerMaxPerPersonaConcurrentRuns = 0;
 let parsedSchedulerAdminContactEmail = '';
 let defaultChatDisplayMode = '';
 let defaultChatPollIntervalMs = 0;
 let defaultChatSendBinding = '';
 let defaultSchedulerPollIntervalMs = 0;
 let defaultSchedulerMaxGlobalConcurrentRuns = 0;
-let defaultSchedulerMaxPerPersonaConcurrentRuns = 0;
 let invalidModeError = '';
 let missingActionError = '';
 let duplicateBindingError = '';
@@ -54,7 +52,6 @@ beforeAll((): void => {
     scheduler: {
       poll_interval_ms: 1000,
       max_global_concurrent_runs: 6,
-      max_per_persona_concurrent_runs: 3,
       admin_contact_email: 'alerts@example.com',
     },
   }));
@@ -68,7 +65,6 @@ beforeAll((): void => {
   parsedChatSendBinding = parsed.chat.keymap.send;
   parsedSchedulerPollIntervalMs = parsed.scheduler.pollIntervalMs;
   parsedSchedulerMaxGlobalConcurrentRuns = parsed.scheduler.maxGlobalConcurrentRuns;
-  parsedSchedulerMaxPerPersonaConcurrentRuns = parsed.scheduler.maxPerPersonaConcurrentRuns;
   parsedSchedulerAdminContactEmail = parsed.scheduler.adminContactEmail ?? '';
 
   const defaultConfigPath = join(tempRootPath, 'default-system.json');
@@ -82,7 +78,6 @@ beforeAll((): void => {
   defaultChatSendBinding = defaultParsed.chat.keymap.send;
   defaultSchedulerPollIntervalMs = defaultParsed.scheduler.pollIntervalMs;
   defaultSchedulerMaxGlobalConcurrentRuns = defaultParsed.scheduler.maxGlobalConcurrentRuns;
-  defaultSchedulerMaxPerPersonaConcurrentRuns = defaultParsed.scheduler.maxPerPersonaConcurrentRuns;
 
   const invalidModePath = join(tempRootPath, 'invalid-mode-system.json');
   writeFileSync(invalidModePath, JSON.stringify({
@@ -228,10 +223,6 @@ describe('scheduler runtime config parsing', () => {
     expect(parsedSchedulerMaxGlobalConcurrentRuns).toBe(6);
   });
 
-  it('parses configured scheduler max per-persona concurrency', () => {
-    expect(parsedSchedulerMaxPerPersonaConcurrentRuns).toBe(3);
-  });
-
   it('parses configured scheduler admin contact email', () => {
     expect(parsedSchedulerAdminContactEmail).toBe('alerts@example.com');
   });
@@ -241,11 +232,7 @@ describe('scheduler runtime config parsing', () => {
   });
 
   it('applies default scheduler global concurrency when scheduler config is absent', () => {
-    expect(defaultSchedulerMaxGlobalConcurrentRuns).toBe(4);
-  });
-
-  it('applies default scheduler per-persona concurrency when scheduler config is absent', () => {
-    expect(defaultSchedulerMaxPerPersonaConcurrentRuns).toBe(2);
+    expect(defaultSchedulerMaxGlobalConcurrentRuns).toBe(5);
   });
 });
 

@@ -20,7 +20,6 @@
   },
   "scheduler": {
     "poll_interval_ms": 1000,
-    "max_global_concurrent_runs": 4,
-    "max_per_persona_concurrent_runs": 2
+    "max_global_concurrent_runs": 5
   }
 }

@@ -12,12 +12,11 @@ Scheduler runtime is gateway-owned (ADR-0018) and executes persona-owned respons
 ## Decision
 
 1. Scheduler enforces one active run per responsibility (`no-overlap`).
-2. Scheduler enforces two runtime caps from `config/system.json`:
+2. Scheduler enforces one runtime cap from `config/system.json`:
    - `scheduler.max_global_concurrent_runs`
-   - `scheduler.max_per_persona_concurrent_runs`
 3. When a due run cannot start because of `no-overlap` or concurrency caps, scheduler does not start an additional run for that tick.
 4. Skipped ticks due to runtime guardrails are logged and persisted as explicit run outcomes (see ADR-0032).
-5. Scheduler must not block unrelated responsibilities when one responsibility is long-running, as long as caps permit execution.
+5. Scheduler cap is a backpressure guard against runaway scheduling, not a limit on harness/tool-loop capability inside one claimed run.
 
 ## Consequences
 

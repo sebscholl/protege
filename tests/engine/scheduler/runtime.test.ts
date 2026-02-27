@@ -76,7 +76,6 @@ beforeAll(async (): Promise<void> => {
     personaStates: [stateA, stateB],
     logger: createSilentLogger(),
     maxGlobalConcurrentRuns: 2,
-    maxPerPersonaConcurrentRuns: 1,
     adminContactEmail: undefined,
     hasQueuedRunForPersonaFn: (): boolean => false,
   });
@@ -138,7 +137,6 @@ beforeAll(async (): Promise<void> => {
     personaStates: [stateA, stateB],
     logger: createSilentLogger(),
     maxGlobalConcurrentRuns: 2,
-    maxPerPersonaConcurrentRuns: 1,
     adminContactEmail: undefined,
     hasQueuedRunForPersonaFn: (
       hasQueuedArgs: {
@@ -189,7 +187,6 @@ beforeAll(async (): Promise<void> => {
       error: (): void => undefined,
     },
     maxGlobalConcurrentRuns: 1,
-    maxPerPersonaConcurrentRuns: 1,
     adminContactEmail: undefined,
     hasQueuedRunForPersonaFn: (
       hasQueuedArgs: {
@@ -245,11 +242,11 @@ describe('scheduler runtime parallel dispatch controls', () => {
     expect(observedMaxInFlight).toBe(2);
   });
 
-  it('dispatches runs for persona-a under per-persona cap control', () => {
+  it('dispatches runs for persona-a under global cap control', () => {
     expect(personaARuns).toBe(2);
   });
 
-  it('dispatches runs for persona-b under per-persona cap control', () => {
+  it('dispatches runs for persona-b under global cap control', () => {
     expect(personaBRuns).toBe(2);
   });
 

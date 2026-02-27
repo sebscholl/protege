@@ -105,9 +105,8 @@ Global fields:
 `scheduler` fields:
 
 1. `poll_interval_ms`: positive integer (default `1000`).
-2. `max_global_concurrent_runs`: positive integer (default `4`).
-3. `max_per_persona_concurrent_runs`: positive integer (default `2`).
-4. `admin_contact_email`: optional scheduler-local override.
+2. `max_global_concurrent_runs`: positive integer (default `5`).
+3. `admin_contact_email`: optional scheduler-local override.
 
 ## Secrets and Env
 

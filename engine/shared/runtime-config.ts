@@ -4,8 +4,7 @@ import { join } from 'node:path';
 const DEFAULT_LOGS_DIR_PATH = join(process.cwd(), 'tmp', 'logs');
 const DEFAULT_POLL_INTERVAL_MS = 1500;
 const DEFAULT_SCHEDULER_POLL_INTERVAL_MS = 1000;
-const DEFAULT_SCHEDULER_MAX_GLOBAL_CONCURRENT_RUNS = 4;
-const DEFAULT_SCHEDULER_MAX_PER_PERSONA_CONCURRENT_RUNS = 2;
+const DEFAULT_SCHEDULER_MAX_GLOBAL_CONCURRENT_RUNS = 5;
 
 /**
  * Represents supported chat display modes.
@@ -58,7 +57,6 @@ export type GlobalRuntimeConfig = {
 export type SchedulerRuntimeSettings = {
   pollIntervalMs: number;
   maxGlobalConcurrentRuns: number;
-  maxPerPersonaConcurrentRuns: number;
   adminContactEmail?: string;
 };
 
@@ -147,7 +145,6 @@ export function getDefaultSchedulerRuntimeSettings(): SchedulerRuntimeSettings {
   return {
     pollIntervalMs: DEFAULT_SCHEDULER_POLL_INTERVAL_MS,
     maxGlobalConcurrentRuns: DEFAULT_SCHEDULER_MAX_GLOBAL_CONCURRENT_RUNS,
-    maxPerPersonaConcurrentRuns: DEFAULT_SCHEDULER_MAX_PER_PERSONA_CONCURRENT_RUNS,
     adminContactEmail: undefined,
   };
 }
@@ -176,11 +173,6 @@ export function parseSchedulerRuntimeSettings(
       value: args.value.max_global_concurrent_runs,
       defaultValue: defaults.maxGlobalConcurrentRuns,
       fieldName: 'scheduler.max_global_concurrent_runs',
-    }),
-    maxPerPersonaConcurrentRuns: parsePositiveIntWithDefault({
-      value: args.value.max_per_persona_concurrent_runs,
-      defaultValue: defaults.maxPerPersonaConcurrentRuns,
-      fieldName: 'scheduler.max_per_persona_concurrent_runs',
     }),
     adminContactEmail: parseOptionalAdminContactEmail({
       value: args.value.admin_contact_email,
