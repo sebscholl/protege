@@ -127,9 +127,6 @@ export function resolveChatActionFromInput(
     if (binding === 'backspace') {
       return { type: 'delete_backward' };
     }
-    if (binding === 'enter') {
-      return { type: 'append_text', text: '\n' };
-    }
     if (args.event.printableText && args.event.printableText.length > 0) {
       return { type: 'append_text', text: args.event.printableText };
     }
