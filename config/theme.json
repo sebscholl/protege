@@ -1,0 +1,37 @@
+{
+  "pretty_logs": {
+    "enabled": true,
+    "indent": "\t",
+    "header": {
+      "timestamp": [
+        "dim"
+      ],
+      "level": [
+        "bold"
+      ],
+      "scope": [
+        "bold",
+        "cyan"
+      ],
+      "event": [
+        "magenta"
+      ]
+    },
+    "level": {
+      "info": [
+        "green"
+      ],
+      "error": [
+        "red"
+      ]
+    },
+    "context": {
+      "key": [
+        "blue"
+      ],
+      "value": [
+        "white"
+      ]
+    }
+  }
+}

@@ -150,6 +150,10 @@ export function buildInitCopyMappings(
       targetRelativePath: 'config/system.json',
     },
     {
+      sourceFilePath: join(args.packageRootDirPath, 'config', 'theme.json'),
+      targetRelativePath: 'config/theme.json',
+    },
+    {
       sourceFilePath: join(args.packageRootDirPath, 'extensions', 'extensions.json'),
       targetRelativePath: 'extensions/extensions.json',
     },

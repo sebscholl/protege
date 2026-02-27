@@ -2,6 +2,7 @@ import { appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { GatewayLogger } from '@engine/gateway/types';
+import type { PrettyLogStyleToken, PrettyLogTheme } from '@engine/shared/runtime-config';
 
 /**
  * Represents one logger creation input for unified runtime logging.
@@ -11,6 +12,7 @@ export type UnifiedLoggerConfig = {
   scope: string;
   consoleLogFormat?: 'json' | 'pretty';
   emitToConsole?: boolean;
+  prettyLogTheme?: PrettyLogTheme;
 };
 
 /**
@@ -22,6 +24,7 @@ export function createUnifiedLogger(
   const logFilePath = join(args.logsDirPath, 'protege.log');
   const consoleLogFormat = args.consoleLogFormat ?? 'json';
   const emitToConsole = args.emitToConsole ?? true;
+  const prettyLogTheme = args.prettyLogTheme;
   mkdirSync(args.logsDirPath, { recursive: true });
 
   return {
@@ -46,7 +49,10 @@ export function createUnifiedLogger(
         process.stdout.write(`${formatConsoleLine({
           payload,
           consoleLogFormat,
-        })}\n`);
+          prettyLogTheme,
+        })}${readConsoleLineTerminator({
+          consoleLogFormat,
+        })}`);
       }
     },
     error: (
@@ -70,7 +76,10 @@ export function createUnifiedLogger(
         process.stderr.write(`${formatConsoleLine({
           payload,
           consoleLogFormat,
-        })}\n`);
+          prettyLogTheme,
+        })}${readConsoleLineTerminator({
+          consoleLogFormat,
+        })}`);
       }
     },
   };
@@ -95,21 +104,121 @@ export function formatConsoleLine(
   args: {
     payload: Record<string, unknown>;
     consoleLogFormat: 'json' | 'pretty';
+    prettyLogTheme?: PrettyLogTheme;
   },
 ): string {
   if (args.consoleLogFormat === 'json') {
     return JSON.stringify(args.payload);
   }
 
+  const theme = args.prettyLogTheme;
   const timestamp = stringifyValue({ value: args.payload.timestamp });
   const level = stringifyValue({ value: args.payload.level }).toUpperCase();
   const scope = stringifyValue({ value: args.payload.scope });
   const event = stringifyValue({ value: args.payload.event });
-  const context = Object.entries(args.payload)
+  const baseLine = [
+    `[${applyPrettyStyle({
+      text: timestamp,
+      tokens: theme?.header.timestamp,
+      enabled: theme?.enabled ?? false,
+    })}]`,
+    applyPrettyStyle({
+      text: level,
+      tokens: [
+        ...(theme?.header.level ?? []),
+        ...(level === 'ERROR' ? theme?.level.error ?? [] : theme?.level.info ?? []),
+      ],
+      enabled: theme?.enabled ?? false,
+    }),
+    applyPrettyStyle({
+      text: scope,
+      tokens: theme?.header.scope,
+      enabled: theme?.enabled ?? false,
+    }),
+    applyPrettyStyle({
+      text: event,
+      tokens: theme?.header.event,
+      enabled: theme?.enabled ?? false,
+    }),
+  ].join(' ');
+  const contextEntries = Object.entries(args.payload)
     .filter(([key]) => !['timestamp', 'level', 'scope', 'event'].includes(key))
-    .map(([key, value]) => `${key}=${stringifyValue({ value })}`)
-    .join(' ');
-  return `[${timestamp}] ${level} ${scope}.${event}${context.length > 0 ? ` ${context}` : ''}`;
+    .map(([key, value]) => {
+      const styledKey = applyPrettyStyle({
+        text: key,
+        tokens: theme?.context.key,
+        enabled: theme?.enabled ?? false,
+      });
+      const styledValue = applyPrettyStyle({
+        text: stringifyValue({ value }),
+        tokens: theme?.context.value,
+        enabled: theme?.enabled ?? false,
+      });
+      const indent = theme?.indent ?? '\t';
+      return `${indent}${styledKey}=${styledValue}`;
+    });
+  return contextEntries.length > 0
+    ? [baseLine, ...contextEntries].join('\n')
+    : baseLine;
+}
+
+/**
+ * Applies one ordered ANSI style-token list to text when theme styling is enabled.
+ */
+export function applyPrettyStyle(
+  args: {
+    text: string;
+    tokens?: PrettyLogStyleToken[];
+    enabled: boolean;
+  },
+): string {
+  if (!args.enabled || !args.tokens || args.tokens.length === 0) {
+    return args.text;
+  }
+
+  const prefix = args.tokens
+    .map((token) => readAnsiCodeForToken({
+      token,
+    }))
+    .join('');
+  const reset = '\u001b[0m';
+  return `${prefix}${args.text}${reset}`;
+}
+
+/**
+ * Returns one ANSI escape sequence for one pretty-log style token.
+ */
+export function readAnsiCodeForToken(
+  args: {
+    token: PrettyLogStyleToken;
+  },
+): string {
+  if (args.token === 'bold') {
+    return '\u001b[1m';
+  }
+  if (args.token === 'dim') {
+    return '\u001b[2m';
+  }
+  if (args.token === 'red') {
+    return '\u001b[31m';
+  }
+  if (args.token === 'green') {
+    return '\u001b[32m';
+  }
+  if (args.token === 'yellow') {
+    return '\u001b[33m';
+  }
+  if (args.token === 'blue') {
+    return '\u001b[34m';
+  }
+  if (args.token === 'magenta') {
+    return '\u001b[35m';
+  }
+  if (args.token === 'cyan') {
+    return '\u001b[36m';
+  }
+
+  return '\u001b[37m';
 }
 
 /**
@@ -133,4 +242,19 @@ export function stringifyValue(
   }
 
   return JSON.stringify(args.value);
+}
+
+/**
+ * Returns one console line terminator based on selected output format.
+ */
+export function readConsoleLineTerminator(
+  args: {
+    consoleLogFormat: 'json' | 'pretty';
+  },
+): string {
+  if (args.consoleLogFormat === 'pretty') {
+    return '\n\n';
+  }
+
+  return '\n';
 }

@@ -1,6 +1,7 @@
 {
   "logs_dir_path": "tmp/logs",
   "console_log_format": "pretty",
+  "theme_config_path": "config/theme.json",
   "admin_contact_email": "",
   "chat": {
     "default_display_mode": "light",

@@ -132,6 +132,7 @@ export async function startGatewayRuntime(
     logsDirPath: globalConfig.logsDirPath,
     scope: 'gateway',
     consoleLogFormat: globalConfig.consoleLogFormat,
+    prettyLogTheme: globalConfig.prettyLogTheme,
   });
   const transport = args.config.transport
     ? createOutboundTransport({ config: args.config.transport })

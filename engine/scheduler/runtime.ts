@@ -352,6 +352,7 @@ export function createSchedulerLogger(): GatewayLogger {
     logsDirPath: globalConfig.logsDirPath,
     scope: 'scheduler',
     consoleLogFormat: globalConfig.consoleLogFormat,
+    prettyLogTheme: globalConfig.prettyLogTheme,
   });
 }
 

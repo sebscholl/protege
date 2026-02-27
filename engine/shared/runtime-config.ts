@@ -1,10 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 const DEFAULT_LOGS_DIR_PATH = join(process.cwd(), 'tmp', 'logs');
 const DEFAULT_POLL_INTERVAL_MS = 1500;
 const DEFAULT_SCHEDULER_POLL_INTERVAL_MS = 1000;
 const DEFAULT_SCHEDULER_MAX_GLOBAL_CONCURRENT_RUNS = 5;
+const DEFAULT_THEME_CONFIG_PATH = join(process.cwd(), 'config', 'theme.json');
 
 /**
  * Represents supported chat display modes.
@@ -46,9 +47,46 @@ export type ChatRuntimeConfig = {
 export type GlobalRuntimeConfig = {
   logsDirPath: string;
   consoleLogFormat: 'json' | 'pretty';
+  prettyLogTheme: PrettyLogTheme;
   adminContactEmail?: string;
   chat: ChatRuntimeConfig;
   scheduler: SchedulerRuntimeSettings;
+};
+
+/**
+ * Represents one configurable pretty-log style token.
+ */
+export type PrettyLogStyleToken =
+  | 'bold'
+  | 'dim'
+  | 'red'
+  | 'green'
+  | 'yellow'
+  | 'blue'
+  | 'magenta'
+  | 'cyan'
+  | 'white';
+
+/**
+ * Represents one configurable pretty-log theme loaded from `config/theme.json`.
+ */
+export type PrettyLogTheme = {
+  enabled: boolean;
+  indent: string;
+  header: {
+    timestamp: PrettyLogStyleToken[];
+    level: PrettyLogStyleToken[];
+    scope: PrettyLogStyleToken[];
+    event: PrettyLogStyleToken[];
+  };
+  level: {
+    info: PrettyLogStyleToken[];
+    error: PrettyLogStyleToken[];
+  };
+  context: {
+    key: PrettyLogStyleToken[];
+    value: PrettyLogStyleToken[];
+  };
 };
 
 /**
@@ -97,6 +135,13 @@ export function resolveDefaultGlobalConfigPath(): string {
 }
 
 /**
+ * Resolves default pretty-log theme config path.
+ */
+export function resolveDefaultThemeConfigPath(): string {
+  return DEFAULT_THEME_CONFIG_PATH;
+}
+
+/**
  * Reads global runtime config and applies defaults when file is absent.
  */
 export function readGlobalRuntimeConfig(
@@ -109,6 +154,9 @@ export function readGlobalRuntimeConfig(
     return {
       logsDirPath: DEFAULT_LOGS_DIR_PATH,
       consoleLogFormat: 'json',
+      prettyLogTheme: readPrettyLogTheme({
+        themeConfigPath: resolveDefaultThemeConfigPath(),
+      }),
       chat: getDefaultChatRuntimeConfig(),
       scheduler: getDefaultSchedulerRuntimeSettings(),
     };
@@ -119,6 +167,12 @@ export function readGlobalRuntimeConfig(
     ? parsed.logs_dir_path
     : DEFAULT_LOGS_DIR_PATH;
   const consoleLogFormat = parsed.console_log_format === 'pretty' ? 'pretty' : 'json';
+  const themeConfigPath = typeof parsed.theme_config_path === 'string' && parsed.theme_config_path.trim().length > 0
+    ? resolve(process.cwd(), parsed.theme_config_path)
+    : resolveDefaultThemeConfigPath();
+  const prettyLogTheme = readPrettyLogTheme({
+    themeConfigPath,
+  });
   const chat = parseChatRuntimeConfig({
     value: parsed.chat,
   });
@@ -132,10 +186,157 @@ export function readGlobalRuntimeConfig(
   return {
     logsDirPath,
     consoleLogFormat,
+    prettyLogTheme,
     adminContactEmail: globalAdminContactEmail ?? scheduler.adminContactEmail,
     chat,
     scheduler,
   };
+}
+
+/**
+ * Returns default pretty-log theme values.
+ */
+export function getDefaultPrettyLogTheme(): PrettyLogTheme {
+  return {
+    enabled: true,
+    indent: '\t',
+    header: {
+      timestamp: ['dim'],
+      level: ['bold'],
+      scope: ['cyan'],
+      event: ['magenta'],
+    },
+    level: {
+      info: ['green'],
+      error: ['red'],
+    },
+    context: {
+      key: ['blue'],
+      value: ['white'],
+    },
+  };
+}
+
+/**
+ * Reads and parses one pretty-log theme file with strict token filtering and fallback defaults.
+ */
+export function readPrettyLogTheme(
+  args: {
+    themeConfigPath: string;
+  },
+): PrettyLogTheme {
+  const defaults = getDefaultPrettyLogTheme();
+  if (!existsSync(args.themeConfigPath)) {
+    return defaults;
+  }
+
+  const parsed = JSON.parse(readFileSync(args.themeConfigPath, 'utf8')) as Record<string, unknown>;
+  if (!isRecord(parsed.pretty_logs)) {
+    return defaults;
+  }
+
+  const prettyLogs = parsed.pretty_logs;
+  const header = isRecord(prettyLogs.header) ? prettyLogs.header : {};
+  const level = isRecord(prettyLogs.level) ? prettyLogs.level : {};
+  const context = isRecord(prettyLogs.context) ? prettyLogs.context : {};
+  return {
+    enabled: typeof prettyLogs.enabled === 'boolean' ? prettyLogs.enabled : defaults.enabled,
+    indent: typeof prettyLogs.indent === 'string' && prettyLogs.indent.length > 0
+      ? prettyLogs.indent
+      : defaults.indent,
+    header: {
+      timestamp: parsePrettyLogStyleTokens({
+        value: header.timestamp,
+        defaults: defaults.header.timestamp,
+      }),
+      level: parsePrettyLogStyleTokens({
+        value: header.level,
+        defaults: defaults.header.level,
+      }),
+      scope: parsePrettyLogStyleTokens({
+        value: header.scope,
+        defaults: defaults.header.scope,
+      }),
+      event: parsePrettyLogStyleTokens({
+        value: header.event,
+        defaults: defaults.header.event,
+      }),
+    },
+    level: {
+      info: parsePrettyLogStyleTokens({
+        value: level.info,
+        defaults: defaults.level.info,
+      }),
+      error: parsePrettyLogStyleTokens({
+        value: level.error,
+        defaults: defaults.level.error,
+      }),
+    },
+    context: {
+      key: parsePrettyLogStyleTokens({
+        value: context.key,
+        defaults: defaults.context.key,
+      }),
+      value: parsePrettyLogStyleTokens({
+        value: context.value,
+        defaults: defaults.context.value,
+      }),
+    },
+  };
+}
+
+/**
+ * Parses one style-token list from string/array inputs and filters unsupported token values.
+ */
+export function parsePrettyLogStyleTokens(
+  args: {
+    value: unknown;
+    defaults: PrettyLogStyleToken[];
+  },
+): PrettyLogStyleToken[] {
+  if (typeof args.value === 'string') {
+    return isPrettyLogStyleToken({
+      value: args.value,
+    })
+      ? [args.value as PrettyLogStyleToken]
+      : args.defaults;
+  }
+
+  if (!Array.isArray(args.value)) {
+    return args.defaults;
+  }
+
+  const tokens = args.value
+    .filter((entry): entry is string => typeof entry === 'string')
+    .filter((entry): entry is PrettyLogStyleToken => isPrettyLogStyleToken({ value: entry }));
+  return tokens.length > 0 ? tokens : args.defaults;
+}
+
+/**
+ * Returns true when one value is a supported pretty-log style token.
+ */
+export function isPrettyLogStyleToken(
+  args: {
+    value: unknown;
+  },
+): args is {
+  value: PrettyLogStyleToken;
+} {
+  if (typeof args.value !== 'string') {
+    return false;
+  }
+
+  return [
+    'bold',
+    'dim',
+    'red',
+    'green',
+    'yellow',
+    'blue',
+    'magenta',
+    'cyan',
+    'white',
+  ].includes(args.value);
 }
 
 /**

@@ -16,11 +16,15 @@ let parsedChatSendBinding = '';
 let parsedSchedulerPollIntervalMs = 0;
 let parsedSchedulerMaxGlobalConcurrentRuns = 0;
 let parsedSchedulerAdminContactEmail = '';
+let parsedPrettyThemeEnabled = false;
+let parsedPrettyThemeIndent = '';
+let parsedPrettyThemeScopeToken = '';
 let defaultChatDisplayMode = '';
 let defaultChatPollIntervalMs = 0;
 let defaultChatSendBinding = '';
 let defaultSchedulerPollIntervalMs = 0;
 let defaultSchedulerMaxGlobalConcurrentRuns = 0;
+let defaultPrettyThemeEnabled = false;
 let invalidModeError = '';
 let missingActionError = '';
 let duplicateBindingError = '';
@@ -29,9 +33,20 @@ let unsupportedBindingError = '';
 beforeAll((): void => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-runtime-config-'));
   const validConfigPath = join(tempRootPath, 'valid-system.json');
+  const validThemePath = join(tempRootPath, 'valid-theme.json');
+  writeFileSync(validThemePath, JSON.stringify({
+    pretty_logs: {
+      enabled: true,
+      indent: '  ',
+      header: {
+        scope: ['yellow'],
+      },
+    },
+  }));
   writeFileSync(validConfigPath, JSON.stringify({
     logs_dir_path: 'tmp/logs',
     console_log_format: 'pretty',
+    theme_config_path: validThemePath,
     admin_contact_email: 'global-alerts@example.com',
     chat: {
       default_display_mode: 'verbose',
@@ -66,6 +81,9 @@ beforeAll((): void => {
   parsedSchedulerPollIntervalMs = parsed.scheduler.pollIntervalMs;
   parsedSchedulerMaxGlobalConcurrentRuns = parsed.scheduler.maxGlobalConcurrentRuns;
   parsedSchedulerAdminContactEmail = parsed.scheduler.adminContactEmail ?? '';
+  parsedPrettyThemeEnabled = parsed.prettyLogTheme.enabled;
+  parsedPrettyThemeIndent = parsed.prettyLogTheme.indent;
+  parsedPrettyThemeScopeToken = parsed.prettyLogTheme.header.scope[0] ?? '';
 
   const defaultConfigPath = join(tempRootPath, 'default-system.json');
   writeFileSync(defaultConfigPath, JSON.stringify({
@@ -78,6 +96,7 @@ beforeAll((): void => {
   defaultChatSendBinding = defaultParsed.chat.keymap.send;
   defaultSchedulerPollIntervalMs = defaultParsed.scheduler.pollIntervalMs;
   defaultSchedulerMaxGlobalConcurrentRuns = defaultParsed.scheduler.maxGlobalConcurrentRuns;
+  defaultPrettyThemeEnabled = defaultParsed.prettyLogTheme.enabled;
 
   const invalidModePath = join(tempRootPath, 'invalid-mode-system.json');
   writeFileSync(invalidModePath, JSON.stringify({
@@ -185,6 +204,14 @@ describe('global runtime config', () => {
 
   it('parses configured global admin contact email', () => {
     expect(parsedGlobalAdminContactEmail).toBe('global-alerts@example.com');
+  });
+
+  it('parses configured pretty-log theme values from theme config path', () => {
+    expect([parsedPrettyThemeEnabled, parsedPrettyThemeIndent, parsedPrettyThemeScopeToken]).toEqual([true, '  ', 'yellow']);
+  });
+
+  it('applies default pretty-log theme when theme config path is absent', () => {
+    expect(defaultPrettyThemeEnabled).toBe(true);
   });
 });
 

@@ -212,6 +212,11 @@ protege logs --follow
 protege logs --json
 ```
 
+Pretty console log theming:
+
+1. Pretty-mode colors and indentation are configured in `config/theme.json`.
+2. `config/system.json` controls the theme file path with `theme_config_path` (default: `config/theme.json`).
+
 ## Doctor
 
 1. Human-readable diagnostic checks:

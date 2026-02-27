@@ -43,6 +43,7 @@ export async function startChatRuntime(
     logsDirPath: globalConfig.logsDirPath,
     scope: 'chat',
     consoleLogFormat: globalConfig.consoleLogFormat,
+    prettyLogTheme: globalConfig.prettyLogTheme,
     emitToConsole: false,
   });
   const personaMemoryPaths = resolvePersonaMemoryPaths({

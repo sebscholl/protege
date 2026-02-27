@@ -210,6 +210,9 @@ Planning updates:
    - wizard interaction contract frozen in `docs/milestones/setup-wizard-spec.md`
    - setup validation now enforces relay websocket URL protocol and admin-contact email shape
    - setup reruns now hydrate defaults from existing project config/env/manifest to prevent accidental reset drift
+31. Pretty-log theming improvements:
+   - pretty console mode now renders multiline, indented key/value context rows for readability
+   - ANSI styling is now theme-driven via `config/theme.json` and `theme_config_path` in `config/system.json`
 
 ## ADR Coverage
 

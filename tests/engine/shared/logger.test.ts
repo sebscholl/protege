@@ -5,12 +5,15 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createUnifiedLogger } from '@engine/shared/logger';
+import { getDefaultPrettyLogTheme } from '@engine/shared/runtime-config';
 
 let tempRootPath = '';
 let consoleLine = '';
 let fileLine = '';
 let silentConsoleOutput = '';
 let silentFileLine = '';
+let prettyConsoleHasMultilineContext = false;
+let prettyConsoleHasAnsiStyle = false;
 
 beforeAll((): void => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-unified-logger-'));
@@ -26,6 +29,7 @@ beforeAll((): void => {
     logsDirPath: tempRootPath,
     scope: 'gateway',
     consoleLogFormat: 'pretty',
+    prettyLogTheme: getDefaultPrettyLogTheme(),
   });
   logger.info({
     event: 'gateway.inbound.received',
@@ -37,6 +41,8 @@ beforeAll((): void => {
   process.stdout.write = originalWrite;
 
   consoleLine = captured.trim();
+  prettyConsoleHasMultilineContext = consoleLine.includes('\n\t');
+  prettyConsoleHasAnsiStyle = consoleLine.includes('\u001b[');
   fileLine = readFileSync(join(tempRootPath, 'protege.log'), 'utf8').trim();
 
   const originalSilentWrite = process.stdout.write.bind(process.stdout);
@@ -70,7 +76,15 @@ afterAll((): void => {
 
 describe('unified logger formatting', () => {
   it('emits human-readable pretty console lines when enabled', () => {
-    expect(consoleLine.includes('INFO gateway.gateway.inbound.received')).toBe(true);
+    expect(consoleLine.includes('INFO')).toBe(true);
+  });
+
+  it('formats pretty console context as indented multi-line key-value rows', () => {
+    expect(prettyConsoleHasMultilineContext).toBe(true);
+  });
+
+  it('applies ansi color/style sequences in pretty console mode when theme is enabled', () => {
+    expect(prettyConsoleHasAnsiStyle).toBe(true);
   });
 
   it('always writes json lines to the shared log file', () => {
