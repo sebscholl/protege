@@ -9,7 +9,7 @@ import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
 export type LogsCommandArgs = {
   follow: boolean;
   tail: number;
-  scope: 'gateway' | 'harness' | 'relay' | 'all';
+  scope: 'gateway' | 'harness' | 'relay' | 'scheduler' | 'chat' | 'all';
   json: boolean;
 };
 
@@ -39,7 +39,7 @@ export function parseLogsArgs(
     if (token === '--tail') {
       const value = Number(args.argv[index + 1]);
       if (!Number.isInteger(value) || value <= 0) {
-        throw new Error('Usage: protege logs [--follow] [--tail <n>] [--scope <gateway|harness|relay|all>] [--json]');
+        throw new Error('Usage: protege logs [--follow] [--tail <n>] [--scope <gateway|harness|relay|scheduler|chat|all>] [--json]');
       }
       tail = value;
       index += 1;
@@ -47,8 +47,8 @@ export function parseLogsArgs(
     }
     if (token === '--scope') {
       const value = args.argv[index + 1];
-      if (value !== 'gateway' && value !== 'harness' && value !== 'relay' && value !== 'all') {
-        throw new Error('Usage: protege logs [--follow] [--tail <n>] [--scope <gateway|harness|relay|all>] [--json]');
+      if (value !== 'gateway' && value !== 'harness' && value !== 'relay' && value !== 'scheduler' && value !== 'chat' && value !== 'all') {
+        throw new Error('Usage: protege logs [--follow] [--tail <n>] [--scope <gateway|harness|relay|scheduler|chat|all>] [--json]');
       }
       scope = value;
       index += 1;

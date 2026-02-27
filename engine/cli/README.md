@@ -14,7 +14,7 @@ Key commands:
 4. `protege init [--path <dir>] [--force]`
 5. `protege setup [--path <dir>] [--force] [--provider <openai|anthropic|gemini|grok>] [--outbound <relay|local>] [--non-interactive] ...`
 6. `protege status [--json]`
-7. `protege logs [--follow] [--tail <n>] [--scope <gateway|harness|relay|all>] [--json]`
+7. `protege logs [--follow] [--tail <n>] [--scope <gateway|harness|relay|scheduler|chat|all>] [--json]`
 8. `protege doctor [--json]`
 9. `protege chat --persona <persona_id_or_prefix> [--thread <thread_id>]`
 10. `protege scheduler sync [--persona <persona_id_or_prefix>]`

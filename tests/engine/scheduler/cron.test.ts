@@ -17,6 +17,7 @@ let scheduleInvocationCount = 0;
 let enqueuedRunCount = 0;
 let stoppedTaskCount = 0;
 let overlapPrevented = false;
+let skippedOverlapRunCount = 0;
 
 /**
  * Creates one deterministic fake scheduler task handle.
@@ -91,11 +92,13 @@ beforeAll((): void => {
   });
   callbacks[0]?.();
   callbacks[0]?.();
-  enqueuedRunCount = listResponsibilityRunsByPersona({
+  const runs = listResponsibilityRunsByPersona({
     db: db as ProtegeDatabase,
     personaId: 'persona-a',
-  }).length;
-  overlapPrevented = enqueuedRunCount === 1;
+  });
+  enqueuedRunCount = runs.filter((run) => run.status === 'queued').length;
+  skippedOverlapRunCount = runs.filter((run) => run.status === 'skipped_overlap').length;
+  overlapPrevented = enqueuedRunCount === 1 && skippedOverlapRunCount === 1;
   controller.stop();
 });
 
@@ -111,6 +114,10 @@ describe('scheduler cron trigger', () => {
 
   it('enqueues one run record when a registered tick fires', () => {
     expect(enqueuedRunCount).toBe(1);
+  });
+
+  it('persists one skipped-overlap run outcome when duplicate tick is blocked', () => {
+    expect(skippedOverlapRunCount).toBe(1);
   });
 
   it('stops registered schedule tasks on controller stop', () => {

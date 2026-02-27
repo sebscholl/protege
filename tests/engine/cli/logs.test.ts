@@ -11,6 +11,8 @@ let tempRootPath = '';
 let previousCwd = '';
 let jsonOutputLines: string[] = [];
 let prettyOutputLines: string[] = [];
+let schedulerOutputLines: string[] = [];
+let chatOutputLines: string[] = [];
 
 beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-logs-'));
@@ -43,6 +45,18 @@ beforeAll(async (): Promise<void> => {
       event: 'gateway.outbound.sent',
       timestamp: '2026-02-16T00:00:02.000Z',
     }),
+    JSON.stringify({
+      level: 'info',
+      scope: 'scheduler',
+      event: 'scheduler.run.completed',
+      timestamp: '2026-02-16T00:00:03.000Z',
+    }),
+    JSON.stringify({
+      level: 'info',
+      scope: 'chat',
+      event: 'chat.thread.updated',
+      timestamp: '2026-02-16T00:00:04.000Z',
+    }),
   ].join('\n'));
 
   jsonOutputLines = (await captureStdout({
@@ -56,6 +70,22 @@ beforeAll(async (): Promise<void> => {
   prettyOutputLines = (await captureStdout({
     run: async (): Promise<void> => runCli({
       argv: ['logs', '--scope', 'harness', '--tail', '10'],
+    }),
+  }))
+    .trim()
+    .split('\n')
+    .filter((line) => line.length > 0);
+  schedulerOutputLines = (await captureStdout({
+    run: async (): Promise<void> => runCli({
+      argv: ['logs', '--json', '--scope', 'scheduler', '--tail', '10'],
+    }),
+  }))
+    .trim()
+    .split('\n')
+    .filter((line) => line.length > 0);
+  chatOutputLines = (await captureStdout({
+    run: async (): Promise<void> => runCli({
+      argv: ['logs', '--json', '--scope', 'chat', '--tail', '10'],
     }),
   }))
     .trim()
@@ -83,5 +113,13 @@ describe('logs cli command', () => {
 
   it('renders non-json output in readable pretty format', () => {
     expect(prettyOutputLines[0]?.startsWith('[2026-02-16T00:00:01.000Z] INFO')).toBe(true);
+  });
+
+  it('filters output lines by scheduler scope', () => {
+    expect(schedulerOutputLines[0]?.includes('"scope":"scheduler"')).toBe(true);
+  });
+
+  it('filters output lines by chat scope', () => {
+    expect(chatOutputLines[0]?.includes('"scope":"chat"')).toBe(true);
   });
 });

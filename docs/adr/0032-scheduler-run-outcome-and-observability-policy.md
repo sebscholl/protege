@@ -16,10 +16,10 @@ Scheduler v1 already persists run records and sends failure alerts (ADR-0017), b
    - `succeeded`
    - `failed`
    - `skipped_overlap`
-   - `skipped_concurrency`
-3. Failed outcomes include structured error category fields suitable for operator diagnosis.
-4. Scheduler emits structured log events for run lifecycle transitions and skip reasons.
-5. Owner/admin alert behavior remains for terminal failures only (not for skip outcomes).
+3. `skipped_concurrency` remains reserved for future admission-control policies that intentionally drop due ticks under saturation.
+4. Failed outcomes include structured error category fields suitable for operator diagnosis.
+5. Scheduler emits structured log events for run lifecycle transitions and skip reasons.
+6. Owner/admin alert behavior remains for terminal failures only (not for skip outcomes).
 
 ## Consequences
 

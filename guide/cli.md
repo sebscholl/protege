@@ -195,6 +195,7 @@ protege logs --tail 200
 ```bash
 protege logs --scope gateway
 ```
+Supported scopes: `gateway`, `harness`, `relay`, `scheduler`, `chat`, `all`.
 4. Stream logs:
 ```bash
 protege logs --follow

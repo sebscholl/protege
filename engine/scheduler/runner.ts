@@ -88,6 +88,15 @@ export async function runNextQueuedResponsibility(
       status: 'idle',
     };
   }
+  args.logger?.info({
+    event: 'scheduler.run.claimed',
+    context: {
+      personaId: run.personaId,
+      runId: run.id,
+      responsibilityId: run.responsibilityId,
+      triggeredAt: run.triggeredAt,
+    },
+  });
 
   const responsibility = findResponsibilityById({
     db: args.db,
@@ -100,6 +109,7 @@ export async function runNextQueuedResponsibility(
       runId: run.id,
       finishedAt: args.now?.() ?? new Date().toISOString(),
       errorMessage,
+      failureCategory: 'config',
     });
     await sendFailureAlertSafe({
       sendFailureAlert: args.sendFailureAlert,
@@ -142,6 +152,16 @@ export async function runNextQueuedResponsibility(
     personaMailboxIdentity,
   });
   const executeRun = args.executeRun ?? runHarnessForInboundMessage;
+  args.logger?.info({
+    event: 'scheduler.run.started',
+    context: {
+      personaId: run.personaId,
+      runId: run.id,
+      responsibilityId: responsibility.id,
+      threadId,
+      messageId: inboundMessageId,
+    },
+  });
 
   try {
     const result = await executeRun({
@@ -161,6 +181,17 @@ export async function runNextQueuedResponsibility(
       inboundMessageId,
       outboundMessageId: result.responseMessageId,
     });
+    args.logger?.info({
+      event: 'scheduler.run.completed',
+      context: {
+        personaId: run.personaId,
+        runId: run.id,
+        responsibilityId: responsibility.id,
+        threadId,
+        messageId: inboundMessageId,
+        responseMessageId: result.responseMessageId,
+      },
+    });
     return {
       status: 'succeeded',
       runId: run.id,
@@ -176,6 +207,9 @@ export async function runNextQueuedResponsibility(
       runId: run.id,
       finishedAt: args.now?.() ?? new Date().toISOString(),
       errorMessage,
+      failureCategory: classifySchedulerFailureCategory({
+        error,
+      }),
       threadId,
       inboundMessageId,
     });
@@ -184,6 +218,20 @@ export async function runNextQueuedResponsibility(
       run,
       responsibility,
       errorMessage,
+    });
+    args.logger?.error({
+      event: 'scheduler.run.failed',
+      context: {
+        personaId: run.personaId,
+        runId: run.id,
+        responsibilityId: responsibility.id,
+        threadId,
+        messageId: inboundMessageId,
+        failureCategory: classifySchedulerFailureCategory({
+          error,
+        }),
+        errorMessage,
+      },
     });
     return {
       status: 'failed',
@@ -194,6 +242,21 @@ export async function runNextQueuedResponsibility(
       errorMessage,
     };
   }
+}
+
+/**
+ * Classifies one scheduler execution error into a stable failure category.
+ */
+export function classifySchedulerFailureCategory(
+  args: {
+    error: unknown;
+  },
+): 'runtime' | 'unknown' {
+  if (args.error instanceof Error) {
+    return 'runtime';
+  }
+
+  return 'unknown';
 }
 
 /**

@@ -4,7 +4,11 @@ import type { SchedulerResponsibility } from '@engine/scheduler/storage';
 
 import { createRequire } from 'node:module';
 
-import { enqueueResponsibilityRunIfIdle, listEnabledResponsibilitiesByPersona } from '@engine/scheduler/storage';
+import {
+  enqueueResponsibilityRunIfIdle,
+  listEnabledResponsibilitiesByPersona,
+  recordSkippedRun,
+} from '@engine/scheduler/storage';
 
 /**
  * Represents one scheduled task handle returned by one cron provider.
@@ -52,6 +56,7 @@ export type ResponsibilityEnqueueFn = (
 ) => {
   enqueued: boolean;
   runId?: string;
+  skipReason?: 'overlap';
 };
 
 /**
@@ -128,12 +133,21 @@ export function startPersonaSchedulerCron(
               },
             });
           } else {
+            const skippedRunId = recordSkippedRun({
+              db: args.db,
+              responsibilityId: responsibility.id,
+              personaId: responsibility.personaId,
+              status: 'skipped_overlap',
+              triggeredAt,
+              errorMessage: 'Skipped due to overlap guardrail (open queued/running run).',
+            });
             args.logger?.info({
               event: 'scheduler.cron.skipped_overlap',
               context: {
                 personaId: args.personaId,
                 responsibilityId: responsibility.id,
                 triggeredAt,
+                runId: skippedRunId,
               },
             });
           }

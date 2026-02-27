@@ -19,11 +19,14 @@ let roots: PersonaRoots | undefined;
 let successRunStatus = '';
 let successOutboundMessageId = '';
 let failureRunStatus = '';
+let failureRunCategory = '';
 let failureAlertCount = 0;
 let inboundMessageSubject = '';
 let successRunSenderAddress = '';
 let overlapFirstRunStatus = '';
 let overlapSecondRunStatus = '';
+let loggerInfoEvents: string[] = [];
+let loggerErrorEvents: string[] = [];
 
 beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-scheduler-runner-'));
@@ -76,6 +79,22 @@ beforeAll(async (): Promise<void> => {
   await runNextQueuedResponsibility({
     db: db as ProtegeDatabase,
     roots,
+    logger: {
+      info: (
+        args: {
+          event: string;
+        },
+      ): void => {
+        loggerInfoEvents.push(args.event);
+      },
+      error: (
+        args: {
+          event: string;
+        },
+      ): void => {
+        loggerErrorEvents.push(args.event);
+      },
+    },
     executeRun: async (
       executeArgs: {
         message: InboundNormalizedMessage;
@@ -122,6 +141,22 @@ beforeAll(async (): Promise<void> => {
   await runNextQueuedResponsibility({
     db: db as ProtegeDatabase,
     roots,
+    logger: {
+      info: (
+        args: {
+          event: string;
+        },
+      ): void => {
+        loggerInfoEvents.push(args.event);
+      },
+      error: (
+        args: {
+          event: string;
+        },
+      ): void => {
+        loggerErrorEvents.push(args.event);
+      },
+    },
     executeRun: async (): Promise<never> => {
       throw new Error('Provider failed');
     },
@@ -134,6 +169,7 @@ beforeAll(async (): Promise<void> => {
     personaId: persona.personaId,
   }).find((run) => run.id === 'run-fail');
   failureRunStatus = failedRun?.status ?? '';
+  failureRunCategory = failedRun?.failureCategory ?? '';
 
   upsertResponsibility({
     db: db as ProtegeDatabase,
@@ -228,6 +264,10 @@ describe('scheduler runner', () => {
     expect(failureRunStatus).toBe('failed');
   });
 
+  it('categorizes failed run rows with runtime failure category', () => {
+    expect(failureRunCategory).toBe('runtime');
+  });
+
   it('dispatches one failure alert for failed runs', () => {
     expect(failureAlertCount).toBe(1);
   });
@@ -238,5 +278,13 @@ describe('scheduler runner', () => {
 
   it('keeps concurrent second overlap claim idle while first run is running', () => {
     expect(overlapSecondRunStatus).toBe('idle');
+  });
+
+  it('emits run claimed/started/completed scheduler events', () => {
+    expect(loggerInfoEvents.includes('scheduler.run.completed')).toBe(true);
+  });
+
+  it('emits run failed scheduler events for terminal failures', () => {
+    expect(loggerErrorEvents.includes('scheduler.run.failed')).toBe(true);
   });
 });

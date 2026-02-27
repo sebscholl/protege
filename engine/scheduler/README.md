@@ -16,7 +16,7 @@ Core modules:
 Runtime behavior:
 
 1. Cron enqueue is overlap-safe per responsibility:
-   - if a responsibility already has an open run (`queued` or `running`), scheduler logs `scheduler.cron.skipped_overlap` and does not enqueue a duplicate.
+   - if a responsibility already has an open run (`queued` or `running`), scheduler logs `scheduler.cron.skipped_overlap`, persists a `skipped_overlap` run outcome, and does not enqueue a duplicate.
 2. Scheduler dispatch is bounded and parallel:
    - one global concurrent run cap is enforced from `config/system.json` (`scheduler.max_global_concurrent_runs`).
    - when queued work is temporarily blocked by that global cap, runtime emits `scheduler.cycle.throttled` visibility logs.

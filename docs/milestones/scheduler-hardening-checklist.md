@@ -52,7 +52,7 @@ Scope: Finish scheduler reliability hardening before new feature work in schedul
 
 ### Implementation Checklist
 
-- [ ] Extend scheduler run status model for `skipped_overlap` and `skipped_concurrency`.
+- [ ] Extend scheduler run status model for `skipped_overlap` (with `skipped_concurrency` reserved for future admission-control behavior).
 - [ ] Persist skip outcome reason details in run records.
 - [ ] Add failure category field for terminal failures.
 - [ ] Keep owner/admin alerts for `failed` only.

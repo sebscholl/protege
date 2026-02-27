@@ -194,6 +194,9 @@ Planning updates:
    - concurrency/no-overlap policy frozen via ADR-0031
    - run outcome/observability policy frozen via ADR-0032
    - detailed execution checklist created in `docs/milestones/scheduler-hardening-checklist.md`
+26. Scheduler SH2 initial implementation:
+   - `skipped_overlap` outcomes are now persisted when cron ticks are blocked by overlap guardrails
+   - scheduler failed runs now persist `failure_category` metadata for diagnostics
 
 ## ADR Coverage
 

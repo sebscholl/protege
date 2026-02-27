@@ -17,6 +17,7 @@ import {
   listResponsibilitiesByPersona,
   listResponsibilityRunsByPersona,
   markRunFailed,
+  recordSkippedRun,
   markRunSucceeded,
   upsertResponsibility,
 } from '@engine/scheduler/storage';
@@ -32,6 +33,8 @@ let overlapFirstEnqueued = false;
 let overlapSecondEnqueued = true;
 let personaHasQueuedAfterOverlap = false;
 let overlapClaimBlockedByRunning = false;
+let failedRunCategory = '';
+let skippedOverlapRunStatus = '';
 
 beforeAll((): void => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-scheduler-storage-'));
@@ -121,8 +124,17 @@ beforeAll((): void => {
     runId: 'run-2',
     finishedAt: '2026-02-20T12:02:00.000Z',
     errorMessage: 'Provider unavailable',
+    failureCategory: 'runtime',
     threadId: 'thread-2',
     inboundMessageId: '<inbound-2@localhost>',
+  });
+  recordSkippedRun({
+    db: db as ProtegeDatabase,
+    runId: 'run-skipped-overlap',
+    responsibilityId: 'resp-1',
+    personaId: 'persona-a',
+    status: 'skipped_overlap',
+    triggeredAt: '2026-02-20T12:03:00.000Z',
   });
   const runs = listResponsibilityRunsByPersona({
     db: db as ProtegeDatabase,
@@ -130,6 +142,8 @@ beforeAll((): void => {
   });
   succeededRunStatus = runs.find((run) => run.id === 'run-1')?.status ?? '';
   failedRunStatus = runs.find((run) => run.id === 'run-2')?.status ?? '';
+  failedRunCategory = runs.find((run) => run.id === 'run-2')?.failureCategory ?? '';
+  skippedOverlapRunStatus = runs.find((run) => run.id === 'run-skipped-overlap')?.status ?? '';
 
   const firstOverlapRun = enqueueResponsibilityRunIfIdle({
     db: db as ProtegeDatabase,
@@ -205,6 +219,14 @@ describe('scheduler storage', () => {
 
   it('stores failed run status after terminal errors', () => {
     expect(failedRunStatus).toBe('failed');
+  });
+
+  it('stores failed run category for terminal errors', () => {
+    expect(failedRunCategory).toBe('runtime');
+  });
+
+  it('stores explicit skipped-overlap run outcomes', () => {
+    expect(skippedOverlapRunStatus).toBe('skipped_overlap');
   });
 
   it('enqueues when no open run exists for one responsibility', () => {

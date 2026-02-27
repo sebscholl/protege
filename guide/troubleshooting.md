@@ -144,5 +144,14 @@ PERPLEXITY_API_KEY=pplx-...
 1. Scheduler now enforces bounded concurrency.
 2. Check `config/system.json`:
    - `scheduler.max_global_concurrent_runs`
-   - `scheduler.max_per_persona_concurrent_runs`
 3. Increase limits carefully if runs are consistently queued.
+
+Key scheduler observability events:
+
+1. `scheduler.cron.enqueued`: cron tick produced a queued run.
+2. `scheduler.cron.skipped_overlap`: cron tick was blocked by overlap guardrail (an open queued/running run already exists).
+3. `scheduler.run.claimed`: runner claimed one queued run.
+4. `scheduler.run.started`: synthetic inbound was created; `threadId` and `messageId` are now available.
+5. `scheduler.run.completed`: run succeeded.
+6. `scheduler.run.failed`: run failed with `failureCategory` metadata.
+7. `scheduler.cycle.throttled`: global scheduler concurrency cap is currently saturated.

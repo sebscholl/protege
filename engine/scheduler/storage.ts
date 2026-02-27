@@ -24,7 +24,7 @@ export type SchedulerResponsibilityRun = {
   id: string;
   responsibilityId: string;
   personaId: string;
-  status: 'queued' | 'running' | 'succeeded' | 'failed';
+  status: 'queued' | 'running' | 'succeeded' | 'failed' | 'skipped_overlap' | 'skipped_concurrency';
   triggeredAt: string;
   startedAt?: string;
   finishedAt?: string;
@@ -32,6 +32,7 @@ export type SchedulerResponsibilityRun = {
   inboundMessageId?: string;
   outboundMessageId?: string;
   errorMessage?: string;
+  failureCategory?: 'config' | 'runtime' | 'unknown';
   promptPathAtRun?: string;
   promptHashAtRun?: string;
   promptSnapshot?: string;
@@ -259,6 +260,7 @@ export function enqueueResponsibilityRunIfIdle(
 ): {
   enqueued: boolean;
   runId?: string;
+  skipReason?: 'overlap';
 } {
   const runId = args.runId ?? randomUUID();
   const result = args.db.prepare(`
@@ -298,6 +300,7 @@ export function enqueueResponsibilityRunIfIdle(
 
   return {
     enqueued: false,
+    skipReason: 'overlap',
   };
 }
 
@@ -519,7 +522,8 @@ export function markRunSucceeded(
       thread_id = ?,
       inbound_message_id = ?,
       outbound_message_id = ?,
-      error_message = NULL
+      error_message = NULL,
+      failure_category = NULL
     WHERE id = ?
   `).run(
     args.finishedAt ?? new Date().toISOString(),
@@ -539,6 +543,7 @@ export function markRunFailed(
     runId: string;
     finishedAt?: string;
     errorMessage: string;
+    failureCategory?: 'config' | 'runtime' | 'unknown';
     threadId?: string;
     inboundMessageId?: string;
   },
@@ -549,16 +554,57 @@ export function markRunFailed(
       status = 'failed',
       finished_at = ?,
       error_message = ?,
+      failure_category = ?,
       thread_id = COALESCE(?, thread_id),
       inbound_message_id = COALESCE(?, inbound_message_id)
     WHERE id = ?
   `).run(
     args.finishedAt ?? new Date().toISOString(),
     args.errorMessage,
+    args.failureCategory ?? 'unknown',
     args.threadId ?? null,
     args.inboundMessageId ?? null,
     args.runId,
   );
+}
+
+/**
+ * Persists one skipped run outcome row for one responsibility tick that was intentionally not executed.
+ */
+export function recordSkippedRun(
+  args: {
+    db: ProtegeDatabase;
+    runId?: string;
+    responsibilityId: string;
+    personaId: string;
+    status: 'skipped_overlap' | 'skipped_concurrency';
+    triggeredAt?: string;
+    finishedAt?: string;
+    errorMessage?: string;
+  },
+): string {
+  const runId = args.runId ?? randomUUID();
+  args.db.prepare(`
+    INSERT INTO responsibility_runs (
+      id,
+      responsibility_id,
+      persona_id,
+      status,
+      triggered_at,
+      finished_at,
+      error_message
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    runId,
+    args.responsibilityId,
+    args.personaId,
+    args.status,
+    args.triggeredAt ?? new Date().toISOString(),
+    args.finishedAt ?? args.triggeredAt ?? new Date().toISOString(),
+    args.errorMessage ?? null,
+  );
+
+  return runId;
 }
 
 /**
@@ -583,6 +629,7 @@ export function listResponsibilityRunsByPersona(
       inbound_message_id,
       outbound_message_id,
       error_message,
+      failure_category,
       prompt_path_at_run,
       prompt_hash_at_run,
       prompt_snapshot
@@ -637,6 +684,7 @@ export function toSchedulerResponsibilityRun(
     inboundMessageId: args.row.inbound_message_id ?? undefined,
     outboundMessageId: args.row.outbound_message_id ?? undefined,
     errorMessage: args.row.error_message ?? undefined,
+    failureCategory: args.row.failure_category as SchedulerResponsibilityRun['failureCategory'],
     promptPathAtRun: args.row.prompt_path_at_run ?? undefined,
     promptHashAtRun: args.row.prompt_hash_at_run ?? undefined,
     promptSnapshot: args.row.prompt_snapshot ?? undefined,
