@@ -76,6 +76,51 @@ export function normalizeBlessedKeypress(
       binding: 'backspace',
     };
   }
+  if (args.key.name === 'delete') {
+    return {
+      binding: 'delete',
+    };
+  }
+  if (args.key.name === 'left') {
+    return {
+      binding: 'left',
+    };
+  }
+  if (args.key.name === 'right') {
+    return {
+      binding: 'right',
+    };
+  }
+  if (args.key.name === 'home') {
+    return {
+      binding: 'home',
+    };
+  }
+  if (args.key.name === 'end') {
+    return {
+      binding: 'end',
+    };
+  }
+  if (args.key.name === 'up') {
+    return {
+      binding: 'up',
+    };
+  }
+  if (args.key.name === 'down') {
+    return {
+      binding: 'down',
+    };
+  }
+  if (args.key.name === 'pageup') {
+    return {
+      binding: 'pageup',
+    };
+  }
+  if (args.key.name === 'pagedown') {
+    return {
+      binding: 'pagedown',
+    };
+  }
 
   if (typeof args.ch === 'string' && args.ch.length === 1) {
     return {

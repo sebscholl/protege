@@ -1,5 +1,6 @@
 import type { ChatSessionState } from '@engine/chat/controller';
 import type { ChatThreadDetail, ChatThreadSummary } from '@engine/chat/queries';
+import type { ChatKeymap } from '@engine/shared/runtime-config';
 
 /**
  * Represents one rendered inbox-row model for TUI list widgets.
@@ -7,7 +8,9 @@ import type { ChatThreadDetail, ChatThreadSummary } from '@engine/chat/queries';
 export type ChatInboxRowModel = {
   threadId: string;
   title: string;
-  subtitle: string;
+  timestamp: string;
+  participants: string;
+  preview: string;
   isReadOnly: boolean;
   isSelected: boolean;
 };
@@ -28,6 +31,7 @@ export type ChatInboxViewModel = {
 export type ChatThreadMessageModel = {
   header: string;
   body: string;
+  attachmentPaths: string[];
 };
 
 /**
@@ -50,6 +54,7 @@ export function buildInboxViewModel(
   args: {
     state: ChatSessionState;
     summaries: ChatThreadSummary[];
+    keymap: ChatKeymap;
   },
 ): ChatInboxViewModel {
   return {
@@ -58,11 +63,23 @@ export function buildInboxViewModel(
     rows: args.summaries.map((summary) => ({
       threadId: summary.threadId,
       title: summary.subject,
-      subtitle: `${summary.lastSender} · ${summary.preview}`,
+      timestamp: formatIsoTimestampCompact({
+        value: summary.lastReceivedAt,
+      }),
+      participants: summary.lastSender,
+      preview: truncatePreviewText({
+        value: summary.preview,
+        maxLength: 120,
+      }),
       isReadOnly: summary.isReadOnly,
       isSelected: summary.threadId === args.state.selectedThreadId,
     })),
-    footerHint: 'Enter=open thread  Ctrl+N=new local thread  Ctrl+V=toggle mode  Ctrl+Q=quit',
+    footerHint: [
+      `${formatBindingLabel({ binding: args.keymap.open_thread })}=open thread`,
+      `${formatBindingLabel({ binding: args.keymap.new_local_thread })}=new local thread`,
+      `${formatBindingLabel({ binding: args.keymap.toggle_display_mode })}=toggle mode`,
+      `${formatBindingLabel({ binding: args.keymap.quit })}=quit`,
+    ].join('  '),
   };
 }
 
@@ -73,6 +90,7 @@ export function buildThreadViewModel(
   args: {
     state: ChatSessionState;
     detail: ChatThreadDetail;
+    keymap: ChatKeymap;
   },
 ): ChatThreadViewModel {
   const composeEnabled = !args.detail.isReadOnly;
@@ -89,8 +107,18 @@ export function buildThreadViewModel(
     })),
     draft: composeEnabled ? args.state.draft : '',
     footerHint: composeEnabled
-      ? 'Esc=command mode  i=compose mode  Ctrl+S=send  Ctrl+R=refresh'
-      : 'Esc=back to inbox  Ctrl+R=refresh  Ctrl+V=toggle mode  Ctrl+Q=quit',
+      ? [
+        `${formatBindingLabel({ binding: args.keymap.back_to_inbox })}=command mode`,
+        `${formatBindingLabel({ binding: args.keymap.enter_compose_mode })}=compose mode`,
+        `${formatBindingLabel({ binding: args.keymap.send })}=send`,
+        `${formatBindingLabel({ binding: args.keymap.refresh })}=refresh`,
+      ].join('  ')
+      : [
+        `${formatBindingLabel({ binding: args.keymap.back_to_inbox })}=back to inbox`,
+        `${formatBindingLabel({ binding: args.keymap.refresh })}=refresh`,
+        `${formatBindingLabel({ binding: args.keymap.toggle_display_mode })}=toggle mode`,
+        `${formatBindingLabel({ binding: args.keymap.quit })}=quit`,
+      ].join('  '),
   };
 }
 
@@ -107,6 +135,7 @@ export function buildThreadMessageModel(
     return {
       header: `${args.message.sender} · ${formatIsoTimestampCompact({ value: args.message.receivedAt })}`,
       body: args.message.textBody,
+      attachmentPaths: args.message.attachmentPaths,
     };
   }
 
@@ -118,8 +147,9 @@ export function buildThreadMessageModel(
       `Date: ${args.message.receivedAt}`,
       `Message-ID: ${args.message.messageId}`,
       args.message.inReplyTo ? `In-Reply-To: ${args.message.inReplyTo}` : '',
-    ].filter(Boolean).join(' | '),
+    ].filter(Boolean).join('\n'),
     body: args.message.textBody,
+    attachmentPaths: args.message.attachmentPaths,
   };
 }
 
@@ -141,4 +171,34 @@ export function formatIsoTimestampCompact(
   }
 
   return date.toISOString().replace('T', ' ').slice(0, 16);
+}
+
+/**
+ * Truncates one inbox preview to fixed length for predictable list rendering.
+ */
+export function truncatePreviewText(
+  args: {
+    value: string;
+    maxLength: number;
+  },
+): string {
+  if (args.value.length <= args.maxLength) {
+    return args.value;
+  }
+
+  return `${args.value.slice(0, Math.max(0, args.maxLength - 1))}…`;
+}
+
+/**
+ * Formats key binding labels for compact footer hints.
+ */
+export function formatBindingLabel(
+  args: {
+    binding: string;
+  },
+): string {
+  return args.binding
+    .split('+')
+    .map((part) => (part.length > 0 ? `${part[0].toUpperCase()}${part.slice(1)}` : part))
+    .join('+');
 }

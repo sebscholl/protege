@@ -86,6 +86,30 @@
       "message_tag": [
         "green-fg"
       ]
+    },
+    "thread": {
+      "title_tag": [
+        "bold",
+        "blue-fg"
+      ],
+      "mode_tag": [
+        "gray-fg"
+      ],
+      "write_banner_tag": [
+        "yellow-fg"
+      ],
+      "message_header_tag": [
+        "cyan-fg"
+      ],
+      "message_body_tag": [
+        "white-fg"
+      ],
+      "attachment_tag": [
+        "magenta-fg"
+      ],
+      "message_separator_tag": [
+        "gray-fg"
+      ]
     }
   }
 }

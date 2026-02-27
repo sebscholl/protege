@@ -19,6 +19,16 @@ const keymap: ChatKeymap = {
   back_to_inbox: 'esc',
   new_local_thread: 'ctrl+n',
   enter_compose_mode: 'i',
+  scroll_thread_up: 'up',
+  scroll_thread_down: 'down',
+  scroll_thread_page_up: 'pageup',
+  scroll_thread_page_down: 'pagedown',
+  compose_cursor_left: 'left',
+  compose_cursor_right: 'right',
+  compose_cursor_home: 'home',
+  compose_cursor_end: 'end',
+  compose_delete_backward: 'backspace',
+  compose_delete_forward: 'delete',
 };
 
 let openThreadView = '';
@@ -134,6 +144,7 @@ beforeAll((): void => {
     },
   });
   writableLegacySendEffectsCount = writableLegacySend.effects.filter((effect) => effect.type === 'send_requested').length;
+
 });
 
 describe('chat controller transitions', () => {

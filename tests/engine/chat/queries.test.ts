@@ -21,6 +21,7 @@ let localThreadDetailReadOnly = true;
 let localThreadMessageCount = 0;
 let externalThreadDetailReadOnly = false;
 let externalThreadMessageCount = 0;
+let externalThreadAttachmentPath = '';
 let unknownThreadMessageCount = -1;
 let unknownThreadReadOnly = false;
 
@@ -121,7 +122,13 @@ beforeAll((): void => {
       subject: 'Re: External subject',
       text: 'External reply.',
       receivedAt: '2026-02-19T10:01:00.000Z',
-      metadata: {},
+      metadata: {
+        attachments: [
+          {
+            path: '/tmp/external-reply-attachment.txt',
+          },
+        ],
+      },
     },
   });
   insertLocalSyntheticThread({
@@ -151,6 +158,7 @@ beforeAll((): void => {
   });
   externalThreadDetailReadOnly = externalDetail.isReadOnly;
   externalThreadMessageCount = externalDetail.messages.length;
+  externalThreadAttachmentPath = externalDetail.messages[1]?.attachmentPaths[0] ?? '';
 
   const unknownDetail = readChatThreadDetail({
     db: db as ProtegeDatabase,
@@ -199,6 +207,10 @@ describe('chat query thread detail', () => {
 
   it('returns full message history for external thread detail', () => {
     expect(externalThreadMessageCount).toBe(2);
+  });
+
+  it('extracts attachment file paths from message metadata', () => {
+    expect(externalThreadAttachmentPath).toBe('/tmp/external-reply-attachment.txt');
   });
 
   it('returns empty detail for unknown thread ids', () => {

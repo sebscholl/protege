@@ -25,7 +25,17 @@ export type ChatKeyAction =
   | 'open_thread'
   | 'back_to_inbox'
   | 'new_local_thread'
-  | 'enter_compose_mode';
+  | 'enter_compose_mode'
+  | 'scroll_thread_up'
+  | 'scroll_thread_down'
+  | 'scroll_thread_page_up'
+  | 'scroll_thread_page_down'
+  | 'compose_cursor_left'
+  | 'compose_cursor_right'
+  | 'compose_cursor_home'
+  | 'compose_cursor_end'
+  | 'compose_delete_backward'
+  | 'compose_delete_forward';
 
 /**
  * Represents normalized chat keymap values.
@@ -114,6 +124,15 @@ export type ChatUiTheme = {
     commandBorderTag: string[];
     messageTag: string[];
   };
+  thread: {
+    titleTag: string[];
+    modeTag: string[];
+    writeBannerTag: string[];
+    messageHeaderTag: string[];
+    messageBodyTag: string[];
+    attachmentTag: string[];
+    messageSeparatorTag: string[];
+  };
 };
 
 /**
@@ -140,6 +159,16 @@ export function getDefaultChatKeymap(): ChatKeymap {
     back_to_inbox: 'esc',
     new_local_thread: 'ctrl+n',
     enter_compose_mode: 'i',
+    scroll_thread_up: 'up',
+    scroll_thread_down: 'down',
+    scroll_thread_page_up: 'pageup',
+    scroll_thread_page_down: 'pagedown',
+    compose_cursor_left: 'left',
+    compose_cursor_right: 'right',
+    compose_cursor_home: 'home',
+    compose_cursor_end: 'end',
+    compose_delete_backward: 'backspace',
+    compose_delete_forward: 'delete',
   };
 }
 
@@ -276,6 +305,15 @@ export function getDefaultChatUiTheme(): ChatUiTheme {
       commandBorderTag: ['gray-fg'],
       messageTag: ['green-fg'],
     },
+    thread: {
+      titleTag: ['bold', 'blue-fg'],
+      modeTag: ['gray-fg'],
+      writeBannerTag: ['yellow-fg'],
+      messageHeaderTag: ['cyan-fg'],
+      messageBodyTag: ['white-fg'],
+      attachmentTag: ['magenta-fg'],
+      messageSeparatorTag: ['gray-fg'],
+    },
   };
 }
 
@@ -368,6 +406,7 @@ export function readChatUiTheme(
   const chatUi = parsed.chat_ui;
   const inbox = isRecord(chatUi.inbox) ? chatUi.inbox : {};
   const status = isRecord(chatUi.status) ? chatUi.status : {};
+  const thread = isRecord(chatUi.thread) ? chatUi.thread : {};
   return {
     inbox: {
       titleTag: parseThemeTagString({
@@ -435,6 +474,36 @@ export function readChatUiTheme(
       messageTag: parseThemeTagString({
         value: status.message_tag,
         defaultValue: defaults.status.messageTag,
+      }),
+    },
+    thread: {
+      titleTag: parseThemeTagString({
+        value: thread.title_tag,
+        defaultValue: defaults.thread.titleTag,
+      }),
+      modeTag: parseThemeTagString({
+        value: thread.mode_tag,
+        defaultValue: defaults.thread.modeTag,
+      }),
+      writeBannerTag: parseThemeTagString({
+        value: thread.write_banner_tag,
+        defaultValue: defaults.thread.writeBannerTag,
+      }),
+      messageHeaderTag: parseThemeTagString({
+        value: thread.message_header_tag,
+        defaultValue: defaults.thread.messageHeaderTag,
+      }),
+      messageBodyTag: parseThemeTagString({
+        value: thread.message_body_tag,
+        defaultValue: defaults.thread.messageBodyTag,
+      }),
+      attachmentTag: parseThemeTagString({
+        value: thread.attachment_tag,
+        defaultValue: defaults.thread.attachmentTag,
+      }),
+      messageSeparatorTag: parseThemeTagString({
+        value: thread.message_separator_tag,
+        defaultValue: defaults.thread.messageSeparatorTag,
       }),
     },
   };
@@ -753,6 +822,46 @@ export function parseChatKeymap(
       action: 'enter_compose_mode',
       value: args.value.enter_compose_mode,
     }),
+    scroll_thread_up: readRequiredChatKey({
+      action: 'scroll_thread_up',
+      value: args.value.scroll_thread_up,
+    }),
+    scroll_thread_down: readRequiredChatKey({
+      action: 'scroll_thread_down',
+      value: args.value.scroll_thread_down,
+    }),
+    scroll_thread_page_up: readRequiredChatKey({
+      action: 'scroll_thread_page_up',
+      value: args.value.scroll_thread_page_up,
+    }),
+    scroll_thread_page_down: readRequiredChatKey({
+      action: 'scroll_thread_page_down',
+      value: args.value.scroll_thread_page_down,
+    }),
+    compose_cursor_left: readRequiredChatKey({
+      action: 'compose_cursor_left',
+      value: args.value.compose_cursor_left,
+    }),
+    compose_cursor_right: readRequiredChatKey({
+      action: 'compose_cursor_right',
+      value: args.value.compose_cursor_right,
+    }),
+    compose_cursor_home: readRequiredChatKey({
+      action: 'compose_cursor_home',
+      value: args.value.compose_cursor_home,
+    }),
+    compose_cursor_end: readRequiredChatKey({
+      action: 'compose_cursor_end',
+      value: args.value.compose_cursor_end,
+    }),
+    compose_delete_backward: readRequiredChatKey({
+      action: 'compose_delete_backward',
+      value: args.value.compose_delete_backward,
+    }),
+    compose_delete_forward: readRequiredChatKey({
+      action: 'compose_delete_forward',
+      value: args.value.compose_delete_forward,
+    }),
   };
 
   assertChatKeymapHasNoConflicts({
@@ -796,7 +905,18 @@ export function isSupportedChatKeyBinding(
     return true;
   }
 
-  if (args.value === 'up' || args.value === 'down') {
+  if (
+    args.value === 'up'
+    || args.value === 'down'
+    || args.value === 'left'
+    || args.value === 'right'
+    || args.value === 'home'
+    || args.value === 'end'
+    || args.value === 'pageup'
+    || args.value === 'pagedown'
+    || args.value === 'backspace'
+    || args.value === 'delete'
+  ) {
     return true;
   }
 
@@ -819,13 +939,31 @@ export function assertChatKeymapHasNoConflicts(
   const indexByBinding = new Map<string, ChatKeyAction>();
   for (const [action, binding] of entries) {
     const existingAction = indexByBinding.get(binding);
-    if (existingAction) {
+    if (existingAction && !canShareChatKeyBinding({
+      leftAction: existingAction,
+      rightAction: action,
+    })) {
       throw new Error(
         `Conflicting chat key binding "${binding}" for actions "${existingAction}" and "${action}".`,
       );
     }
-    indexByBinding.set(binding, action);
+    if (!existingAction) {
+      indexByBinding.set(binding, action);
+    }
   }
+}
+
+/**
+ * Returns true when two chat actions are allowed to share one binding due to mode-separated semantics.
+ */
+export function canShareChatKeyBinding(
+  args: {
+    leftAction: ChatKeyAction;
+    rightAction: ChatKeyAction;
+  },
+): boolean {
+  const pair = [args.leftAction, args.rightAction].sort().join('|');
+  return pair === 'move_selection_down|scroll_thread_down' || pair === 'move_selection_up|scroll_thread_up';
 }
 
 /**

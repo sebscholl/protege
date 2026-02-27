@@ -17,13 +17,14 @@ import {
   parseStatusHintCommands,
   readVisibleInboxRowCount,
   renderInboxRows,
+  renderThreadViewContent,
   resolvePersonaBySelector,
   scrollThreadBoxToBottom,
   resolveThreadScrollDelta,
 } from '@engine/chat/runtime';
 import { createPersona } from '@engine/shared/personas';
 import { initializeDatabase } from '@engine/shared/database';
-import { getDefaultChatUiTheme } from '@engine/shared/runtime-config';
+import { getDefaultChatKeymap, getDefaultChatUiTheme } from '@engine/shared/runtime-config';
 
 let originalCwd = '';
 let tempRootPath = '';
@@ -50,6 +51,7 @@ let topRowMovesDownToKeepVisible = -1;
 let topRowUnchangedWhenVisible = -1;
 let visibleInboxRowCount = 0;
 let parsedStatusHintCommandsCount = 0;
+let renderedThreadContent = '';
 
 const inboundMessage: InboundNormalizedMessage = {
   personaId: 'persona-test',
@@ -179,9 +181,18 @@ beforeAll(async (): Promise<void> => {
   parsedStatusHintCommandsCount = parseStatusHintCommands({
     footerHint: 'Enter=open thread  Ctrl+N=new local thread  Ctrl+Q=quit',
   }).length;
-  scrollUpDelta = resolveThreadScrollDelta({ binding: 'up' }) ?? 0;
-  scrollPageDownDelta = resolveThreadScrollDelta({ binding: 'pagedown' }) ?? 0;
-  scrollUnknownDelta = resolveThreadScrollDelta({ binding: 'x' });
+  scrollUpDelta = resolveThreadScrollDelta({
+    binding: 'up',
+    keymap: getDefaultChatKeymap(),
+  }) ?? 0;
+  scrollPageDownDelta = resolveThreadScrollDelta({
+    binding: 'pagedown',
+    keymap: getDefaultChatKeymap(),
+  }) ?? 0;
+  scrollUnknownDelta = resolveThreadScrollDelta({
+    binding: 'x',
+    keymap: getDefaultChatKeymap(),
+  });
   scrollThreadBoxToBottom({
     threadBox: {
       setScrollPerc: (
@@ -242,6 +253,25 @@ beforeAll(async (): Promise<void> => {
     inboxList: {
       height: 10,
     },
+  });
+  renderedThreadContent = renderThreadViewContent({
+    title: 'Thread Subject',
+    modeLabel: 'LIGHT',
+    interactionMode: 'COMPOSE',
+    writeBanner: 'WRITABLE LOCAL CHAT THREAD',
+    messages: [
+      {
+        header: 'From: user@localhost\nTo: persona@localhost',
+        body: 'Body one',
+        attachmentPaths: ['/tmp/a.txt'],
+      },
+      {
+        header: 'From: persona@localhost\nTo: user@localhost',
+        body: 'Body two',
+        attachmentPaths: [],
+      },
+    ],
+    theme: getDefaultChatUiTheme(),
   });
 });
 
@@ -330,6 +360,22 @@ describe('chat runtime helper behavior', () => {
 
   it('renders selected and unselected marker tags in inbox rows', () => {
     expect(renderedInboxRows.includes('{blue-fg}') && renderedInboxRows.includes('{gray-fg}')).toBe(true);
+  });
+
+  it('renders themed message separators between thread messages', () => {
+    expect(renderedThreadContent.includes('────────────────')).toBe(true);
+  });
+
+  it('renders thread headers with line breaks intact', () => {
+    expect(renderedThreadContent.includes('\nTo: persona@localhost')).toBe(true);
+  });
+
+  it('renders an empty line between message header and body', () => {
+    expect(renderedThreadContent.includes('\n\n{white-fg}Body one')).toBe(true);
+  });
+
+  it('renders attachment file path lines when message contains attachments', () => {
+    expect(renderedThreadContent.includes('Attachment: /tmp/a.txt')).toBe(true);
   });
 
   it('inserts a blank line gap between inbox row blocks', () => {

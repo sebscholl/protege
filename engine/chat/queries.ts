@@ -29,6 +29,7 @@ export type ChatThreadMessage = {
   htmlBody?: string;
   receivedAt: string;
   metadata: Record<string, unknown>;
+  attachmentPaths: string[];
 };
 
 /**
@@ -143,6 +144,9 @@ export function parseChatThreadMessageRow(
     row: Record<string, string | null>;
   },
 ): ChatThreadMessage {
+  const metadata = safeParseRecord({
+    value: args.row.metadata_json,
+  });
   return {
     id: args.row.id ?? '',
     threadId: args.row.thread_id ?? '',
@@ -159,10 +163,41 @@ export function parseChatThreadMessageRow(
     textBody: args.row.text_body ?? '',
     htmlBody: args.row.html_body ?? undefined,
     receivedAt: args.row.received_at ?? '',
-    metadata: safeParseRecord({
-      value: args.row.metadata_json,
+    metadata,
+    attachmentPaths: extractAttachmentPaths({
+      metadata,
     }),
   };
+}
+
+/**
+ * Extracts attachment file paths from message metadata for chat rendering.
+ */
+export function extractAttachmentPaths(
+  args: {
+    metadata: Record<string, unknown>;
+  },
+): string[] {
+  const attachments = args.metadata.attachments;
+  if (!Array.isArray(attachments)) {
+    return [];
+  }
+
+  return attachments
+    .map((attachment) => {
+      if (typeof attachment !== 'object' || attachment === null || Array.isArray(attachment)) {
+        return '';
+      }
+      const entry = attachment as Record<string, unknown>;
+      if (typeof entry.storagePath === 'string' && entry.storagePath.trim().length > 0) {
+        return entry.storagePath;
+      }
+      if (typeof entry.path === 'string' && entry.path.trim().length > 0) {
+        return entry.path;
+      }
+      return '';
+    })
+    .filter((path) => path.length > 0);
 }
 
 /**

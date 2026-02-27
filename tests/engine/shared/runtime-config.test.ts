@@ -26,6 +26,8 @@ let parsedChatUiInboxRowGapLines = 0;
 let parsedChatUiInboxMarkerGlyphLength = 0;
 let parsedChatUiStatusPrefixTag = '';
 let defaultChatUiStatusDividerTag = '';
+let parsedChatUiThreadHeaderTag = '';
+let defaultChatUiThreadSeparatorTag = '';
 let defaultChatDisplayMode = '';
 let defaultChatPollIntervalMs = 0;
 let defaultChatSendBinding = '';
@@ -60,6 +62,9 @@ beforeAll((): void => {
       status: {
         prefix_tag: ['white-fg'],
       },
+      thread: {
+        message_header_tag: ['green-fg'],
+      },
     },
   }));
   writeFileSync(validConfigPath, JSON.stringify({
@@ -81,6 +86,16 @@ beforeAll((): void => {
         back_to_inbox: 'esc',
         new_local_thread: 'ctrl+n',
         enter_compose_mode: 'i',
+        scroll_thread_up: 'up',
+        scroll_thread_down: 'down',
+        scroll_thread_page_up: 'pageup',
+        scroll_thread_page_down: 'pagedown',
+        compose_cursor_left: 'left',
+        compose_cursor_right: 'right',
+        compose_cursor_home: 'home',
+        compose_cursor_end: 'end',
+        compose_delete_backward: 'backspace',
+        compose_delete_forward: 'delete',
       },
     },
     scheduler: {
@@ -109,6 +124,7 @@ beforeAll((): void => {
   parsedChatUiInboxRowGapLines = parsed.chatUiTheme.inbox.rowGapLines;
   parsedChatUiInboxMarkerGlyphLength = parsed.chatUiTheme.inbox.markerGlyph.length;
   parsedChatUiStatusPrefixTag = parsed.chatUiTheme.status.prefixTag[0] ?? '';
+  parsedChatUiThreadHeaderTag = parsed.chatUiTheme.thread.messageHeaderTag[0] ?? '';
 
   const defaultConfigPath = join(tempRootPath, 'default-system.json');
   writeFileSync(defaultConfigPath, JSON.stringify({
@@ -125,6 +141,7 @@ beforeAll((): void => {
   defaultPrettyThemeEnabled = defaultParsed.prettyLogTheme.enabled;
   defaultChatUiUnselectedMarkerTag = defaultParsed.chatUiTheme.inbox.unselectedMarkerTag[0] ?? '';
   defaultChatUiStatusDividerTag = defaultParsed.chatUiTheme.status.dividerTag[0] ?? '';
+  defaultChatUiThreadSeparatorTag = defaultParsed.chatUiTheme.thread.messageSeparatorTag[0] ?? '';
 
   const invalidModePath = join(tempRootPath, 'invalid-mode-system.json');
   writeFileSync(invalidModePath, JSON.stringify({
@@ -141,6 +158,16 @@ beforeAll((): void => {
         back_to_inbox: 'esc',
         new_local_thread: 'ctrl+n',
         enter_compose_mode: 'i',
+        scroll_thread_up: 'up',
+        scroll_thread_down: 'down',
+        scroll_thread_page_up: 'pageup',
+        scroll_thread_page_down: 'pagedown',
+        compose_cursor_left: 'left',
+        compose_cursor_right: 'right',
+        compose_cursor_home: 'home',
+        compose_cursor_end: 'end',
+        compose_delete_backward: 'backspace',
+        compose_delete_forward: 'delete',
       },
     },
   }));
@@ -184,6 +211,16 @@ beforeAll((): void => {
         back_to_inbox: 'esc',
         new_local_thread: 'ctrl+r',
         enter_compose_mode: 'i',
+        scroll_thread_up: 'up',
+        scroll_thread_down: 'down',
+        scroll_thread_page_up: 'pageup',
+        scroll_thread_page_down: 'pagedown',
+        compose_cursor_left: 'left',
+        compose_cursor_right: 'right',
+        compose_cursor_home: 'home',
+        compose_cursor_end: 'end',
+        compose_delete_backward: 'backspace',
+        compose_delete_forward: 'delete',
       },
     },
   }));
@@ -207,6 +244,16 @@ beforeAll((): void => {
         back_to_inbox: 'esc',
         new_local_thread: 'ctrl+n',
         enter_compose_mode: 'i',
+        scroll_thread_up: 'up',
+        scroll_thread_down: 'down',
+        scroll_thread_page_up: 'pageup',
+        scroll_thread_page_down: 'pagedown',
+        compose_cursor_left: 'left',
+        compose_cursor_right: 'right',
+        compose_cursor_home: 'home',
+        compose_cursor_end: 'end',
+        compose_delete_backward: 'backspace',
+        compose_delete_forward: 'delete',
       },
     },
   }));
@@ -256,12 +303,20 @@ describe('global runtime config', () => {
     expect(parsedChatUiStatusPrefixTag).toBe('white-fg');
   });
 
+  it('parses configured chat-ui thread theme values from theme config path', () => {
+    expect(parsedChatUiThreadHeaderTag).toBe('green-fg');
+  });
+
   it('applies default chat-ui theme values when theme config path is absent', () => {
     expect(defaultChatUiUnselectedMarkerTag).toBe('gray-fg');
   });
 
   it('applies default chat-ui status theme values when theme config path is absent', () => {
     expect(defaultChatUiStatusDividerTag).toBe('gray-fg');
+  });
+
+  it('applies default chat-ui thread theme values when theme config path is absent', () => {
+    expect(defaultChatUiThreadSeparatorTag).toBe('gray-fg');
   });
 });
 

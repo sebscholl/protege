@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import blessed from 'neo-blessed';
 
 import { createGatewayRuntimeActionInvoker } from '@engine/gateway/index';
+import { applyComposeInputBinding, createComposeInputState, renderComposeInput } from '@engine/chat/compose-input';
 import { dispatchChatInputEvent, applyChatControllerAction, createInitialChatSessionState } from '@engine/chat/controller';
 import { normalizeBlessedKeypress } from '@engine/chat/keys';
 import { listChatThreadSummaries, readChatThreadDetail } from '@engine/chat/queries';
@@ -56,6 +57,7 @@ export async function startChatRuntime(
   });
   const screen = blessed.screen({
     smartCSR: true,
+    fastCSR: true,
     title: `Protege Chat: ${persona.personaId}`,
   });
   const inboxList = blessed.box({
@@ -78,7 +80,7 @@ export async function startChatRuntime(
     scrollable: true,
     alwaysScroll: true,
     border: 'line',
-    tags: false,
+    tags: true,
   });
   const composeBox = blessed.box({
     top: '100%-7',
@@ -86,7 +88,10 @@ export async function startChatRuntime(
     width: '100%-2',
     height: 5,
     border: 'line',
-    tags: false,
+    tags: true,
+    keys: false,
+    mouse: false,
+    scrollable: false,
   });
   const statusBar = blessed.box({
     top: '100%-2',
@@ -105,8 +110,12 @@ export async function startChatRuntime(
   let inboxTopRowIndex = 0;
   let statusMessage = '';
   let runtimeClosed = false;
+  let composeCursorVisible = true;
   let state = createInitialChatSessionState({
     defaultDisplayMode: globalConfig.chat.defaultDisplayMode,
+  });
+  let composeInputState = createComposeInputState({
+    draft: state.draft,
   });
   let shouldScrollThreadToBottom = false;
   let summaries = listChatThreadSummaries({
@@ -125,6 +134,9 @@ export async function startChatRuntime(
         },
       });
       state = transition.state;
+      composeInputState = createComposeInputState({
+        draft: state.draft,
+      });
       selectedInboxIndex = summaries.findIndex((item) => item.threadId === thread.threadId);
       shouldScrollThreadToBottom = true;
     }
@@ -148,16 +160,19 @@ export async function startChatRuntime(
    */
   function render(): void {
     if (state.view === 'inbox') {
+      composeCursorVisible = true;
       const inboxViewModel = buildInboxViewModel({
         state: {
           ...state,
           selectedThreadId: summaries[selectedInboxIndex]?.threadId,
         },
         summaries,
+        keymap: globalConfig.chat.keymap,
       });
       inboxList.show();
       threadBox.hide();
       composeBox.hide();
+      inboxList.focus();
       inboxList.setContent(renderInboxRows({
         rows: inboxViewModel.rows,
         selectedIndex: selectedInboxIndex,
@@ -203,22 +218,34 @@ export async function startChatRuntime(
     const threadViewModel = buildThreadViewModel({
       state,
       detail,
+      keymap: globalConfig.chat.keymap,
     });
     inboxList.hide();
     threadBox.show();
     composeBox.show();
     threadBox.setContent(applyHorizontalPadding({
-      content: [
-        `${threadViewModel.title} (${threadViewModel.modeLabel} | ${state.mode.toUpperCase()})`,
-        '',
-        threadViewModel.writeBanner,
-        '',
-        ...threadViewModel.messages.flatMap((message) => [message.header, message.body, '']),
-      ].join('\n'),
+      content: renderThreadViewContent({
+        title: threadViewModel.title,
+        modeLabel: threadViewModel.modeLabel,
+        interactionMode: state.mode.toUpperCase(),
+        writeBanner: threadViewModel.writeBanner,
+        messages: threadViewModel.messages,
+        theme: globalConfig.chatUiTheme,
+      }),
     }));
+    if (state.mode !== 'compose' && composeInputState.text !== threadViewModel.draft) {
+      composeInputState = createComposeInputState({
+        draft: threadViewModel.draft,
+      });
+    }
     composeBox.setContent(applyHorizontalPadding({
-      content: threadViewModel.composeEnabled ? threadViewModel.draft : '[read-only]',
+      content: renderComposeInput({
+        state: composeInputState,
+        isReadOnly: !threadViewModel.composeEnabled,
+        cursorVisible: composeCursorVisible,
+      }),
     }));
+    threadBox.focus();
     statusBar.setContent(
       buildStatusLine({
         view: state.view,
@@ -244,10 +271,24 @@ export async function startChatRuntime(
     if (runtimeClosed) {
       return;
     }
+    if (state.view === 'thread' && state.mode === 'compose') {
+      return;
+    }
 
     refreshSummaries();
     render();
   }, globalConfig.chat.pollIntervalMs);
+  const cursorBlinkTimer = setInterval(() => {
+    if (runtimeClosed) {
+      return;
+    }
+    if (state.view === 'thread' && state.mode === 'compose' && !state.isCurrentThreadReadOnly) {
+      composeCursorVisible = !composeCursorVisible;
+      render();
+      return;
+    }
+    composeCursorVisible = true;
+  }, 500);
 
   /**
    * Handles send effect by persisting local user message and running harness inference.
@@ -350,6 +391,39 @@ export async function startChatRuntime(
     return false;
   }
 
+  /**
+   * Dispatches one compose-mode send binding from key handlers.
+   */
+  async function dispatchComposeSend(
+    args: {
+      binding: string;
+    },
+  ): Promise<void> {
+    if (state.view !== 'thread' || state.mode !== 'compose') {
+      return;
+    }
+    state = {
+      ...state,
+      draft: composeInputState.text,
+    };
+    const transition = dispatchChatInputEvent({
+      state,
+      keymap: globalConfig.chat.keymap,
+      event: {
+        binding: args.binding,
+      },
+    });
+    state = transition.state;
+    composeInputState = createComposeInputState({
+      draft: state.draft,
+    });
+    const shouldExit = await runEffects(transition.effects);
+    if (shouldExit) {
+      return;
+    }
+    render();
+  }
+
   screen.on('keypress', async (
     ch: string,
     key: blessed.Widgets.Events.IKeyEventArg,
@@ -358,6 +432,57 @@ export async function startChatRuntime(
       ch,
       key,
     });
+    if (state.view === 'thread' && state.mode === 'compose') {
+      const shouldDispatchComposeBinding = normalized.binding === 'esc'
+        || normalized.binding === globalConfig.chat.keymap.refresh
+        || normalized.binding === globalConfig.chat.keymap.toggle_display_mode
+        || normalized.binding === globalConfig.chat.keymap.quit;
+      if (shouldDispatchComposeBinding) {
+        state = {
+          ...state,
+          draft: composeInputState.text,
+        };
+        const transition = dispatchChatInputEvent({
+          state,
+          keymap: globalConfig.chat.keymap,
+          event: normalized,
+        });
+        state = transition.state;
+        composeInputState = createComposeInputState({
+          draft: state.draft,
+        });
+        const shouldExit = await runEffects(transition.effects);
+        if (shouldExit) {
+          return;
+        }
+        render();
+        return;
+      }
+      if (normalized.binding === globalConfig.chat.keymap.send) {
+        await dispatchComposeSend({
+          binding: normalized.binding,
+        });
+        return;
+      }
+      const composeTransition = applyComposeInputBinding({
+        state: composeInputState,
+        binding: resolveComposeInputBinding({
+          keymap: globalConfig.chat.keymap,
+          binding: normalized.binding,
+        }),
+        printableText: normalized.printableText,
+      });
+      if (composeTransition.handled) {
+        composeInputState = composeTransition.state;
+        state = {
+          ...state,
+          draft: composeInputState.text,
+        };
+        render();
+      }
+      return;
+    }
+
     if (state.view === 'inbox') {
       if (normalized.binding === globalConfig.chat.keymap.move_selection_up) {
         selectedInboxIndex = Math.max(0, selectedInboxIndex - 1);
@@ -381,6 +506,9 @@ export async function startChatRuntime(
             },
           });
           state = transition.state;
+          composeInputState = createComposeInputState({
+            draft: state.draft,
+          });
           shouldScrollThreadToBottom = true;
           const shouldExit = await runEffects(transition.effects);
           if (shouldExit) {
@@ -405,6 +533,9 @@ export async function startChatRuntime(
           },
         });
         state = transition.state;
+        composeInputState = createComposeInputState({
+          draft: state.draft,
+        });
         shouldScrollThreadToBottom = true;
         const shouldExit = await runEffects(transition.effects);
         if (shouldExit) {
@@ -418,6 +549,7 @@ export async function startChatRuntime(
     if (state.view === 'thread') {
       const scrollDelta = resolveThreadScrollDelta({
         binding: normalized.binding,
+        keymap: globalConfig.chat.keymap,
       });
       if (typeof scrollDelta === 'number') {
         threadBox.scroll(scrollDelta);
@@ -432,6 +564,9 @@ export async function startChatRuntime(
       event: normalized,
     });
     state = transition.state;
+    composeInputState = createComposeInputState({
+      draft: state.draft,
+    });
     const shouldExit = await runEffects(transition.effects);
     if (shouldExit) {
       return;
@@ -443,6 +578,7 @@ export async function startChatRuntime(
   screen.on('destroy', () => {
     runtimeClosed = true;
     clearInterval(pollTimer);
+    clearInterval(cursorBlinkTimer);
     db.close();
   });
 
@@ -453,6 +589,68 @@ export async function startChatRuntime(
       resolve();
     });
   });
+}
+
+/**
+ * Renders one thread view content block with themed title, banner, and clearly separated messages.
+ */
+export function renderThreadViewContent(
+  args: {
+    title: string;
+    modeLabel: string;
+    interactionMode: string;
+    writeBanner: string;
+    messages: Array<{
+      header: string;
+      body: string;
+      attachmentPaths: string[];
+    }>;
+    theme: ChatUiTheme;
+  },
+): string {
+  const styledTitle = wrapWithBlessedTag({
+    tags: args.theme.thread.titleTag,
+    value: args.title,
+  });
+  const styledMode = wrapWithBlessedTag({
+    tags: args.theme.thread.modeTag,
+    value: `(${args.modeLabel} | ${args.interactionMode})`,
+  });
+  const styledBanner = wrapWithBlessedTag({
+    tags: args.theme.thread.writeBannerTag,
+    value: args.writeBanner,
+  });
+  const styledSeparator = wrapWithBlessedTag({
+    tags: args.theme.thread.messageSeparatorTag,
+    value: '────────────────────────────────────────────────────────────────',
+  });
+  const messageBlocks = args.messages.flatMap((message) => {
+    const attachmentLines = message.attachmentPaths.map((path) => wrapWithBlessedTag({
+      tags: args.theme.thread.attachmentTag,
+      value: `Attachment: ${path}`,
+    }));
+    return [
+      wrapWithBlessedTag({
+        tags: args.theme.thread.messageHeaderTag,
+        value: message.header,
+      }),
+      '',
+      wrapWithBlessedTag({
+        tags: args.theme.thread.messageBodyTag,
+        value: message.body,
+      }),
+      ...(attachmentLines.length > 0 ? ['', ...attachmentLines] : []),
+      '',
+      styledSeparator,
+    ];
+  });
+  return [
+    `${styledTitle} ${styledMode}`,
+    '',
+    styledBanner,
+    '',
+    ...messageBlocks,
+  ].join('\n');
 }
 
 /**
@@ -539,22 +737,66 @@ export function parseStatusHintCommands(
 export function resolveThreadScrollDelta(
   args: {
     binding: string;
+    keymap: {
+      scroll_thread_up: string;
+      scroll_thread_down: string;
+      scroll_thread_page_up: string;
+      scroll_thread_page_down: string;
+    };
   },
 ): number | undefined {
-  if (args.binding === 'up') {
+  if (args.binding === args.keymap.scroll_thread_up) {
     return -1;
   }
-  if (args.binding === 'down') {
+  if (args.binding === args.keymap.scroll_thread_down) {
     return 1;
   }
-  if (args.binding === 'pageup' || args.binding === 'ctrl+u') {
+  if (args.binding === args.keymap.scroll_thread_page_up) {
     return -8;
   }
-  if (args.binding === 'pagedown' || args.binding === 'ctrl+d') {
+  if (args.binding === args.keymap.scroll_thread_page_down) {
     return 8;
   }
 
   return undefined;
+}
+
+/**
+ * Resolves one normalized key binding to compose input action binding from configured keymap.
+ */
+export function resolveComposeInputBinding(
+  args: {
+    keymap: {
+      compose_cursor_left: string;
+      compose_cursor_right: string;
+      compose_cursor_home: string;
+      compose_cursor_end: string;
+      compose_delete_backward: string;
+      compose_delete_forward: string;
+    };
+    binding: string;
+  },
+): string {
+  if (args.binding === args.keymap.compose_cursor_left) {
+    return 'left';
+  }
+  if (args.binding === args.keymap.compose_cursor_right) {
+    return 'right';
+  }
+  if (args.binding === args.keymap.compose_cursor_home) {
+    return 'home';
+  }
+  if (args.binding === args.keymap.compose_cursor_end) {
+    return 'end';
+  }
+  if (args.binding === args.keymap.compose_delete_backward) {
+    return 'backspace';
+  }
+  if (args.binding === args.keymap.compose_delete_forward) {
+    return 'delete';
+  }
+
+  return args.binding;
 }
 
 /**
