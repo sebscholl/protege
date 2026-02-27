@@ -19,12 +19,18 @@ let parsedSchedulerAdminContactEmail = '';
 let parsedPrettyThemeEnabled = false;
 let parsedPrettyThemeIndent = '';
 let parsedPrettyThemeScopeToken = '';
+let parsedChatUiInboxTitleTag = '';
+let parsedChatUiInboxTitleTagCount = 0;
+let parsedChatUiInboxSelectedMarkerTag = '';
+let parsedChatUiInboxRowGapLines = 0;
+let parsedChatUiInboxMarkerGlyphLength = 0;
 let defaultChatDisplayMode = '';
 let defaultChatPollIntervalMs = 0;
 let defaultChatSendBinding = '';
 let defaultSchedulerPollIntervalMs = 0;
 let defaultSchedulerMaxGlobalConcurrentRuns = 0;
 let defaultPrettyThemeEnabled = false;
+let defaultChatUiUnselectedMarkerTag = '';
 let invalidModeError = '';
 let missingActionError = '';
 let duplicateBindingError = '';
@@ -40,6 +46,14 @@ beforeAll((): void => {
       indent: '  ',
       header: {
         scope: ['yellow'],
+      },
+    },
+    chat_ui: {
+      inbox: {
+        title_tag: 'cyan-fg',
+        selected_marker_tag: 'magenta-fg',
+        marker_glyph: '  ',
+        row_gap_lines: 2,
       },
     },
   }));
@@ -84,11 +98,17 @@ beforeAll((): void => {
   parsedPrettyThemeEnabled = parsed.prettyLogTheme.enabled;
   parsedPrettyThemeIndent = parsed.prettyLogTheme.indent;
   parsedPrettyThemeScopeToken = parsed.prettyLogTheme.header.scope[0] ?? '';
+  parsedChatUiInboxTitleTag = parsed.chatUiTheme.inbox.titleTag[0] ?? '';
+  parsedChatUiInboxTitleTagCount = parsed.chatUiTheme.inbox.titleTag.length;
+  parsedChatUiInboxSelectedMarkerTag = parsed.chatUiTheme.inbox.selectedMarkerTag[0] ?? '';
+  parsedChatUiInboxRowGapLines = parsed.chatUiTheme.inbox.rowGapLines;
+  parsedChatUiInboxMarkerGlyphLength = parsed.chatUiTheme.inbox.markerGlyph.length;
 
   const defaultConfigPath = join(tempRootPath, 'default-system.json');
   writeFileSync(defaultConfigPath, JSON.stringify({
     logs_dir_path: 'tmp/logs',
     console_log_format: 'json',
+    theme_config_path: join(tempRootPath, 'missing-theme.json'),
   }));
   const defaultParsed = readGlobalRuntimeConfig({ configPath: defaultConfigPath });
   defaultChatDisplayMode = defaultParsed.chat.defaultDisplayMode;
@@ -97,6 +117,7 @@ beforeAll((): void => {
   defaultSchedulerPollIntervalMs = defaultParsed.scheduler.pollIntervalMs;
   defaultSchedulerMaxGlobalConcurrentRuns = defaultParsed.scheduler.maxGlobalConcurrentRuns;
   defaultPrettyThemeEnabled = defaultParsed.prettyLogTheme.enabled;
+  defaultChatUiUnselectedMarkerTag = defaultParsed.chatUiTheme.inbox.unselectedMarkerTag[0] ?? '';
 
   const invalidModePath = join(tempRootPath, 'invalid-mode-system.json');
   writeFileSync(invalidModePath, JSON.stringify({
@@ -212,6 +233,20 @@ describe('global runtime config', () => {
 
   it('applies default pretty-log theme when theme config path is absent', () => {
     expect(defaultPrettyThemeEnabled).toBe(true);
+  });
+
+  it('parses configured chat-ui inbox theme values from theme config path', () => {
+    expect([
+      parsedChatUiInboxTitleTag,
+      parsedChatUiInboxTitleTagCount,
+      parsedChatUiInboxSelectedMarkerTag,
+      parsedChatUiInboxRowGapLines,
+      parsedChatUiInboxMarkerGlyphLength,
+    ]).toEqual(['cyan-fg', 1, 'magenta-fg', 2, 2]);
+  });
+
+  it('applies default chat-ui theme values when theme config path is absent', () => {
+    expect(defaultChatUiUnselectedMarkerTag).toBe('gray-fg');
   });
 });
 

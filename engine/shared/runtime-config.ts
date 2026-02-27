@@ -48,6 +48,7 @@ export type GlobalRuntimeConfig = {
   logsDirPath: string;
   consoleLogFormat: 'json' | 'pretty';
   prettyLogTheme: PrettyLogTheme;
+  chatUiTheme: ChatUiTheme;
   adminContactEmail?: string;
   chat: ChatRuntimeConfig;
   scheduler: SchedulerRuntimeSettings;
@@ -86,6 +87,24 @@ export type PrettyLogTheme = {
   context: {
     key: PrettyLogStyleToken[];
     value: PrettyLogStyleToken[];
+  };
+};
+
+/**
+ * Represents chat inbox theme tokens loaded from `config/theme.json`.
+ */
+export type ChatUiTheme = {
+  inbox: {
+    titleTag: string[];
+    timestampTag: string[];
+    participantsTag: string[];
+    previewTag: string[];
+    readOnlyModeTag: string[];
+    writableModeTag: string[];
+    selectedMarkerTag: string[];
+    unselectedMarkerTag: string[];
+    markerGlyph: string;
+    rowGapLines: number;
   };
 };
 
@@ -157,6 +176,9 @@ export function readGlobalRuntimeConfig(
       prettyLogTheme: readPrettyLogTheme({
         themeConfigPath: resolveDefaultThemeConfigPath(),
       }),
+      chatUiTheme: readChatUiTheme({
+        themeConfigPath: resolveDefaultThemeConfigPath(),
+      }),
       chat: getDefaultChatRuntimeConfig(),
       scheduler: getDefaultSchedulerRuntimeSettings(),
     };
@@ -173,6 +195,9 @@ export function readGlobalRuntimeConfig(
   const prettyLogTheme = readPrettyLogTheme({
     themeConfigPath,
   });
+  const chatUiTheme = readChatUiTheme({
+    themeConfigPath,
+  });
   const chat = parseChatRuntimeConfig({
     value: parsed.chat,
   });
@@ -187,6 +212,7 @@ export function readGlobalRuntimeConfig(
     logsDirPath,
     consoleLogFormat,
     prettyLogTheme,
+    chatUiTheme,
     adminContactEmail: globalAdminContactEmail ?? scheduler.adminContactEmail,
     chat,
     scheduler,
@@ -213,6 +239,26 @@ export function getDefaultPrettyLogTheme(): PrettyLogTheme {
     context: {
       key: ['blue'],
       value: ['white'],
+    },
+  };
+}
+
+/**
+ * Returns default chat-ui theme values for inbox rendering.
+ */
+export function getDefaultChatUiTheme(): ChatUiTheme {
+  return {
+    inbox: {
+      titleTag: ['bold', 'blue-fg'],
+      timestampTag: ['dim', 'gray-fg'],
+      participantsTag: ['white-fg'],
+      previewTag: ['white-fg'],
+      readOnlyModeTag: ['yellow-fg'],
+      writableModeTag: ['green-fg'],
+      selectedMarkerTag: ['blue-fg'],
+      unselectedMarkerTag: ['gray-fg'],
+      markerGlyph: '│',
+      rowGapLines: 1,
     },
   };
 }
@@ -283,6 +329,129 @@ export function readPrettyLogTheme(
       }),
     },
   };
+}
+
+/**
+ * Reads and parses one chat-ui theme file with safe fallback defaults.
+ */
+export function readChatUiTheme(
+  args: {
+    themeConfigPath: string;
+  },
+): ChatUiTheme {
+  const defaults = getDefaultChatUiTheme();
+  if (!existsSync(args.themeConfigPath)) {
+    return defaults;
+  }
+
+  const parsed = JSON.parse(readFileSync(args.themeConfigPath, 'utf8')) as Record<string, unknown>;
+  if (!isRecord(parsed.chat_ui)) {
+    return defaults;
+  }
+
+  const chatUi = parsed.chat_ui;
+  const inbox = isRecord(chatUi.inbox) ? chatUi.inbox : {};
+  return {
+    inbox: {
+      titleTag: parseThemeTagString({
+        value: inbox.title_tag ?? inbox.title,
+        defaultValue: defaults.inbox.titleTag,
+      }),
+      timestampTag: parseThemeTagString({
+        value: inbox.timestamp_tag ?? inbox.timestamp,
+        defaultValue: defaults.inbox.timestampTag,
+      }),
+      participantsTag: parseThemeTagString({
+        value: inbox.participants_tag ?? inbox.participants,
+        defaultValue: defaults.inbox.participantsTag,
+      }),
+      previewTag: parseThemeTagString({
+        value: inbox.preview_tag ?? inbox.preview,
+        defaultValue: defaults.inbox.previewTag,
+      }),
+      readOnlyModeTag: parseThemeTagString({
+        value: inbox.read_only_mode_tag,
+        defaultValue: defaults.inbox.readOnlyModeTag,
+      }),
+      writableModeTag: parseThemeTagString({
+        value: inbox.writable_mode_tag,
+        defaultValue: defaults.inbox.writableModeTag,
+      }),
+      selectedMarkerTag: parseThemeTagString({
+        value: inbox.selected_marker_tag ?? inbox.selected_marker,
+        defaultValue: defaults.inbox.selectedMarkerTag,
+      }),
+      unselectedMarkerTag: parseThemeTagString({
+        value: inbox.unselected_marker_tag ?? inbox.unselected_marker,
+        defaultValue: defaults.inbox.unselectedMarkerTag,
+      }),
+      markerGlyph: parseThemeScalarString({
+        value: inbox.marker_glyph,
+        defaultValue: defaults.inbox.markerGlyph,
+      }),
+      rowGapLines: parseThemePositiveInt({
+        value: inbox.row_gap_lines,
+        defaultValue: defaults.inbox.rowGapLines,
+      }),
+    },
+  };
+}
+
+/**
+ * Parses one blessed tag token string with non-empty fallback.
+ */
+export function parseThemeTagString(
+  args: {
+    value: unknown;
+    defaultValue: string[];
+  },
+): string[] {
+  if (typeof args.value === 'string' && args.value.trim().length > 0) {
+    return [args.value.trim()];
+  }
+  if (Array.isArray(args.value)) {
+    const values = args.value
+      .filter((entry): entry is string => typeof entry === 'string')
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+    if (values.length > 0) {
+      return values;
+    }
+  }
+
+  return args.defaultValue;
+}
+
+/**
+ * Parses one non-empty scalar string value with fallback default.
+ */
+export function parseThemeScalarString(
+  args: {
+    value: unknown;
+    defaultValue: string;
+  },
+): string {
+  if (typeof args.value !== 'string' || args.value.length === 0) {
+    return args.defaultValue;
+  }
+
+  return args.value;
+}
+
+/**
+ * Parses one positive integer theme value with fallback defaults.
+ */
+export function parseThemePositiveInt(
+  args: {
+    value: unknown;
+    defaultValue: number;
+  },
+): number {
+  if (typeof args.value !== 'number' || !Number.isInteger(args.value) || args.value < 0) {
+    return args.defaultValue;
+  }
+
+  return args.value;
 }
 
 /**
