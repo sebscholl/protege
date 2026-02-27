@@ -111,6 +111,18 @@ export async function runNextQueuedResponsibility(
       errorMessage,
       failureCategory: 'config',
     });
+    args.logger?.error({
+      event: 'scheduler.run.failed',
+      context: {
+        personaId: run.personaId,
+        runId: run.id,
+        responsibilityId: run.responsibilityId,
+        threadId: null,
+        messageId: null,
+        failureCategory: 'config',
+        errorMessage,
+      },
+    });
     await sendFailureAlertSafe({
       sendFailureAlert: args.sendFailureAlert,
       run,

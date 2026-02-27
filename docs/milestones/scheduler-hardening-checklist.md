@@ -1,6 +1,6 @@
 # Milestone Checklist: Scheduler Hardening
 
-Status: Planned
+Status: In Progress
 Owner: Core runtime
 Scope: Finish scheduler reliability hardening before new feature work in scheduler domain.
 
@@ -23,10 +23,10 @@ Scope: Finish scheduler reliability hardening before new feature work in schedul
 
 ### Implementation Checklist
 
-- [ ] Add deterministic in-memory/runtime tracking for active responsibility runs.
-- [ ] Enforce one active run per responsibility.
-- [ ] Enforce `max_global_concurrent_runs` from `config/system.json`.
-- [ ] Ensure blocked due ticks are handled as explicit skipped outcomes, not silent drops.
+- [x] Add deterministic in-memory/runtime tracking for active responsibility runs.
+- [x] Enforce one active run per responsibility.
+- [x] Enforce `max_global_concurrent_runs` from `config/system.json`.
+- [x] Ensure blocked due ticks are handled as explicit skipped outcomes, not silent drops.
 
 ### Target Files
 
@@ -52,10 +52,10 @@ Scope: Finish scheduler reliability hardening before new feature work in schedul
 
 ### Implementation Checklist
 
-- [ ] Extend scheduler run status model for `skipped_overlap` (with `skipped_concurrency` reserved for future admission-control behavior).
-- [ ] Persist skip outcome reason details in run records.
-- [ ] Add failure category field for terminal failures.
-- [ ] Keep owner/admin alerts for `failed` only.
+- [x] Extend scheduler run status model for `skipped_overlap` (with `skipped_concurrency` reserved for future admission-control behavior).
+- [x] Persist skip outcome reason details in run records.
+- [x] Add failure category field for terminal failures.
+- [x] Keep owner/admin alerts for `failed` only.
 
 ### Target Files
 
@@ -80,10 +80,10 @@ Scope: Finish scheduler reliability hardening before new feature work in schedul
 
 ### Implementation Checklist
 
-- [ ] Emit structured lifecycle events for enqueue/claim/start/complete.
-- [ ] Emit explicit events for overlap-skip and concurrency-skip.
-- [ ] Include correlation fields (`personaId`, `responsibilityId`, `runId`, `threadId`, `messageId` where available).
-- [ ] Ensure log wording stays stable for operational grep patterns.
+- [x] Emit structured lifecycle events for enqueue/claim/start/complete.
+- [x] Emit explicit events for overlap-skip and concurrency-skip.
+- [x] Include correlation fields (`personaId`, `responsibilityId`, `runId`, `threadId`, `messageId` where available).
+- [x] Ensure log wording stays stable for operational grep patterns.
 
 ### Target Files
 
@@ -107,10 +107,10 @@ Scope: Finish scheduler reliability hardening before new feature work in schedul
 
 ### Implementation Checklist
 
-- [ ] Add fixture-backed E2E scenarios for two concurrent responsibilities.
-- [ ] Add long-running responsibility scenario to verify no-overlap behavior.
-- [ ] Validate relay-enabled outbound still succeeds under scheduler load.
-- [ ] Validate scheduler stability while gateway remains primary runtime host.
+- [x] Add fixture-backed E2E scenarios for two concurrent responsibilities.
+- [x] Add long-running responsibility scenario to verify no-overlap behavior.
+- [x] Validate relay-enabled outbound still succeeds under scheduler load.
+- [x] Validate scheduler stability while gateway remains primary runtime host.
 
 ### Target Files
 

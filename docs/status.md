@@ -197,6 +197,15 @@ Planning updates:
 26. Scheduler SH2 initial implementation:
    - `skipped_overlap` outcomes are now persisted when cron ticks are blocked by overlap guardrails
    - scheduler failed runs now persist `failure_category` metadata for diagnostics
+27. Scheduler SH3 completion:
+   - terminal config failures now emit `scheduler.run.failed` structured events (parity with runtime/unknown failures)
+   - scheduler runner failure taxonomy coverage added for unknown terminal errors and failure-alert dispatch boundaries
+28. Scheduler SH4 reliability coverage (initial e2e slice):
+   - new `tests/e2e/scheduler-reliability.test.ts` validates scheduler-run relay egress, overlap-skip persistence, and terminal failure alert emission
+   - scheduler-driven failure runs now assert persisted failure category and alert-path behavior through gateway runtime actions
+29. Scheduler SH4 reliability coverage expanded:
+   - explicit e2e validation for concurrent execution of two distinct responsibilities under global scheduler cap
+   - explicit e2e validation that long-running responsibilities block duplicate enqueue attempts via overlap guardrail
 
 ## ADR Coverage
 
