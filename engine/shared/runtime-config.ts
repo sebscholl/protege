@@ -128,10 +128,11 @@ export type ChatUiTheme = {
     titleTag: string[];
     modeTag: string[];
     writeBannerTag: string[];
+    messageDotTag: string[];
+    messageDotGlyph: string;
     messageHeaderTag: string[];
     messageBodyTag: string[];
     attachmentTag: string[];
-    messageSeparatorTag: string[];
   };
 };
 
@@ -309,10 +310,11 @@ export function getDefaultChatUiTheme(): ChatUiTheme {
       titleTag: ['bold', 'blue-fg'],
       modeTag: ['gray-fg'],
       writeBannerTag: ['yellow-fg'],
+      messageDotTag: ['blue-fg'],
+      messageDotGlyph: '•',
       messageHeaderTag: ['cyan-fg'],
       messageBodyTag: ['white-fg'],
       attachmentTag: ['magenta-fg'],
-      messageSeparatorTag: ['gray-fg'],
     },
   };
 }
@@ -489,6 +491,14 @@ export function readChatUiTheme(
         value: thread.write_banner_tag,
         defaultValue: defaults.thread.writeBannerTag,
       }),
+      messageDotTag: parseThemeTagString({
+        value: thread.message_dot_tag,
+        defaultValue: defaults.thread.messageDotTag,
+      }),
+      messageDotGlyph: parseThemeScalarString({
+        value: thread.message_dot_glyph,
+        defaultValue: defaults.thread.messageDotGlyph,
+      }),
       messageHeaderTag: parseThemeTagString({
         value: thread.message_header_tag,
         defaultValue: defaults.thread.messageHeaderTag,
@@ -500,10 +510,6 @@ export function readChatUiTheme(
       attachmentTag: parseThemeTagString({
         value: thread.attachment_tag,
         defaultValue: defaults.thread.attachmentTag,
-      }),
-      messageSeparatorTag: parseThemeTagString({
-        value: thread.message_separator_tag,
-        defaultValue: defaults.thread.messageSeparatorTag,
       }),
     },
   };

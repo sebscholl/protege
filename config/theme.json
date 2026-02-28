@@ -98,6 +98,10 @@
       "write_banner_tag": [
         "yellow-fg"
       ],
+      "message_dot_tag": [
+        "blue-fg"
+      ],
+      "message_dot_glyph": "•",
       "message_header_tag": [
         "cyan-fg"
       ],
@@ -106,9 +110,6 @@
       ],
       "attachment_tag": [
         "magenta-fg"
-      ],
-      "message_separator_tag": [
-        "gray-fg"
       ]
     }
   }

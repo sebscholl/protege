@@ -618,7 +618,7 @@ export function toChatErrorStackPreview(
 }
 
 /**
- * Renders one thread view content block with themed title, banner, and clearly separated messages.
+ * Renders one thread view content block with themed title, banner, and dot-prefixed message groups.
  */
 export function renderThreadViewContent(
   args: {
@@ -646,29 +646,49 @@ export function renderThreadViewContent(
     tags: args.theme.thread.writeBannerTag,
     value: args.writeBanner,
   });
-  const styledSeparator = wrapWithBlessedTag({
-    tags: args.theme.thread.messageSeparatorTag,
-    value: '────────────────────────────────────────────────────────────────',
+  const styledMessageDot = wrapWithBlessedTag({
+    tags: args.theme.thread.messageDotTag,
+    value: args.theme.thread.messageDotGlyph,
   });
-  const messageBlocks = args.messages.flatMap((message) => {
-    const attachmentLines = message.attachmentPaths.map((path) => wrapWithBlessedTag({
+  const messageBlocks = args.messages.flatMap((message, index) => {
+    const headerLines = message.header
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    const bodyLines = message.body
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    const styledHeaderLines = headerLines.map((line) => wrapWithBlessedTag({
+      tags: args.theme.thread.messageHeaderTag,
+      value: line,
+    }));
+    const styledBodyLines = bodyLines.map((line) => wrapWithBlessedTag({
+      tags: args.theme.thread.messageBodyTag,
+      value: line,
+    }));
+    const styledAttachmentLines = message.attachmentPaths.map((path) => wrapWithBlessedTag({
       tags: args.theme.thread.attachmentTag,
       value: `Attachment: ${path}`,
     }));
-    return [
-      wrapWithBlessedTag({
-        tags: args.theme.thread.messageHeaderTag,
-        value: message.header,
-      }),
-      '',
-      wrapWithBlessedTag({
-        tags: args.theme.thread.messageBodyTag,
-        value: message.body,
-      }),
-      ...(attachmentLines.length > 0 ? ['', ...attachmentLines] : []),
-      '',
-      styledSeparator,
-    ];
+    const blockLines: string[] = [];
+    if (styledHeaderLines.length > 0) {
+      blockLines.push(`${styledMessageDot} ${styledHeaderLines[0]}`);
+      blockLines.push(...styledHeaderLines.slice(1).map((line) => `  ${line}`));
+    } else {
+      blockLines.push(`${styledMessageDot}`);
+    }
+    blockLines.push('');
+    blockLines.push(...styledBodyLines.map((line) => ` ${line}`));
+    if (styledAttachmentLines.length > 0) {
+      blockLines.push('');
+      blockLines.push(...styledAttachmentLines.map((line) => ` ${line}`));
+    }
+    if (index < args.messages.length - 1) {
+      blockLines.push('');
+    }
+
+    return blockLines;
   });
   return [
     `${styledTitle} ${styledMode}`,

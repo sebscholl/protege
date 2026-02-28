@@ -71,6 +71,10 @@ export function listChatThreadSummaries(
       db: args.db,
       threadId,
     });
+    const rootSubject = readThreadRootSubject({
+      db: args.db,
+      threadId,
+    });
     const firstMessage = readFirstThreadMessage({
       db: args.db,
       threadId,
@@ -81,7 +85,7 @@ export function listChatThreadSummaries(
     });
     return {
       threadId,
-      subject: lastMessage?.subject ?? '',
+      subject: rootSubject ?? lastMessage?.subject ?? '',
       lastSender: lastMessage?.sender ?? '',
       lastReceivedAt: row.last_received_at ?? '',
       preview: buildChatPreview({
@@ -261,6 +265,29 @@ export function readFirstThreadMessage(
     ORDER BY received_at ASC
     LIMIT 1
   `).get(args.threadId) as Record<string, unknown> | undefined;
+}
+
+/**
+ * Reads one canonical root subject from thread root_message_id linkage.
+ */
+export function readThreadRootSubject(
+  args: {
+    db: ProtegeDatabase;
+    threadId: string;
+  },
+): string | undefined {
+  const row = args.db.prepare(`
+    SELECT m.subject
+    FROM threads t
+    JOIN messages m
+      ON m.thread_id = t.id
+     AND m.message_id = t.root_message_id
+    WHERE t.id = ?
+    LIMIT 1
+  `).get(args.threadId) as {
+    subject?: string;
+  } | undefined;
+  return row?.subject;
 }
 
 /**

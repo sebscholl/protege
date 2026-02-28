@@ -1,6 +1,6 @@
 # Milestone 2 Planning Spec: Chat TUI (Email-Thread Client)
 
-- Status: Planned
+- Status: Implemented (v1 baseline)
 - Date: 2026-02-19
 - Scope owner: Protege team
 
@@ -285,3 +285,9 @@ Validation requirements:
 5. Keybindings are configurable via `system.json`.
 6. Compose safety model is verified with automated tests and manual checks.
 7. Existing threads remain read-only and clearly labeled as such.
+
+## 13. Post-Implementation Notes
+
+1. Thread timeline rendering in v1 uses dot-prefixed message groups with inset body/attachment lines for readability.
+2. Inbox thread subject labels are pinned to canonical thread root subject to avoid model-generated reply subjects renaming local chat threads.
+3. Provider-specific chat reliability fixes were completed for Gemini tool-call roundtrip behavior.

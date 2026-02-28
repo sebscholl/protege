@@ -27,7 +27,7 @@ let parsedChatUiInboxMarkerGlyphLength = 0;
 let parsedChatUiStatusPrefixTag = '';
 let defaultChatUiStatusDividerTag = '';
 let parsedChatUiThreadHeaderTag = '';
-let defaultChatUiThreadSeparatorTag = '';
+let defaultChatUiThreadDotTag = '';
 let defaultChatDisplayMode = '';
 let defaultChatPollIntervalMs = 0;
 let defaultChatSendBinding = '';
@@ -141,7 +141,7 @@ beforeAll((): void => {
   defaultPrettyThemeEnabled = defaultParsed.prettyLogTheme.enabled;
   defaultChatUiUnselectedMarkerTag = defaultParsed.chatUiTheme.inbox.unselectedMarkerTag[0] ?? '';
   defaultChatUiStatusDividerTag = defaultParsed.chatUiTheme.status.dividerTag[0] ?? '';
-  defaultChatUiThreadSeparatorTag = defaultParsed.chatUiTheme.thread.messageSeparatorTag[0] ?? '';
+  defaultChatUiThreadDotTag = defaultParsed.chatUiTheme.thread.messageDotTag[0] ?? '';
 
   const invalidModePath = join(tempRootPath, 'invalid-mode-system.json');
   writeFileSync(invalidModePath, JSON.stringify({
@@ -316,7 +316,7 @@ describe('global runtime config', () => {
   });
 
   it('applies default chat-ui thread theme values when theme config path is absent', () => {
-    expect(defaultChatUiThreadSeparatorTag).toBe('gray-fg');
+    expect(defaultChatUiThreadDotTag).toBe('blue-fg');
   });
 });
 

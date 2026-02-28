@@ -17,6 +17,7 @@ let db: ProtegeDatabase | undefined;
 let summariesThreadIds: string[] = [];
 let summariesReadOnlyStates: boolean[] = [];
 let firstSummaryPreview = '';
+let summariesSubjects: string[] = [];
 let localThreadDetailReadOnly = true;
 let localThreadMessageCount = 0;
 let externalThreadDetailReadOnly = false;
@@ -141,6 +142,7 @@ beforeAll((): void => {
   });
   summariesThreadIds = summaries.map((summary) => summary.threadId);
   summariesReadOnlyStates = summaries.map((summary) => summary.isReadOnly);
+  summariesSubjects = summaries.map((summary) => summary.subject);
   firstSummaryPreview = summaries[0]?.preview ?? '';
 
   const localDetail = readChatThreadDetail({
@@ -189,6 +191,10 @@ describe('chat query thread summaries', () => {
 
   it('normalizes preview whitespace in summary rows', () => {
     expect(firstSummaryPreview.includes('  ')).toBe(false);
+  });
+
+  it('keeps summary subject stable to thread root subject after later replies', () => {
+    expect(summariesSubjects[1]).toBe('External subject');
   });
 });
 

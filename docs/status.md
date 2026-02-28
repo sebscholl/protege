@@ -1,6 +1,6 @@
 # Project Status
 
-Last Updated: 2026-02-27
+Last Updated: 2026-02-28
 
 This file tracks implementation progress against `docs/protege-development-sequencing-v2.md` and `docs/protege-implementation-plan-v3.md`.
 
@@ -71,6 +71,14 @@ Planning updates:
    - mode and key status visibility
    - console log suppression in TUI surface (file logging retained)
    - thread scroll support + auto-scroll to bottom on open and submit
+13. Chat rendering/UI polish additions:
+   - thread message timeline uses themed dot-prefixed message headers
+   - thread message body/attachment lines are inset for readability
+   - inbox thread titles now remain pinned to canonical thread root subject (model reply subjects no longer rename chat threads)
+14. Provider parity progress:
+   - Gemini adapter hardened for provider-specific tool schema constraints (`additionalProperties` stripping)
+   - Gemini tool-call roundtrip stabilized with provider metadata passthrough (`functionCall.id`/`functionResponse.id`)
+   - Grok adapter added with fixture-backed tool-call and error-path coverage
 
 ## Milestone 3: Relay and Public Access
 

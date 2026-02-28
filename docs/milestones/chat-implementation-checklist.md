@@ -181,6 +181,8 @@ Exit:
 1. Default send shortcut is `Ctrl+S`; `Ctrl+Enter` is kept as a legacy fallback for terminal variants.
 2. Chat suppresses console log emission to avoid TUI corruption while continuing to write file logs.
 3. Thread view supports scroll navigation (`Up/Down`, `PageUp/PageDown`, `Ctrl+U/Ctrl+D`) and bottom anchoring on open/submit.
+4. Thread view now renders dot-prefixed message groups with inset body/attachment lines (separator lines removed).
+5. Inbox summary subject labels now use canonical thread root subject to keep chat thread titles stable.
 
 ## Cross-Phase Quality Gates
 

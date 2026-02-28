@@ -367,16 +367,16 @@ describe('chat runtime helper behavior', () => {
     expect(renderedInboxRows.includes('{blue-fg}') && renderedInboxRows.includes('{gray-fg}')).toBe(true);
   });
 
-  it('renders themed message separators between thread messages', () => {
-    expect(renderedThreadContent.includes('────────────────')).toBe(true);
+  it('renders themed message dots at the start of message header lines', () => {
+    expect(renderedThreadContent.includes('{blue-fg}•{/blue-fg}')).toBe(true);
   });
 
-  it('renders thread headers with line breaks intact', () => {
-    expect(renderedThreadContent.includes('\nTo: persona@localhost')).toBe(true);
+  it('renders thread headers with continuation lines inset', () => {
+    expect(renderedThreadContent.includes('\n  {cyan-fg}To: persona@localhost')).toBe(true);
   });
 
-  it('renders an empty line between message header and body', () => {
-    expect(renderedThreadContent.includes('\n\n{white-fg}Body one')).toBe(true);
+  it('renders message body lines inset by one leading space', () => {
+    expect(renderedThreadContent.includes('\n {white-fg}Body one')).toBe(true);
   });
 
   it('renders attachment file path lines when message contains attachments', () => {

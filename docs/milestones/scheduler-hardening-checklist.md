@@ -128,7 +128,7 @@ Scope: Finish scheduler reliability hardening before new feature work in schedul
 
 ### Checklist
 
-- [ ] Update `docs/status.md` with completed scheduler-hardening bullets.
+- [x] Update `docs/status.md` with completed scheduler-hardening bullets.
 - [ ] Update `docs/milestones/scheduler-plan.md` to reference completed SH items.
 - [ ] Update `engine/scheduler/README.md` for hardened runtime behavior.
 - [ ] Add/adjust ADR links in `docs/adr/README.md` if needed.
