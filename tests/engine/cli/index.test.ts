@@ -59,6 +59,10 @@ describe('gateway cli lifecycle behavior', () => {
 
 let helpOutput = '';
 let shortHelpOutput = '';
+let topicHelpOutput = '';
+let gatewayFlagHelpOutput = '';
+let relayBootstrapHelpOutput = '';
+let relayBootstrapActionHelpOutput = '';
 let versionOutput = '';
 let shortVersionOutput = '';
 let packageVersion = '';
@@ -74,6 +78,18 @@ beforeAll(async (): Promise<void> => {
   });
   shortHelpOutput = await captureStdout({
     run: async (): Promise<void> => runCli({ argv: ['-h'] }),
+  });
+  topicHelpOutput = await captureStdout({
+    run: async (): Promise<void> => runCli({ argv: ['help', 'gateway'] }),
+  });
+  gatewayFlagHelpOutput = await captureStdout({
+    run: async (): Promise<void> => runCli({ argv: ['gateway', '--help'] }),
+  });
+  relayBootstrapHelpOutput = await captureStdout({
+    run: async (): Promise<void> => runCli({ argv: ['help', 'relay', 'bootstrap'] }),
+  });
+  relayBootstrapActionHelpOutput = await captureStdout({
+    run: async (): Promise<void> => runCli({ argv: ['relay', 'bootstrap', '--help'] }),
   });
   versionOutput = await captureStdout({
     run: async (): Promise<void> => runCli({ argv: ['--version'] }),
@@ -91,6 +107,22 @@ describe('top-level cli flags', () => {
 
   it('prints usage for -h', () => {
     expect(shortHelpOutput).toContain('Usage: protege');
+  });
+
+  it('prints command-specific help for help <command>', () => {
+    expect(topicHelpOutput).toContain('Usage: protege gateway');
+  });
+
+  it('prints command-specific help for <command> --help', () => {
+    expect(gatewayFlagHelpOutput).toContain('Usage: protege gateway');
+  });
+
+  it('prints subcommand help for help <command> <action>', () => {
+    expect(relayBootstrapHelpOutput).toContain('Usage: protege relay bootstrap');
+  });
+
+  it('prints subcommand help for <command> <action> --help', () => {
+    expect(relayBootstrapActionHelpOutput).toContain('Usage: protege relay bootstrap');
   });
 
   it('prints package version for --version', () => {

@@ -2,6 +2,7 @@ import { existsSync, readFileSync, watchFile } from 'node:fs';
 import { join } from 'node:path';
 
 import { formatConsoleLine, readConsoleLineTerminator } from '@engine/shared/logger';
+import { emitCliText } from '@engine/cli/output';
 import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
 
 /**
@@ -162,15 +163,18 @@ export function writeLogOutput(
 ): void {
   for (const line of args.lines) {
     if (args.json) {
-      process.stdout.write(`${line}\n`);
+      emitCliText({ value: line });
       continue;
     }
-    process.stdout.write(`${formatPrettyLogLine({
-      line,
-      prettyTheme: args.prettyTheme,
-    })}${readConsoleLineTerminator({
-      consoleLogFormat: 'pretty',
-    })}`);
+    emitCliText({
+      value: `${formatPrettyLogLine({
+        line,
+        prettyTheme: args.prettyTheme,
+      })}${readConsoleLineTerminator({
+        consoleLogFormat: 'pretty',
+      })}`,
+      trailingNewlines: 0,
+    });
   }
 }
 

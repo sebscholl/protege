@@ -1,0 +1,10 @@
+Status Command
+
+Usage: protege status [--json]
+
+Description:
+  Prints current runtime/process health summary for local project context.
+
+Examples:
+  protege status
+  protege status --json

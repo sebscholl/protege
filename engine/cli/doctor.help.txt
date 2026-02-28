@@ -1,0 +1,10 @@
+Doctor Command
+
+Usage: protege doctor [--json]
+
+Description:
+  Runs configuration and environment checks for gateway, relay, providers, and personas.
+
+Examples:
+  protege doctor
+  protege doctor --json

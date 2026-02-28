@@ -1,0 +1,13 @@
+Logs Command
+
+Usage: protege logs [--follow] [--tail <n>] [--scope <gateway|harness|relay|scheduler|chat|all>] [--json]
+
+Options:
+  --follow      Stream logs continuously.
+  --tail <n>    Show last n lines before follow/exit.
+  --scope       Filter by runtime scope.
+  --json        Emit raw JSON records.
+
+Examples:
+  protege logs --scope gateway --tail 50
+  protege logs --scope scheduler --follow

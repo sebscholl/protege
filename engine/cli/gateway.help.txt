@@ -1,0 +1,16 @@
+Gateway Command
+
+Usage: protege gateway <start|stop|restart> [--dev]
+
+Actions:
+  start      Start gateway runtime.
+  stop       Stop gateway runtime using pid file.
+  restart    Stop and start gateway runtime.
+
+Options:
+  --dev      Runs local dev mode (no external relay requirement).
+
+Examples:
+  protege gateway start
+  protege gateway start --dev
+  protege gateway restart

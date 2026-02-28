@@ -2,6 +2,7 @@ import { accessSync, constants, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { readGatewayRuntimeConfig, resolveDefaultGatewayConfigPath } from '@engine/gateway/index';
+import { emitCliOutput } from '@engine/cli/output';
 import { readInferenceRuntimeConfig } from '@engine/harness/config';
 import {
   isValidEmailAddress,
@@ -134,13 +135,13 @@ export function runDoctorCommand(
     argv: args.argv,
   });
   const report = runDoctorChecks();
-  if (parsed.json) {
-    process.stdout.write(`${JSON.stringify(report)}\n`);
-  } else {
-    process.stdout.write(`${renderDoctorReport({
+  emitCliOutput({
+    mode: parsed.json ? 'json' : 'pretty',
+    jsonValue: report,
+    prettyText: renderDoctorReport({
       report,
-    })}\n`);
-  }
+    }),
+  });
 
   process.exitCode = report.status === 'unhealthy' ? 1 : 0;
 }
