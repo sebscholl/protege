@@ -2,6 +2,7 @@ import type { InboundNormalizedMessage } from '@engine/gateway/types';
 import type { HarnessRuntimeActionInvoker } from '@engine/harness/runtime';
 import type { GatewayLogger } from '@engine/gateway/types';
 import type { ChatUiTheme } from '@engine/shared/runtime-config';
+import type { HookEventPayloadByName } from '@engine/harness/hook-events';
 
 import { randomUUID } from 'node:crypto';
 
@@ -14,6 +15,8 @@ import { normalizeBlessedKeypress } from '@engine/chat/keys';
 import { listChatThreadSummaries, readChatThreadDetail } from '@engine/chat/queries';
 import { buildInboxViewModel, buildThreadViewModel } from '@engine/chat/view-model';
 import { createLocalChatThreadSeed, storeLocalChatUserMessage } from '@engine/chat/writes';
+import { isHookEventName } from '@engine/harness/hook-events';
+import { createHookDispatcher, loadHookRegistry } from '@engine/harness/hook-registry';
 import { resolveMigrationsDirPath, runHarnessForPersistedInboundMessage } from '@engine/harness/runtime';
 import { storeOutboundMessage } from '@engine/harness/storage';
 import { initializeDatabase } from '@engine/shared/database';
@@ -41,12 +44,34 @@ export async function startChatRuntime(
     selector: args.personaSelector,
   });
   const personaMailboxIdentity = `${persona.emailLocalPart}@localhost`;
+  const hooks = await loadHookRegistry().catch((error: Error) => {
+    process.stderr.write(`hook.dispatch.load_failed scope=chat message=${error.message}\n`);
+    return [];
+  });
+  const hookDispatcher = createHookDispatcher({
+    hooks,
+    onHookError: (
+      hookName: string,
+      event,
+      error: Error,
+    ): void => {
+      process.stderr.write(`hook.dispatch.failed scope=chat hookName=${hookName} event=${event} message=${error.message}\n`);
+    },
+  });
   const logger = createUnifiedLogger({
     logsDirPath: globalConfig.logsDirPath,
     scope: 'chat',
     consoleLogFormat: globalConfig.consoleLogFormat,
     prettyLogTheme: globalConfig.prettyLogTheme,
     emitToConsole: false,
+    onEmit: (
+      payload: Record<string, unknown>,
+    ): void => {
+      if (typeof payload.event !== 'string' || !isHookEventName(payload.event)) {
+        return;
+      }
+      hookDispatcher.dispatch(payload.event, payload as HookEventPayloadByName[typeof payload.event]);
+    },
   });
   const personaMemoryPaths = resolvePersonaMemoryPaths({
     personaId: persona.personaId,

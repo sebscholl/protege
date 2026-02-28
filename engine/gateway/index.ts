@@ -22,6 +22,9 @@ import { applyRelayTunnelFrame, createRelayTunnelAssemblyState } from '@engine/g
 import { startRelayClient } from '@engine/gateway/relay-client';
 import type { RelayClientController } from '@engine/gateway/relay-client';
 import { buildReplySubject } from '@engine/gateway/threading';
+import type { HookEventPayloadByName } from '@engine/harness/hook-events';
+import { isHookEventName } from '@engine/harness/hook-events';
+import { createHookDispatcher, loadHookRegistry } from '@engine/harness/hook-registry';
 import type { HarnessRuntimeActionInvoker } from '@engine/harness/runtime';
 import {
   persistInboundMessageForRuntime,
@@ -130,11 +133,33 @@ export async function startGatewayRuntime(
 ): Promise<void> {
   const globalConfig = readGlobalRuntimeConfig();
   const securityConfig = readSecurityRuntimeConfig();
+  const hooks = await loadHookRegistry().catch((error: Error) => {
+    process.stderr.write(`hook.dispatch.load_failed scope=gateway message=${error.message}\n`);
+    return [];
+  });
+  const hookDispatcher = createHookDispatcher({
+    hooks,
+    onHookError: (
+      hookName: string,
+      event,
+      error: Error,
+    ): void => {
+      process.stderr.write(`hook.dispatch.failed scope=gateway hookName=${hookName} event=${event} message=${error.message}\n`);
+    },
+  });
   const logger = createUnifiedLogger({
     logsDirPath: globalConfig.logsDirPath,
     scope: 'gateway',
     consoleLogFormat: globalConfig.consoleLogFormat,
     prettyLogTheme: globalConfig.prettyLogTheme,
+    onEmit: (
+      payload: Record<string, unknown>,
+    ): void => {
+      if (typeof payload.event !== 'string' || !isHookEventName(payload.event)) {
+        return;
+      }
+      hookDispatcher.dispatch(payload.event, payload as HookEventPayloadByName[typeof payload.event]);
+    },
   });
   const transport = args.config.transport
     ? createOutboundTransport({ config: args.config.transport })

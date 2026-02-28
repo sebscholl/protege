@@ -58,3 +58,28 @@ Tools with no runtime config options (v1):
 6. `edit-file`
 7. `send-email`
 8. `web-fetch`
+
+## Tool Development Workflow
+
+1. Create directory:
+   - `extensions/tools/{tool-name}/`
+2. Add files:
+   - `index.ts` (required)
+   - `README.md` (required)
+   - `config.json` (optional static defaults; prefer code defaults in `index.ts`)
+3. Export one tool definition from `index.ts` with:
+   - `name`
+   - `description`
+   - `inputSchema`
+   - `execute({ input, context })`
+4. Keep tool-specific types/validation/mapping inside the tool directory.
+5. Register tool in `extensions/extensions.json`:
+   - string form: `"tool-name"`
+   - object form: `{ "name": "tool-name", "config": { ... } }`
+6. Add tests:
+   - tool tests under `tests/extensions/tools/{tool-name}/index.test.ts`
+   - runtime/registry tests only for generic behavior
+7. Validate:
+   - `npm run lint`
+   - `npm run typecheck`
+   - `npm run test`

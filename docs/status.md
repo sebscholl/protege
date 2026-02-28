@@ -227,6 +227,9 @@ Planning updates:
    - gateway sender access policy moved to dedicated `config/security.json`
    - deny-first wildcard policy evaluation is enforced during inbound gateway processing before persistence/enqueue
    - local chat remains trusted and unaffected by gateway access policy enforcement
+36. Hooks implementation planning initialized:
+   - hook manifest and dispatch contract frozen via ADR-0033
+   - hooks milestone checklist created in `docs/milestones/hooks-plan.md`
 
 ## ADR Coverage
 

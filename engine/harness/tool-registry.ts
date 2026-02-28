@@ -36,11 +36,29 @@ export type NormalizedToolManifestEntry = {
 };
 
 /**
+ * Represents one manifest entry for enabling a hook extension by name.
+ */
+export type HookManifestEntry = string | {
+  name: string;
+  events?: string[];
+  config?: Record<string, unknown>;
+};
+
+/**
+ * Represents one normalized hook manifest entry.
+ */
+export type NormalizedHookManifestEntry = {
+  name: string;
+  events: string[];
+  config?: Record<string, unknown>;
+};
+
+/**
  * Represents the extension manifest shape used by runtime registry loading.
  */
 export type ExtensionManifest = {
   tools: ToolManifestEntry[];
-  hooks: string[];
+  hooks: HookManifestEntry[];
 };
 
 /**
@@ -69,7 +87,7 @@ export function readExtensionManifest(
   const text = readFileSync(manifestPath, 'utf8');
   const parsed = JSON.parse(text) as Record<string, unknown>;
   const tools = Array.isArray(parsed.tools) ? parsed.tools as ToolManifestEntry[] : [];
-  const hooks = Array.isArray(parsed.hooks) ? parsed.hooks as string[] : [];
+  const hooks = Array.isArray(parsed.hooks) ? parsed.hooks as HookManifestEntry[] : [];
   return {
     tools,
     hooks,
@@ -170,6 +188,87 @@ export function normalizeEnabledToolEntries(
   }
 
   return entries;
+}
+
+/**
+ * Normalizes hook manifest entries into unique hook subscriptions preserving manifest order.
+ */
+export function normalizeEnabledHookEntries(
+  args: {
+    hooks: HookManifestEntry[];
+  },
+): NormalizedHookManifestEntry[] {
+  const seen = new Set<string>();
+  const entries: NormalizedHookManifestEntry[] = [];
+  for (const [index, entry] of args.hooks.entries()) {
+    if (typeof entry === 'string') {
+      const normalizedName = entry.trim();
+      if (normalizedName.length === 0 || seen.has(normalizedName)) {
+        continue;
+      }
+
+      seen.add(normalizedName);
+      entries.push({
+        name: normalizedName,
+        events: ['*'],
+      });
+      continue;
+    }
+
+    if (!isRecord(entry)) {
+      throw new Error(`Invalid hook manifest entry at index ${index}: expected string or object.`);
+    }
+    if (typeof entry.name !== 'string' || entry.name.trim().length === 0) {
+      throw new Error(`Invalid hook manifest entry at index ${index}: "name" must be a non-empty string.`);
+    }
+    if (entry.events !== undefined && (!Array.isArray(entry.events) || !entry.events.every((event) => typeof event === 'string'))) {
+      throw new Error(`Invalid hook manifest entry "${entry.name}": "events" must be a string array when provided.`);
+    }
+    if (entry.config !== undefined && !isRecord(entry.config)) {
+      throw new Error(`Invalid hook manifest entry "${entry.name}": "config" must be an object when provided.`);
+    }
+
+    const normalizedName = entry.name.trim();
+    if (seen.has(normalizedName)) {
+      continue;
+    }
+
+    const normalizedEvents = normalizeHookEvents({
+      events: entry.events,
+    });
+    seen.add(normalizedName);
+    entries.push({
+      name: normalizedName,
+      events: normalizedEvents,
+      config: entry.config,
+    });
+  }
+
+  return entries;
+}
+
+/**
+ * Normalizes optional hook event subscriptions with wildcard fallback.
+ */
+export function normalizeHookEvents(
+  args: {
+    events: string[] | undefined;
+  },
+): string[] {
+  if (!args.events || args.events.length === 0) {
+    return ['*'];
+  }
+
+  const normalized: string[] = [];
+  for (const eventName of args.events) {
+    const trimmedName = eventName.trim();
+    if (trimmedName.length === 0 || normalized.includes(trimmedName)) {
+      continue;
+    }
+    normalized.push(trimmedName);
+  }
+
+  return normalized.length > 0 ? normalized : ['*'];
 }
 
 /**

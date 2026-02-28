@@ -6,12 +6,18 @@ This directory contains installable capability extensions for Protege.
 
 It includes tools and hooks loaded through `extensions/extensions.json`.
 
+Developer guides:
+
+1. Tools authoring: `extensions/tools/README.md`
+2. Hooks authoring: `extensions/hooks/README.md`
+3. Hook event catalog: `extensions/hooks/EVENTS.md`
+
 ## `extensions/extensions.json` schema
 
 Top-level fields:
 
 1. `tools`: array of tool entries.
-2. `hooks`: array of hook names.
+2. `hooks`: array of hook entries.
 
 Tool entry forms:
 
@@ -28,9 +34,14 @@ Tool config merge semantics:
 2. scalars: override
 3. arrays: replace
 
-Current hook entry form:
+Hook entry forms:
 
-1. String entry with hook directory name.
+1. String entry:
+   1. `"hook-name"`
+2. Object entry:
+   1. `name`: non-empty hook directory name.
+   2. `events`: optional string array of subscribed event names (`["*"]` default).
+   3. `config`: optional object deep-merged with the hook default config.
 
 ## Extension Isolation Rules
 

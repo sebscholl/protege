@@ -2,7 +2,9 @@ import { appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { GatewayLogger } from '@engine/gateway/types';
+import type { HookEventName, HookEventPayloadByName } from '@engine/harness/hook-events';
 import type { PrettyLogStyleToken, PrettyLogTheme } from '@engine/shared/runtime-config';
+import { isHookEventName } from '@engine/harness/hook-events';
 
 /**
  * Represents one logger creation input for unified runtime logging.
@@ -13,6 +15,9 @@ export type UnifiedLoggerConfig = {
   consoleLogFormat?: 'json' | 'pretty';
   emitToConsole?: boolean;
   prettyLogTheme?: PrettyLogTheme;
+  onEmit?: (
+    payload: HookEventPayloadByName[HookEventName],
+  ) => void;
 };
 
 /**
@@ -54,6 +59,15 @@ export function createUnifiedLogger(
           consoleLogFormat,
         })}`);
       }
+      try {
+        emitHookPayload({
+          onEmit: args.onEmit,
+          payload,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        process.stderr.write(`hook.dispatch.logger_emit_failed message=${message}\n`);
+      }
     },
     error: (
       logArgs: {
@@ -81,8 +95,36 @@ export function createUnifiedLogger(
           consoleLogFormat,
         })}`);
       }
+      try {
+        emitHookPayload({
+          onEmit: args.onEmit,
+          payload,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        process.stderr.write(`hook.dispatch.logger_emit_failed message=${message}\n`);
+      }
     },
   };
+}
+
+/**
+ * Emits one typed hook payload when logger event name is recognized.
+ */
+export function emitHookPayload(
+  args: {
+    onEmit: UnifiedLoggerConfig['onEmit'];
+    payload: Record<string, unknown>;
+  },
+): void {
+  if (!args.onEmit) {
+    return;
+  }
+  if (typeof args.payload.event !== 'string' || !isHookEventName(args.payload.event)) {
+    return;
+  }
+
+  args.onEmit(args.payload as HookEventPayloadByName[HookEventName]);
 }
 
 /**

@@ -14,6 +14,8 @@ let silentConsoleOutput = '';
 let silentFileLine = '';
 let prettyConsoleHasMultilineContext = false;
 let prettyConsoleHasAnsiStyle = false;
+let emittedEvent = '';
+let emittedCorrelationId = '';
 
 beforeAll((): void => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-unified-logger-'));
@@ -30,12 +32,19 @@ beforeAll((): void => {
     scope: 'gateway',
     consoleLogFormat: 'pretty',
     prettyLogTheme: getDefaultPrettyLogTheme(),
+    onEmit: (
+      payload: Record<string, unknown>,
+    ): void => {
+      emittedEvent = String(payload.event ?? '');
+      emittedCorrelationId = String(payload.correlationId ?? '');
+    },
   });
   logger.info({
     event: 'gateway.inbound.received',
     context: {
       personaId: 'persona-a',
       messageId: '<msg@x>',
+      correlationId: 'corr-1',
     },
   });
   process.stdout.write = originalWrite;
@@ -93,5 +102,9 @@ describe('unified logger formatting', () => {
 
   it('supports suppressing console emission while preserving file logging', () => {
     expect(silentConsoleOutput.length === 0 && silentFileLine.includes('"scope":"chat"')).toBe(true);
+  });
+
+  it('emits structured payload callbacks for adjacent runtime subscribers', () => {
+    expect(emittedEvent === 'gateway.inbound.received' && emittedCorrelationId === 'corr-1').toBe(true);
   });
 });
