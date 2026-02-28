@@ -1,0 +1,9 @@
+Relay Command
+
+Usage: protege relay <bootstrap> [options]
+
+Actions:
+  bootstrap [--json]   Create/update relay config and persona sender identity mapping.
+
+Examples:
+  protege relay bootstrap --relay-ws-url wss://relay.protege.bot/ws

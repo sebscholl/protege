@@ -28,7 +28,7 @@ beforeAll(async (): Promise<void> => {
 
   const firstResult = JSON.parse((await captureStdout({
     run: async (): Promise<void> => runCli({
-      argv: ['init', '--path', projectPath],
+      argv: ['init', '--path', projectPath, '--json'],
     }),
   })).trim()) as {
     createdFiles: string[];
@@ -56,7 +56,7 @@ beforeAll(async (): Promise<void> => {
 
   const secondResult = JSON.parse((await captureStdout({
     run: async (): Promise<void> => runCli({
-      argv: ['init', '--path', projectPath],
+      argv: ['init', '--path', projectPath, '--json'],
     }),
   })).trim()) as {
     skippedFiles: string[];
@@ -66,7 +66,7 @@ beforeAll(async (): Promise<void> => {
 
   const forceResult = JSON.parse((await captureStdout({
     run: async (): Promise<void> => runCli({
-      argv: ['init', '--path', projectPath, '--force'],
+      argv: ['init', '--path', projectPath, '--force', '--json'],
     }),
   })).trim()) as {
     createdFiles: string[];

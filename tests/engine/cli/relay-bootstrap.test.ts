@@ -47,7 +47,7 @@ beforeAll(async (): Promise<void> => {
   }, null, 2));
 
   await runCli({
-    argv: ['relay', 'bootstrap', '--relay-ws-url', 'ws://relay.test/ws'],
+    argv: ['relay', 'bootstrap', '--relay-ws-url', 'ws://relay.test/ws', '--json'],
   });
   const firstResult = JSON.parse(outputs.pop() ?? '{}') as {
     personaId: string;
@@ -59,7 +59,7 @@ beforeAll(async (): Promise<void> => {
   firstBootstrapRelayUrl = firstResult.relayWsUrl;
 
   await runCli({
-    argv: ['relay', 'bootstrap', '--relay-ws-url', 'ws://relay.test/ws'],
+    argv: ['relay', 'bootstrap', '--relay-ws-url', 'ws://relay.test/ws', '--json'],
   });
   const secondResult = JSON.parse(outputs.pop() ?? '{}') as {
     personaId: string;

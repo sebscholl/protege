@@ -5,13 +5,13 @@ import { fileURLToPath } from 'node:url';
 import { runChatCommand } from '@engine/cli/chat';
 import { runDoctorCommand } from '@engine/cli/doctor';
 import { runGatewayCli } from '@engine/cli/gateway';
-import { runInitCommand } from '@engine/cli/init';
+import { runInitCli } from '@engine/cli/init';
 import { runLogsCommand } from '@engine/cli/logs';
-import { writeCliJson } from '@engine/cli/output';
+import { emitCliText } from '@engine/cli/output';
 import { runPersonaCli } from '@engine/cli/persona';
 import { runRelayCli } from '@engine/cli/relay';
-import { runSchedulerCommand } from '@engine/cli/scheduler';
-import { runSetupCommand } from '@engine/cli/setup';
+import { runSchedulerCli } from '@engine/cli/scheduler';
+import { runSetupCli } from '@engine/cli/setup';
 import { runStatusCommand } from '@engine/cli/status';
 
 /**
@@ -25,36 +25,36 @@ export async function runCli(
   loadCliEnvFiles();
   const [area, ...rest] = args.argv;
   if (!area) {
-    process.stdout.write(`${readCliHelpText({ topic: 'index' })}\n`);
+    emitCliText({ value: readCliHelpText({ topic: 'index' }) });
     return;
   }
 
   if (isHelpToken({ value: area })) {
-    process.stdout.write(`${readCliHelpText({
+    emitCliText({ value: readCliHelpText({
       topic: resolveCliHelpTopic({
         areaToken: rest[0],
         actionToken: rest[1],
       }),
-    })}\n\n`);
+    }), trailingNewlines: 2 });
     return;
   }
 
   if (isKnownCliCommand({ value: area }) && isHelpToken({ value: rest[0] })) {
-    process.stdout.write(`${readCliHelpText({ topic: area })}\n\n`);
+    emitCliText({ value: readCliHelpText({ topic: area }), trailingNewlines: 2 });
     return;
   }
   if (isKnownCliCommand({ value: area }) && isHelpToken({ value: rest[1] })) {
-    process.stdout.write(`${readCliHelpText({
+    emitCliText({ value: readCliHelpText({
       topic: resolveCliHelpTopic({
         areaToken: area,
         actionToken: rest[0],
       }),
-    })}\n\n`);
+    }), trailingNewlines: 2 });
     return;
   }
 
   if (area === '-v' || area === '--version' || area === 'version') {
-    process.stdout.write(`${readPackageVersion()}\n\n`);
+    emitCliText({ value: readPackageVersion(), trailingNewlines: 2 });
     return;
   }
 
@@ -89,20 +89,17 @@ export async function runCli(
   }
 
   if (area === 'scheduler') {
-    const result = await runSchedulerCommand({ argv: rest });
-    if (result) {
-      writeCliJson({ value: result });
-    }
+    await runSchedulerCli({ argv: rest });
     return;
   }
 
   if (area === 'init') {
-    writeCliJson({ value: runInitCommand({ argv: rest }) });
+    runInitCli({ argv: rest });
     return;
   }
 
   if (area === 'setup') {
-    writeCliJson({ value: await runSetupCommand({ argv: rest }) });
+    await runSetupCli({ argv: rest });
     return;
   }
 

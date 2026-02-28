@@ -1,4 +1,5 @@
 import { syncPersonaResponsibilities } from '@engine/scheduler/sync';
+import { emitCliOutput } from '@engine/cli/output';
 import { initializeDatabase } from '@engine/shared/database';
 import { resolveMigrationsDirPath } from '@engine/harness/runtime';
 import { resolvePersonaBySelector } from '@engine/shared/persona-selector';
@@ -23,6 +24,15 @@ export type SchedulerPersonaSyncSummary = {
   upsertedCount: number;
   disabledCount: number;
   parsedCount: number;
+};
+
+/**
+ * Represents scheduler sync command result payload.
+ */
+export type SchedulerSyncResult = {
+  action: 'sync';
+  mode: 'single_persona' | 'all_personas';
+  personas: SchedulerPersonaSyncSummary[];
 };
 
 /**
@@ -60,7 +70,7 @@ export async function runSchedulerCommand(
   args: {
     argv: string[];
   },
-): Promise<Record<string, unknown>> {
+): Promise<SchedulerSyncResult> {
   const parsed = parseSchedulerArgs({
     argv: args.argv,
   });
@@ -84,6 +94,49 @@ export async function runSchedulerCommand(
     mode: 'all_personas',
     personas: summaries,
   };
+}
+
+/**
+ * Runs scheduler CLI command and emits output in pretty or JSON mode.
+ */
+export async function runSchedulerCli(
+  args: {
+    argv: string[];
+  },
+): Promise<void> {
+  const json = args.argv.includes('--json');
+  const filteredArgv = args.argv.filter((token) => token !== '--json');
+  const result = await runSchedulerCommand({
+    argv: filteredArgv,
+  });
+  emitCliOutput({
+    mode: json ? 'json' : 'pretty',
+    jsonValue: result,
+    prettyText: renderSchedulerSyncResult({
+      result,
+    }),
+  });
+}
+
+/**
+ * Renders one scheduler sync result payload into readable output.
+ */
+export function renderSchedulerSyncResult(
+  args: {
+    result: SchedulerSyncResult;
+  },
+): string {
+  const lines = [
+    'Scheduler Sync Completed',
+    `mode: ${args.result.mode}`,
+    `personas.count: ${args.result.personas.length}`,
+  ];
+
+  for (const summary of args.result.personas) {
+    lines.push(`${summary.personaId}  parsed=${summary.parsedCount}  upserted=${summary.upsertedCount}  disabled=${summary.disabledCount}`);
+  }
+
+  return lines.join('\n');
 }
 
 /**

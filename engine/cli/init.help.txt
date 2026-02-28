@@ -1,0 +1,10 @@
+Init Command
+
+Usage: protege init [--path <dir>] [--force] [--json]
+
+Description:
+  Scaffolds a Protege project structure and default config files.
+
+Examples:
+  protege init
+  protege init --path ./my-protege

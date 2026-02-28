@@ -2,6 +2,8 @@ import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { emitCliOutput } from '@engine/cli/output';
+
 /**
  * Represents parsed `protege init` command options.
  */
@@ -17,6 +19,14 @@ export type InitCommandResult = {
   targetPath: string;
   createdFiles: string[];
   skippedFiles: string[];
+};
+
+/**
+ * Represents parsed init CLI output settings.
+ */
+export type InitCliOptions = {
+  json: boolean;
+  argvWithoutOutputFlags: string[];
 };
 
 /**
@@ -86,6 +96,69 @@ export function runInitCommand(
     createdFiles,
     skippedFiles,
   };
+}
+
+/**
+ * Parses one init argv list for output flags and returns remaining command argv.
+ */
+export function parseInitCliOptions(
+  args: {
+    argv: string[];
+  },
+): InitCliOptions {
+  const argvWithoutOutputFlags = args.argv.filter((token) => token !== '--json');
+  return {
+    json: args.argv.includes('--json'),
+    argvWithoutOutputFlags,
+  };
+}
+
+/**
+ * Renders one init result payload into readable pretty output.
+ */
+export function renderInitResult(
+  args: {
+    result: InitCommandResult;
+  },
+): string {
+  const createdPreview = args.result.createdFiles.length > 0
+    ? args.result.createdFiles.join(', ')
+    : 'none';
+  const skippedPreview = args.result.skippedFiles.length > 0
+    ? args.result.skippedFiles.join(', ')
+    : 'none';
+
+  return [
+    'Init Completed',
+    `targetPath: ${args.result.targetPath}`,
+    `createdFiles.count: ${args.result.createdFiles.length}`,
+    `createdFiles.preview: ${createdPreview}`,
+    `skippedFiles.count: ${args.result.skippedFiles.length}`,
+    `skippedFiles.preview: ${skippedPreview}`,
+  ].join('\n');
+}
+
+/**
+ * Runs init command and emits output in pretty or JSON mode.
+ */
+export function runInitCli(
+  args: {
+    argv: string[];
+  },
+): void {
+  const cliOptions = parseInitCliOptions({
+    argv: args.argv,
+  });
+  const result = runInitCommand({
+    argv: cliOptions.argvWithoutOutputFlags,
+  });
+  emitCliOutput({
+    mode: cliOptions.json ? 'json' : 'pretty',
+    jsonValue: result,
+    prettyText: renderInitResult({
+      result,
+    }),
+  });
 }
 
 /**

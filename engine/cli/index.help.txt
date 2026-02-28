@@ -1,0 +1,25 @@
+Protege CLI
+
+Usage: protege <command> [options]
+
+Commands:
+  protege gateway <start|stop|restart> [--dev]
+  protege persona <create|list|info|delete> ... [--json]
+  protege relay <bootstrap> [options]
+  protege scheduler sync [--persona <persona_id_or_prefix>] [--json]
+  protege status [--json]
+  protege logs [--follow] [--tail <n>] [--scope <gateway|harness|relay|scheduler|chat|all>] [--json]
+  protege doctor [--json]
+  protege init [--path <dir>] [--force] [--json]
+  protege setup [options] [--json]
+  protege chat --persona <persona_id_or_prefix> [--thread <thread_id>]
+
+Flags:
+  -h, --help     Show help overview or command help (`protege help <command>`)
+  -v, --version  Show installed CLI version
+
+Examples:
+  protege help gateway
+  protege gateway start --dev
+  protege setup
+  protege chat --persona 68c33af4249a5647

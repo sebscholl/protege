@@ -1,0 +1,10 @@
+Scheduler Command
+
+Usage: protege scheduler sync [--persona <persona_id_or_prefix>] [--json]
+
+Actions:
+  sync   Reconcile responsibility markdown files into scheduler runtime index.
+
+Examples:
+  protege scheduler sync
+  protege scheduler sync --persona 68c33af4249a5647

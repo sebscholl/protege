@@ -25,19 +25,19 @@ beforeAll(async (): Promise<void> => {
     return true;
   }) as typeof process.stdout.write;
 
-  await runCli({ argv: ['persona', 'create', '--name', 'Primary'] });
+  await runCli({ argv: ['persona', 'create', '--name', 'Primary', '--json'] });
   const created = JSON.parse(outputs.pop() ?? '{}') as { personaId: string };
   createdPersonaId = created.personaId;
 
-  await runCli({ argv: ['persona', 'list'] });
+  await runCli({ argv: ['persona', 'list', '--json'] });
   const listed = JSON.parse(outputs.pop() ?? '[]') as Array<{ personaId: string }>;
   listedPersonasLength = listed.length;
 
-  await runCli({ argv: ['persona', 'info', createdPersonaId] });
+  await runCli({ argv: ['persona', 'info', createdPersonaId, '--json'] });
   const info = JSON.parse(outputs.pop() ?? '{}') as { personaId: string };
   personaInfoId = info.personaId;
 
-  await runCli({ argv: ['persona', 'delete', createdPersonaId] });
+  await runCli({ argv: ['persona', 'delete', createdPersonaId, '--json'] });
   void outputs.pop();
   personaDeleted = !existsSync(join(tempRootPath, 'personas', createdPersonaId));
 

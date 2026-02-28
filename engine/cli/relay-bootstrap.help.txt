@@ -1,0 +1,10 @@
+Relay Bootstrap Command
+
+Usage: protege relay bootstrap [--json] [--relay-ws-url <ws://...|wss://...>] [--reconnect-base-delay-ms <n>] [--reconnect-max-delay-ms <n>] [--heartbeat-timeout-ms <n>]
+
+Description:
+  Enables relay mode, reconciles gateway relay settings, and synchronizes persona sender mailbox identity.
+
+Examples:
+  protege relay bootstrap --relay-ws-url wss://relay.protege.bot/ws
+  protege relay bootstrap --relay-ws-url ws://127.0.0.1:8080/ws --heartbeat-timeout-ms 45000

@@ -68,6 +68,7 @@ beforeAll(async (): Promise<void> => {
         'tavily-key-123',
         '--admin-contact-email',
         'ops@example.com',
+        '--json',
       ],
     }),
   });
@@ -252,6 +253,7 @@ beforeAll(async (): Promise<void> => {
         'local',
         '--web-search-provider',
         'none',
+        '--json',
       ],
     }),
   });

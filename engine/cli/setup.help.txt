@@ -1,0 +1,18 @@
+Setup Command
+
+Usage: protege setup [options] [--json]
+
+Description:
+  Guided first-run setup for provider credentials, outbound mode, persona bootstrap, and health checks.
+
+Common options:
+  --provider <openai|anthropic|gemini|grok>
+  --outbound <relay|local>
+  --relay-ws-url <ws|wss url>
+  --web-search-provider <none|perplexity|tavily>
+  --doctor
+  --non-interactive
+
+Examples:
+  protege setup
+  protege setup --non-interactive --provider openai --outbound relay --doctor

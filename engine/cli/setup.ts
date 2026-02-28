@@ -10,6 +10,7 @@ import { createInterface } from 'node:readline/promises';
 
 import { runDoctorChecks } from '@engine/cli/doctor';
 import { runInitCommand } from '@engine/cli/init';
+import { emitCliOutput } from '@engine/cli/output';
 import {
   inferMailDomainFromRelayWsUrl,
   selectRelayBootstrapMailDomain,
@@ -206,6 +207,9 @@ export function parseSetupArgs(
       nonInteractive = true;
       continue;
     }
+    if (token === '--json') {
+      continue;
+    }
 
     if (typeof token === 'string' && token.startsWith('-')) {
       throw new Error(`Unknown setup option: ${token}`);
@@ -230,6 +234,17 @@ export function parseSetupArgs(
       runDoctor,
     },
   };
+}
+
+/**
+ * Returns true when setup CLI argv requests JSON output.
+ */
+export function shouldRenderSetupAsJson(
+  args: {
+    argv: string[];
+  },
+): boolean {
+  return args.argv.includes('--json');
 }
 
 /**
@@ -761,6 +776,50 @@ export function readSetupNextCommand(
   }
 
   return 'protege doctor && protege gateway start';
+}
+
+/**
+ * Renders one setup command result as readable terminal output.
+ */
+export function renderSetupResult(
+  args: {
+    result: SetupCommandResult;
+  },
+): string {
+  return [
+    'Setup Completed',
+    `targetPath: ${args.result.targetPath}`,
+    `provider: ${args.result.provider}`,
+    `outboundMode: ${args.result.outboundMode}`,
+    `relayWsUrl: ${args.result.relayWsUrl ?? 'none'}`,
+    `mailDomain: ${args.result.mailDomain}`,
+    `personaId: ${args.result.personaId}`,
+    `personaEmailAddress: ${args.result.personaEmailAddress}`,
+    `createdPersona: ${args.result.createdPersona}`,
+    `webSearchProvider: ${args.result.webSearchProvider}`,
+    `wroteEnvKeys: ${args.result.wroteEnvKeys.length > 0 ? args.result.wroteEnvKeys.join(', ') : 'none'}`,
+    `nextCommand: ${args.result.nextCommand}`,
+  ].join('\n');
+}
+
+/**
+ * Runs setup command and emits output in pretty or JSON mode.
+ */
+export async function runSetupCli(
+  args: {
+    argv: string[];
+  },
+): Promise<void> {
+  const result = await runSetupCommand({
+    argv: args.argv,
+  });
+  emitCliOutput({
+    mode: shouldRenderSetupAsJson({ argv: args.argv }) ? 'json' : 'pretty',
+    jsonValue: result,
+    prettyText: renderSetupResult({
+      result,
+    }),
+  });
 }
 
 /**
