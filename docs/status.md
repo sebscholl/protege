@@ -32,22 +32,24 @@ Completed:
 
 1. Persona-scoped temporal memory and active memory model.
 2. Harness runtime loop with provider adapter boundary.
-3. Thread history persistence/retrieval and context assembly.
-4. Tool registry + tool execution loop.
-5. `send_email` tool integrated through runtime actions.
-6. Default same-thread reply behavior (`reply_current`) with explicit `threadingMode: "new_thread"` escape hatch.
-7. Operator CLI diagnostics commands:
+3. Provider adapters implemented for OpenAI, Anthropic, and Gemini.
+4. Thread history persistence/retrieval and context assembly.
+5. Tool registry + tool execution loop.
+6. `send_email` tool integrated through runtime actions.
+7. Default same-thread reply behavior (`reply_current`) with explicit `threadingMode: "new_thread"` escape hatch.
+8. Operator CLI diagnostics commands:
    - `protege status`
    - `protege logs`
    - `protege doctor`
-8. Project scaffolding command:
+9. Project scaffolding command:
    - `protege init`
-9. Guided onboarding command foundation:
+10. Guided onboarding command foundation:
    - `protege setup` (discrete onboarding command; non-interactive flag flow)
 
 Remaining:
 
 1. Chat UX polish (advanced navigation/search, richer compose ergonomics).
+2. Grok provider adapter implementation and validation.
 
 Planning updates:
 

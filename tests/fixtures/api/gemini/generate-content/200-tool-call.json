@@ -1,0 +1,45 @@
+{
+  "request": {
+    "method": "POST",
+    "pathPattern": "^/v1beta/models/.+:generateContent$"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "candidates": [
+        {
+          "content": {
+            "role": "model",
+            "parts": [
+              {
+                "functionCall": {
+                  "name": "send_email",
+                  "args": {
+                    "to": [
+                      "receiver@example.com"
+                    ],
+                    "subject": "Tool Subject",
+                    "text": "Tool Body"
+                  }
+                }
+              }
+            ]
+          },
+          "finishReason": "STOP"
+        }
+      ],
+      "usageMetadata": {
+        "promptTokenCount": 33,
+        "candidatesTokenCount": 14,
+        "totalTokenCount": 47
+      }
+    }
+  },
+  "meta": {
+    "service": "gemini",
+    "name": "generate content tool call success"
+  }
+}

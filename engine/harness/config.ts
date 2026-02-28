@@ -27,6 +27,7 @@ export type InferenceRuntimeConfig = {
     gemini?: {
       apiKey?: string;
       apiKeyEnv?: string;
+      baseUrl?: string;
     };
     grok?: {
       apiKey?: string;
@@ -160,6 +161,7 @@ export function parseProviderSettings(
             providerConfig: gemini,
           }),
           apiKeyEnv: readString({ value: gemini.api_key_env }),
+          baseUrl: readString({ value: gemini.base_url }),
         }
       : undefined,
     grok: grok

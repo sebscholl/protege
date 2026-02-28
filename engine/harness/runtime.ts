@@ -16,6 +16,7 @@ import type {
 } from '@engine/harness/provider-contract';
 import { HarnessProviderError } from '@engine/harness/provider-contract';
 import { createAnthropicProviderAdapter } from '@engine/harness/providers/anthropic';
+import { createGeminiProviderAdapter } from '@engine/harness/providers/gemini';
 import { createOpenAiProviderAdapter } from '@engine/harness/providers/openai';
 import { storeInboundMessage, storeOutboundMessage } from '@engine/harness/storage';
 import type { HarnessToolExecutionContext, HarnessToolRegistry } from '@engine/harness/tool-contract';
@@ -735,6 +736,10 @@ export function createProviderAdapter(
           baseUrl?: string;
           version?: string;
         };
+        gemini?: {
+          apiKey?: string;
+          baseUrl?: string;
+        };
       };
     };
     provider: 'openai' | 'anthropic' | 'gemini' | 'grok';
@@ -765,6 +770,20 @@ export function createProviderAdapter(
         apiKey,
         baseUrl: args.inferenceConfig.providers.anthropic?.baseUrl,
         version: args.inferenceConfig.providers.anthropic?.version,
+      },
+    });
+  }
+
+  if (args.provider === 'gemini') {
+    const apiKey = args.inferenceConfig.providers.gemini?.apiKey;
+    if (!apiKey) {
+      throw new Error('Missing Gemini API key. Set providers.gemini.api_key_env and export that env var.');
+    }
+
+    return createGeminiProviderAdapter({
+      config: {
+        apiKey,
+        baseUrl: args.inferenceConfig.providers.gemini?.baseUrl,
       },
     });
   }

@@ -1,10 +1,11 @@
 {
-  "provider": "anthropic",
-  "model": "claude-sonnet-4-6",
+  "provider": "gemini",
+  "model": "gemini-2.5-pro",
   "max_tool_turns": 20,
   "providers": {
     "openai": {
-      "api_key_env": "OPENAI_API_KEY"
+      "api_key_env": "OPENAI_API_KEY",
+      "base_url": "https://api.openai.com/v1"
     },
     "anthropic": {
       "api_key_env": "ANTHROPIC_API_KEY",
@@ -12,7 +13,8 @@
       "version": "2023-06-01"
     },
     "gemini": {
-      "api_key_env": "GEMINI_API_KEY"
+      "api_key_env": "GEMINI_API_KEY",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta"
     },
     "grok": {
       "api_key_env": "GROK_API_KEY"

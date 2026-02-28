@@ -16,6 +16,7 @@ let parsedMaxToolTurns = 0;
 let parsedFallbackMaxToolTurns = 0;
 let parsedAnthropicBaseUrl = '';
 let parsedAnthropicVersion = '';
+let parsedGeminiBaseUrl = '';
 
 beforeAll((): void => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-harness-config-'));
@@ -118,12 +119,32 @@ beforeAll((): void => {
   });
   parsedAnthropicBaseUrl = anthropicConfig.providers.anthropic?.baseUrl ?? '';
   parsedAnthropicVersion = anthropicConfig.providers.anthropic?.version ?? '';
+
+  const geminiConfigPath = join(tempRootPath, 'inference.gemini.json');
+  process.env.GEMINI_API_KEY = 'gemini-test';
+  writeFileSync(geminiConfigPath, JSON.stringify({
+    provider: 'gemini',
+    model: 'gemini-2.5-pro',
+    providers: {
+      gemini: {
+        api_key_env: 'GEMINI_API_KEY',
+        base_url: 'https://generativelanguage.googleapis.com/v1beta',
+      },
+    },
+    recursion_depth: 3,
+    whitelist: ['*@example.com'],
+  }));
+  const geminiConfig = readInferenceRuntimeConfig({
+    configPath: geminiConfigPath,
+  });
+  parsedGeminiBaseUrl = geminiConfig.providers.gemini?.baseUrl ?? '';
 });
 
 afterAll((): void => {
   rmSync(tempRootPath, { recursive: true, force: true });
   delete process.env.OPENAI_API_KEY;
   delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.GEMINI_API_KEY;
 });
 
 describe('harness inference config parsing', () => {
@@ -161,5 +182,9 @@ describe('harness inference config parsing', () => {
 
   it('parses provider-specific anthropic version fields', () => {
     expect(parsedAnthropicVersion).toBe('2023-06-01');
+  });
+
+  it('parses provider-specific gemini base url fields', () => {
+    expect(parsedGeminiBaseUrl).toBe('https://generativelanguage.googleapis.com/v1beta');
   });
 });

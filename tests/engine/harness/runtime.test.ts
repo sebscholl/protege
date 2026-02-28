@@ -44,6 +44,8 @@ let suppressesOnEmailSend = false;
 let keepsPersistenceWhenNoActionMatch = false;
 let anthropicAdapterProviderId = '';
 let anthropicMissingApiKeyMessage = '';
+let geminiAdapterProviderId = '';
+let geminiMissingApiKeyMessage = '';
 let acceptsNonEmptyTerminalResponse = false;
 let acceptsEmptyTerminalResponseWithActions = false;
 let rejectsEmptyTerminalResponseWithoutActions = false;
@@ -139,7 +141,7 @@ beforeAll((): void => {
   try {
     createProviderAdapter({
       inferenceConfig: { providers: {} },
-      provider: 'gemini',
+      provider: 'grok',
     });
   } catch (error) {
     unsupportedProviderCode = (error as HarnessProviderError).code;
@@ -165,6 +167,28 @@ beforeAll((): void => {
     });
   } catch (error) {
     anthropicMissingApiKeyMessage = (error as Error).message;
+  }
+  geminiAdapterProviderId = createProviderAdapter({
+    inferenceConfig: {
+      providers: {
+        gemini: {
+          apiKey: 'gemini-test',
+        },
+      },
+    },
+    provider: 'gemini',
+  }).providerId;
+  try {
+    createProviderAdapter({
+      inferenceConfig: {
+        providers: {
+          gemini: {},
+        },
+      },
+      provider: 'gemini',
+    });
+  } catch (error) {
+    geminiMissingApiKeyMessage = (error as Error).message;
   }
 
   migrationsDirExists = existsSync(resolveMigrationsDirPath());
@@ -225,6 +249,14 @@ describe('harness runtime helpers', () => {
 
   it('fails anthropic provider selection when anthropic credentials are missing', () => {
     expect(anthropicMissingApiKeyMessage).toContain('Missing Anthropic API key');
+  });
+
+  it('creates gemini provider adapter when gemini credentials are present', () => {
+    expect(geminiAdapterProviderId).toBe('gemini');
+  });
+
+  it('fails gemini provider selection when gemini credentials are missing', () => {
+    expect(geminiMissingApiKeyMessage).toContain('Missing Gemini API key');
   });
 
   it('resolves one existing migrations directory path', () => {

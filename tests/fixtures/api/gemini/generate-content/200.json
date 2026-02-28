@@ -1,0 +1,36 @@
+{
+  "request": {
+    "method": "POST",
+    "pathPattern": "^/v1beta/models/.+:generateContent$"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "candidates": [
+        {
+          "content": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Fixture response"
+              }
+            ]
+          },
+          "finishReason": "STOP"
+        }
+      ],
+      "usageMetadata": {
+        "promptTokenCount": 20,
+        "candidatesTokenCount": 8,
+        "totalTokenCount": 28
+      }
+    }
+  },
+  "meta": {
+    "service": "gemini",
+    "name": "generate content success"
+  }
+}
