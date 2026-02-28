@@ -26,6 +26,23 @@ Runtime behavior:
 4. Startup recovery finalizes interrupted runs:
    - `running` rows left behind by a stopped gateway process are marked `failed` with `failure_category=runtime` during scheduler persona startup.
    - this prevents permanent overlap-lock conditions after restarts.
+5. Run outcomes are explicit and persisted:
+   - `succeeded`
+   - `failed` (with failure category metadata)
+   - `skipped_overlap`
+6. Structured observability is emitted for lifecycle and guardrail behavior:
+   - enqueue/start/complete/fail events
+   - overlap-skip and cycle-throttle events
+   - correlation fields (`personaId`, `responsibilityId`, `runId`, `threadId`, `messageId` when available).
+
+Design references:
+
+1. `docs/adr/0016-responsibilities-file-first-with-db-index.md`
+2. `docs/adr/0017-scheduler-v1-run-policy.md`
+3. `docs/adr/0018-scheduler-runtime-owned-by-gateway.md`
+4. `docs/adr/0031-scheduler-concurrency-and-no-overlap-policy.md`
+5. `docs/adr/0032-scheduler-run-outcome-and-observability-policy.md`
+6. `docs/milestones/scheduler-hardening-checklist.md`
 
 Responsibility authoring:
 

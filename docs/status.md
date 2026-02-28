@@ -132,17 +132,9 @@ Completed:
 
 Remaining:
 
-1. Scheduler responsibilities runtime completion (`engine/scheduler` concurrency controls and E2E coverage hardening).
-2. Security/Ops completion (whitelist, recursion controls audit, terminal-failure notification flow).
-3. Hooks runtime and dispatch (`extensions/hooks`).
-4. Scheduler hardening follow-up:
-   - add explicit no-overlap and global concurrency controls
-   - expand gateway+scheduler E2E reliability coverage
-5. Onboarding/configuration hardening milestone:
-   - tool manifest config deep-merge
-   - env-only secret policy cleanup
-   - relay-first default outbound validation
-   - guided init wizard
+1. Security/Ops completion (recursion controls audit and final access-control policy expansion beyond gateway sender rules, if needed).
+2. Hooks runtime and dispatch (`extensions/hooks`).
+3. Chat UX polish (advanced navigation/search and richer compose ergonomics).
 
 Planning updates:
 
@@ -227,6 +219,14 @@ Planning updates:
    - scheduler startup now finalizes interrupted `running` rows as `failed` (`failure_category=runtime`) to prevent permanent overlap-lock after gateway restarts
 33. Chat inbox theming:
    - inbox list row styling now resolves entirely from `config/theme.json` (`chat_ui.inbox`) including line tags and selected-row colors
+34. CLI output contract hardening:
+   - command output now defaults to pretty-readable mode with explicit `--json` opt-in
+   - top-level and subcommand help content is file-backed under `engine/cli/*.help.txt`
+   - shared CLI table rendering now powers status/persona/scheduler/init/setup pretty outputs
+35. Gateway access-control security baseline:
+   - gateway sender access policy moved to dedicated `config/security.json`
+   - deny-first wildcard policy evaluation is enforced during inbound gateway processing before persistence/enqueue
+   - local chat remains trusted and unaffected by gateway access policy enforcement
 
 ## ADR Coverage
 

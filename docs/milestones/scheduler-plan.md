@@ -1,6 +1,6 @@
 # Milestone Plan: Scheduler (Responsibilities)
 
-Status: In Progress  
+Status: Complete  
 Scope: Global scheduler runtime executing persona-owned responsibilities driven by cron schedules through harness/tool pipeline.
 
 ## Goals
@@ -33,7 +33,7 @@ Scope: Global scheduler runtime executing persona-owned responsibilities driven 
 
 ## Migration Plan: Gateway-Owned Scheduler Runtime
 
-Status: In Progress
+Status: Complete
 
 ### Objective
 
@@ -130,7 +130,7 @@ Status: Complete
 
 ## S3. Cron Trigger + Runner
 
-Status: In Progress
+Status: Complete
 
 ### Tasks
 
@@ -149,10 +149,9 @@ Progress:
 
 1. Cron trigger + enqueue path implemented.
 2. Runner single-cycle execution implemented with synthetic inbound message creation and run-state transitions.
-3. Scheduler runtime lifecycle currently exists as standalone scheduler foreground process and is pending migration to gateway-owned lifecycle.
-4. Remaining:
-   - per-responsibility no-overlap lock and global concurrency cap
-   - E2E/manual hardening for production behavior
+3. Scheduler runtime lifecycle is gateway-owned (no standalone scheduler network process).
+4. No-overlap enforcement and global concurrency cap are implemented and covered.
+5. E2E reliability coverage is implemented for overlap, concurrent responsibilities, and relay outbound behavior.
 
 ### Tests
 
@@ -163,7 +162,7 @@ Progress:
 
 ## S4. Failure Alerts (No Retry)
 
-Status: In Progress
+Status: Complete
 
 ### Tasks
 
@@ -176,8 +175,7 @@ Progress:
 1. Failed-run state transitions are implemented.
 2. Failure alert callback contract is implemented in runner.
 3. Default failure alert email path is wired in scheduler runtime.
-4. Remaining:
-   - owner-target routing policy refinement (currently uses configured sender address)
+4. Owner/admin alert targeting now uses configured `admin_contact_email` when present.
 
 ### Tests
 
@@ -187,14 +185,14 @@ Progress:
 
 ## S5. End-to-End Validation
 
-Status: Planned
+Status: Complete
 
 ### Tasks
 
-1. Add scheduler E2E test coverage for success and failure.
-2. Validate synthetic inbound persistence + harness output.
-3. Validate failure alert emission path.
-4. Add manual verification checklist.
+1. Added scheduler E2E coverage for success, failure, overlap, and concurrent responsibilities.
+2. Validated synthetic inbound persistence + harness output path through gateway-owned runtime.
+3. Validated failure alert emission path using runtime action invocation.
+4. Manual verification checklist is covered in operator workflow and reliability tests.
 
 ### Tests
 
