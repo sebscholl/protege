@@ -1,27 +1,18 @@
-import type { PersonaMetadata } from '@engine/shared/personas';
-
-import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { readGatewayRuntimeConfig, resolveDefaultGatewayConfigPath, startGatewayRuntime } from '@engine/gateway/index';
 import { runChatCommand } from '@engine/cli/chat';
 import { runDoctorCommand } from '@engine/cli/doctor';
+import { runGatewayCli } from '@engine/cli/gateway';
 import { runInitCommand } from '@engine/cli/init';
 import { runLogsCommand } from '@engine/cli/logs';
-import { parseRelayBootstrapArgs, runRelayBootstrap } from '@engine/cli/relay-bootstrap';
+import { writeCliJson } from '@engine/cli/output';
+import { runPersonaCli } from '@engine/cli/persona';
+import { runRelayCli } from '@engine/cli/relay';
 import { runSchedulerCommand } from '@engine/cli/scheduler';
 import { runSetupCommand } from '@engine/cli/setup';
 import { runStatusCommand } from '@engine/cli/status';
-import {
-  createPersona,
-  deletePersona,
-  listPersonas,
-  readPersonaMetadata,
-} from '@engine/shared/personas';
-
-const PID_FILE_PATH = join(process.cwd(), 'tmp', 'gateway.pid');
 
 /**
  * Runs the Protege CLI argument parser and dispatches known commands.
@@ -33,13 +24,37 @@ export async function runCli(
 ): Promise<void> {
   loadCliEnvFiles();
   const [area, ...rest] = args.argv;
-  if (!area || area === '-h' || area === '--help' || area === 'help') {
-    process.stdout.write(`${getCliUsageText()}\n`);
+  if (!area) {
+    process.stdout.write(`${readCliHelpText({ topic: 'index' })}\n`);
+    return;
+  }
+
+  if (isHelpToken({ value: area })) {
+    process.stdout.write(`${readCliHelpText({
+      topic: resolveCliHelpTopic({
+        areaToken: rest[0],
+        actionToken: rest[1],
+      }),
+    })}\n\n`);
+    return;
+  }
+
+  if (isKnownCliCommand({ value: area }) && isHelpToken({ value: rest[0] })) {
+    process.stdout.write(`${readCliHelpText({ topic: area })}\n\n`);
+    return;
+  }
+  if (isKnownCliCommand({ value: area }) && isHelpToken({ value: rest[1] })) {
+    process.stdout.write(`${readCliHelpText({
+      topic: resolveCliHelpTopic({
+        areaToken: area,
+        actionToken: rest[0],
+      }),
+    })}\n\n`);
     return;
   }
 
   if (area === '-v' || area === '--version' || area === 'version') {
-    process.stdout.write(`${readPackageVersion()}\n`);
+    process.stdout.write(`${readPackageVersion()}\n\n`);
     return;
   }
 
@@ -197,6 +212,101 @@ export function getCliUsageText(): string {
 }
 
 /**
+ * Returns true when one token maps to CLI help invocation.
+ */
+export function isHelpToken(
+  args: {
+    value: string | undefined;
+  },
+): boolean {
+  return args.value === '-h' || args.value === '--help' || args.value === 'help';
+}
+
+/**
+ * Returns true when one top-level token maps to a known CLI command.
+ */
+export function isKnownCliCommand(
+  args: {
+    value: string;
+  },
+): boolean {
+  return args.value === 'gateway'
+    || args.value === 'persona'
+    || args.value === 'relay'
+    || args.value === 'scheduler'
+    || args.value === 'status'
+    || args.value === 'logs'
+    || args.value === 'doctor'
+    || args.value === 'init'
+    || args.value === 'setup'
+    || args.value === 'chat';
+}
+
+/**
+ * Resolves one help topic token with a fallback to top-level help.
+ */
+export function resolveCliHelpTopic(
+  args: {
+    areaToken: string | undefined;
+    actionToken?: string | undefined;
+  },
+): string {
+  if (!args.areaToken) {
+    return 'index';
+  }
+  if (isKnownCliCommand({ value: args.areaToken })) {
+    if (args.actionToken && args.actionToken.trim().length > 0) {
+      const actionTopic = `${args.areaToken}-${args.actionToken}`;
+      const actionTopicPath = resolveCliHelpFilePath({
+        topic: actionTopic,
+      });
+      if (actionTopicPath) {
+        return actionTopic;
+      }
+    }
+
+    return args.areaToken;
+  }
+
+  return 'index';
+}
+
+/**
+ * Reads one CLI help text file by topic from `engine/cli/{topic}.help.txt`.
+ */
+export function readCliHelpText(
+  args: {
+    topic: string;
+  },
+): string {
+  const helpPath = resolveCliHelpFilePath({
+    topic: args.topic,
+  });
+  if (!helpPath) {
+    return getCliUsageText();
+  }
+
+  return readFileSync(helpPath, 'utf8').trim();
+}
+
+/**
+ * Resolves one CLI help file path for a topic name.
+ */
+export function resolveCliHelpFilePath(
+  args: {
+    topic: string;
+  },
+): string | undefined {
+  const cliDirPath = dirname(fileURLToPath(import.meta.url));
+  const packageRootDirPath = dirname(resolveCliPackageJsonPath());
+  const candidates = [
+    join(cliDirPath, `${args.topic}.help.txt`),
+    join(packageRootDirPath, 'engine', 'cli', `${args.topic}.help.txt`),
+  ];
+  return candidates.find((candidate) => existsSync(candidate));
+}
+
+/**
  * Reads package version text from repository root package.json.
  */
 export function readPackageVersion(): string {
@@ -231,230 +341,4 @@ export function resolveCliPackageJsonPath(): string {
   throw new Error('Unable to resolve package.json for CLI version output.');
 }
 
-/**
- * Dispatches gateway-specific CLI commands.
- */
-export async function runGatewayCli(
-  args: {
-    argv: string[];
-  },
-): Promise<void> {
-  const [action, modeFlag] = args.argv;
-  if (!action) {
-    throw new Error('Usage: protege gateway <start|stop|restart> [--dev]');
-  }
-
-  if (action === 'start') {
-    await startGatewayCommand({
-      dev: modeFlag === '--dev',
-    });
-    return;
-  }
-
-  if (action === 'stop') {
-    stopGatewayCommand();
-    return;
-  }
-
-  if (action === 'restart') {
-    stopGatewayCommand();
-    await startGatewayCommand({
-      dev: modeFlag === '--dev',
-    });
-    return;
-  }
-
-  throw new Error('Usage: protege gateway <start|stop|restart> [--dev]');
-}
-
-/**
- * Dispatches persona-specific CLI commands.
- */
-export function runPersonaCli(
-  args: {
-    argv: string[];
-  },
-): void {
-  const [action, maybeId, ...rest] = args.argv;
-  if (!action) {
-    throw new Error('Usage: protege persona <create|list|info|delete> ...');
-  }
-
-  if (action === 'create') {
-    const parsed = parsePersonaCreateArgs({ argv: [maybeId ?? '', ...rest] });
-    const persona = createPersona({
-      label: parsed.label,
-    });
-    writeCliJson({ value: persona });
-    return;
-  }
-
-  if (action === 'list') {
-    writeCliJson({ value: listPersonas() });
-    return;
-  }
-
-  if (action === 'info') {
-    if (!maybeId) {
-      throw new Error('Usage: protege persona info <persona_id>');
-    }
-
-    writeCliJson({ value: readPersonaMetadata({ personaId: maybeId }) });
-    return;
-  }
-
-  if (action === 'delete') {
-    if (!maybeId) {
-      throw new Error('Usage: protege persona delete <persona_id>');
-    }
-
-    deletePersona({ personaId: maybeId });
-    writeCliJson({ value: { deletedPersonaId: maybeId } });
-    return;
-  }
-
-  throw new Error('Usage: protege persona <create|list|info|delete> ...');
-}
-
-/**
- * Dispatches relay-specific CLI commands.
- */
-export function runRelayCli(
-  args: {
-    argv: string[];
-  },
-): void {
-  const [action, ...rest] = args.argv;
-  if (!action) {
-    throw new Error('Usage: protege relay <bootstrap> [options]');
-  }
-
-  if (action === 'bootstrap') {
-    const bootstrapArgs = parseRelayBootstrapArgs({
-      argv: rest,
-    });
-    const result = runRelayBootstrap({
-      bootstrapArgs,
-    });
-    writeCliJson({ value: result });
-    return;
-  }
-
-  throw new Error('Usage: protege relay <bootstrap> [options]');
-}
-
-/**
- * Parses persona create CLI flags from a small argv segment.
- */
-export function parsePersonaCreateArgs(
-  args: {
-    argv: string[];
-  },
-): {
-  label?: string;
-} {
-  let label: string | undefined;
-
-  for (let index = 0; index < args.argv.length; index += 1) {
-    const token = args.argv[index];
-    if (token === '--name') {
-      label = args.argv[index + 1] || undefined;
-      index += 1;
-    }
-  }
-
-  return {
-    label,
-  };
-}
-
-/**
- * Writes one JSON payload line to stdout for CLI data responses.
- */
-export function writeCliJson(
-  args: {
-    value: PersonaMetadata | PersonaMetadata[] | Record<string, unknown>;
-  },
-): void {
-  process.stdout.write(`${JSON.stringify(args.value)}\n`);
-}
-
-/**
- * Starts the gateway runtime in foreground mode and writes pid marker.
- */
-export async function startGatewayCommand(
-  args: {
-    dev: boolean;
-  },
-): Promise<void> {
-  const configPath = resolveDefaultGatewayConfigPath();
-  const baseConfig = readGatewayRuntimeConfig({ configPath });
-  const runtimeConfig = args.dev
-    ? {
-        ...baseConfig,
-        mode: 'dev' as const,
-      }
-    : baseConfig;
-
-  mkdirSync(join(process.cwd(), 'tmp'), { recursive: true });
-  writeFileSync(PID_FILE_PATH, String(process.pid));
-
-  await startGatewayRuntime({
-    config: runtimeConfig,
-  });
-}
-
-/**
- * Stops a tracked gateway process by pid marker when available.
- */
-export function stopGatewayCommand(): void {
-  if (!existsSync(PID_FILE_PATH)) {
-    stopGatewayByProcessScan();
-    return;
-  }
-
-  const pidText = readFileSync(PID_FILE_PATH, 'utf8').trim();
-  const pid = Number(pidText);
-  if (!Number.isNaN(pid)) {
-    try {
-      process.kill(pid, 'SIGTERM');
-    } catch {
-      // Ignore if process is already gone.
-    }
-  }
-
-  unlinkSync(PID_FILE_PATH);
-  stopGatewayByProcessScan();
-}
-
-/**
- * Stops orphaned gateway start processes when pid marker is missing or stale.
- */
-export function stopGatewayByProcessScan(): void {
-  const pids = listGatewayStartProcessIds();
-  for (const pid of pids) {
-    try {
-      process.kill(pid, 'SIGTERM');
-    } catch {
-      // Ignore processes that already exited.
-    }
-  }
-}
-
-/**
- * Lists process ids that match the gateway start command shape.
- */
-export function listGatewayStartProcessIds(): number[] {
-  try {
-    const output = execSync('pgrep -f "engine/cli/index.ts gateway start"', {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    });
-    return output
-      .split('\n')
-      .map((line) => Number(line.trim()))
-      .filter((pid) => Number.isInteger(pid) && pid > 0 && pid !== process.pid);
-  } catch {
-    return [];
-  }
-}
+export { stopGatewayCommand } from '@engine/cli/gateway';
