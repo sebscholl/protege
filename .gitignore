@@ -8,6 +8,7 @@ coverage/
 .vscode/
 scratchpad.md
 tmp/
+demo/
 
 # Runtime memory artifacts (keep directory docs tracked)
 memory/**
