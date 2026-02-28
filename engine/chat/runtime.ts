@@ -348,13 +348,20 @@ export async function startChatRuntime(
       statusMessage = 'Sent';
       shouldScrollThreadToBottom = true;
     } catch (error) {
+      const errorObject = error instanceof Error
+        ? error
+        : new Error(String(error));
       statusMessage = `Send failed: ${(error as Error).message}`;
       logger.error({
         event: 'chat.send.failed',
         context: {
           personaId: persona.personaId,
           threadId: effect.threadId,
-          message: (error as Error).message,
+          errorName: errorObject.name,
+          message: errorObject.message,
+          errorStackPreview: toChatErrorStackPreview({
+            stack: errorObject.stack,
+          }),
         },
       });
     }
@@ -589,6 +596,25 @@ export async function startChatRuntime(
       resolve();
     });
   });
+}
+
+/**
+ * Converts one chat runtime error stack string into a short preview line list.
+ */
+export function toChatErrorStackPreview(
+  args: {
+    stack: string | undefined;
+  },
+): string[] {
+  if (!args.stack || args.stack.trim().length === 0) {
+    return [];
+  }
+
+  return args.stack
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .slice(0, 6);
 }
 
 /**

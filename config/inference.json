@@ -1,13 +1,15 @@
 {
-  "provider": "openai",
-  "model": "gpt-4.1",
-  "max_tool_turns": 8,
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-6",
+  "max_tool_turns": 20,
   "providers": {
     "openai": {
       "api_key_env": "OPENAI_API_KEY"
     },
     "anthropic": {
-      "api_key_env": "ANTHROPIC_API_KEY"
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "base_url": "https://api.anthropic.com/v1",
+      "version": "2023-06-01"
     },
     "gemini": {
       "api_key_env": "GEMINI_API_KEY"

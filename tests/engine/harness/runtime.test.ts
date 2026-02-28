@@ -9,6 +9,7 @@ import {
   buildProviderMessages,
   createProviderAdapter,
   resolveMigrationsDirPath,
+  shouldAcceptEmptyTerminalResponse,
   shouldSuppressFinalResponsePersistence,
   toHarnessInput,
 } from '@engine/harness/runtime';
@@ -41,6 +42,11 @@ let unsupportedProviderCode = '';
 let migrationsDirExists = false;
 let suppressesOnEmailSend = false;
 let keepsPersistenceWhenNoActionMatch = false;
+let anthropicAdapterProviderId = '';
+let anthropicMissingApiKeyMessage = '';
+let acceptsNonEmptyTerminalResponse = false;
+let acceptsEmptyTerminalResponseWithActions = false;
+let rejectsEmptyTerminalResponseWithoutActions = false;
 
 beforeAll((): void => {
   harnessInputSender = toHarnessInput({ message: inboundMessage }).sender;
@@ -133,10 +139,32 @@ beforeAll((): void => {
   try {
     createProviderAdapter({
       inferenceConfig: { providers: {} },
-      provider: 'anthropic',
+      provider: 'gemini',
     });
   } catch (error) {
     unsupportedProviderCode = (error as HarnessProviderError).code;
+  }
+  anthropicAdapterProviderId = createProviderAdapter({
+    inferenceConfig: {
+      providers: {
+        anthropic: {
+          apiKey: 'anthropic-test',
+        },
+      },
+    },
+    provider: 'anthropic',
+  }).providerId;
+  try {
+    createProviderAdapter({
+      inferenceConfig: {
+        providers: {
+          anthropic: {},
+        },
+      },
+      provider: 'anthropic',
+    });
+  } catch (error) {
+    anthropicMissingApiKeyMessage = (error as Error).message;
   }
 
   migrationsDirExists = existsSync(resolveMigrationsDirPath());
@@ -147,6 +175,18 @@ beforeAll((): void => {
   keepsPersistenceWhenNoActionMatch = shouldSuppressFinalResponsePersistence({
     invokedActions: ['file.read'],
     suppressedActions: ['email.send'],
+  });
+  acceptsNonEmptyTerminalResponse = shouldAcceptEmptyTerminalResponse({
+    responseText: 'hello',
+    invokedActions: [],
+  });
+  acceptsEmptyTerminalResponseWithActions = shouldAcceptEmptyTerminalResponse({
+    responseText: '',
+    invokedActions: ['email.send'],
+  });
+  rejectsEmptyTerminalResponseWithoutActions = shouldAcceptEmptyTerminalResponse({
+    responseText: '',
+    invokedActions: [],
   });
 });
 
@@ -179,6 +219,14 @@ describe('harness runtime helpers', () => {
     expect(unsupportedProviderCode).toBe('unsupported_provider');
   });
 
+  it('creates anthropic provider adapter when anthropic credentials are present', () => {
+    expect(anthropicAdapterProviderId).toBe('anthropic');
+  });
+
+  it('fails anthropic provider selection when anthropic credentials are missing', () => {
+    expect(anthropicMissingApiKeyMessage).toContain('Missing Anthropic API key');
+  });
+
   it('resolves one existing migrations directory path', () => {
     expect(migrationsDirExists).toBe(true);
   });
@@ -189,5 +237,17 @@ describe('harness runtime helpers', () => {
 
   it('does not suppress final persistence when no configured action was invoked', () => {
     expect(keepsPersistenceWhenNoActionMatch).toBe(false);
+  });
+
+  it('accepts non-empty terminal provider responses', () => {
+    expect(acceptsNonEmptyTerminalResponse).toBe(true);
+  });
+
+  it('accepts empty terminal provider responses when actions were invoked', () => {
+    expect(acceptsEmptyTerminalResponseWithActions).toBe(true);
+  });
+
+  it('rejects empty terminal provider responses when no action was invoked', () => {
+    expect(rejectsEmptyTerminalResponseWithoutActions).toBe(false);
   });
 });

@@ -21,6 +21,8 @@ export type InferenceRuntimeConfig = {
     anthropic?: {
       apiKey?: string;
       apiKeyEnv?: string;
+      baseUrl?: string;
+      version?: string;
     };
     gemini?: {
       apiKey?: string;
@@ -147,6 +149,8 @@ export function parseProviderSettings(
             providerConfig: anthropic,
           }),
           apiKeyEnv: readString({ value: anthropic.api_key_env }),
+          baseUrl: readString({ value: anthropic.base_url }),
+          version: readString({ value: anthropic.version }),
         }
       : undefined,
     gemini: gemini

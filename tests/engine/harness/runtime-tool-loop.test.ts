@@ -28,6 +28,9 @@ let recoveryFirstToolErrorCode = '';
 let recoveryFirstToolErrorMessage = '';
 let recoveryFirstToolInputPath = '';
 let recoveryToolInvokedActions: string[] = [];
+let unknownToolFailureHasInputContext = false;
+let unknownToolFailureHasStackPreview = false;
+let receivedEventIncludesToolInputs = false;
 
 beforeAll(async (): Promise<void> => {
   const adapter = createOpenAiProviderAdapter({
@@ -70,6 +73,9 @@ beforeAll(async (): Promise<void> => {
             }
             if (args.event === 'harness.tool.calls.received') {
               receivedEvents += 1;
+              receivedEventIncludesToolInputs = Array.isArray(args.context.toolCalls)
+                && (args.context.toolCalls as Array<Record<string, unknown>>).length > 0
+                && typeof (args.context.toolCalls as Array<Record<string, unknown>>)[0]?.input === 'object';
             }
           },
           error: (): void => undefined,
@@ -122,6 +128,9 @@ beforeAll(async (): Promise<void> => {
           ): void => {
             if (args.event === 'harness.tool.call.failed') {
               failedEvents += 1;
+              unknownToolFailureHasInputContext = typeof args.context.toolInput === 'object'
+                && args.context.toolInput !== null;
+              unknownToolFailureHasStackPreview = Array.isArray(args.context.errorStackPreview);
             }
           },
         },
@@ -459,8 +468,20 @@ describe('harness provider tool loop hardening', () => {
     expect(failedEvents).toBe(1);
   });
 
+  it('includes failed tool input payload in failure log context', () => {
+    expect(unknownToolFailureHasInputContext).toBe(true);
+  });
+
+  it('includes failed tool stack preview in failure log context', () => {
+    expect(unknownToolFailureHasStackPreview).toBe(true);
+  });
+
   it('emits one received event per provider response containing tool calls', () => {
     expect(receivedEvents).toBe(2);
+  });
+
+  it('includes tool call input payloads in received event context', () => {
+    expect(receivedEventIncludesToolInputs).toBe(true);
   });
 
   it('executes all tool calls when provider returns multiple calls in one turn', () => {

@@ -15,6 +15,7 @@ import type {
   HarnessProviderTool,
 } from '@engine/harness/provider-contract';
 import { HarnessProviderError } from '@engine/harness/provider-contract';
+import { createAnthropicProviderAdapter } from '@engine/harness/providers/anthropic';
 import { createOpenAiProviderAdapter } from '@engine/harness/providers/openai';
 import { storeInboundMessage, storeOutboundMessage } from '@engine/harness/storage';
 import type { HarnessToolExecutionContext, HarnessToolRegistry } from '@engine/harness/tool-contract';
@@ -142,7 +143,10 @@ export async function runHarnessForPersistedInboundMessage(
     });
 
     const responseText = toolResult.responseText.trim();
-    if (responseText.length === 0) {
+    if (!shouldAcceptEmptyTerminalResponse({
+      responseText,
+      invokedActions: toolResult.invokedActions,
+    })) {
       throw new HarnessProviderError({
         code: 'response_parse_failed',
         message: 'Provider response did not contain assistant text.',
@@ -241,6 +245,22 @@ export function shouldSuppressFinalResponsePersistence(
 }
 
 /**
+ * Returns true when one terminal provider turn is valid even without assistant text.
+ */
+export function shouldAcceptEmptyTerminalResponse(
+  args: {
+    responseText: string;
+    invokedActions: string[];
+  },
+): boolean {
+  if (args.responseText.length > 0) {
+    return true;
+  }
+
+  return args.invokedActions.length > 0;
+}
+
+/**
  * Builds provider tool declarations from the loaded runtime registry.
  */
 export function buildProviderTools(
@@ -318,6 +338,11 @@ export async function executeProviderToolLoop(
       context: {
         correlationId: correlationId ?? null,
         count: response.toolCalls.length,
+        toolCalls: response.toolCalls.map((toolCall) => ({
+          id: toolCall.id,
+          name: toolCall.name,
+          input: toolCall.input,
+        })),
       },
     });
 
@@ -344,13 +369,21 @@ export async function executeProviderToolLoop(
           context: args.toolContext,
         });
       } catch (error) {
+        const errorObject = error instanceof Error
+          ? error
+          : new Error(String(error));
         args.toolContext.logger?.error({
           event: 'harness.tool.call.failed',
           context: {
             correlationId: correlationId ?? null,
             toolName: toolCall.name,
             toolCallId: toolCall.id,
-            message: (error as Error).message,
+            toolInput: toolCall.input,
+            errorName: errorObject.name,
+            message: errorObject.message,
+            errorStackPreview: toErrorStackPreview({
+              stack: errorObject.stack,
+            }),
           },
         });
         if (isNonRecoverableToolError({ error })) {
@@ -697,6 +730,11 @@ export function createProviderAdapter(
           apiKey?: string;
           baseUrl?: string;
         };
+        anthropic?: {
+          apiKey?: string;
+          baseUrl?: string;
+          version?: string;
+        };
       };
     };
     provider: 'openai' | 'anthropic' | 'gemini' | 'grok';
@@ -712,6 +750,21 @@ export function createProviderAdapter(
       config: {
         apiKey,
         baseUrl: args.inferenceConfig.providers.openai?.baseUrl,
+      },
+    });
+  }
+
+  if (args.provider === 'anthropic') {
+    const apiKey = args.inferenceConfig.providers.anthropic?.apiKey;
+    if (!apiKey) {
+      throw new Error('Missing Anthropic API key. Set providers.anthropic.api_key_env and export that env var.');
+    }
+
+    return createAnthropicProviderAdapter({
+      config: {
+        apiKey,
+        baseUrl: args.inferenceConfig.providers.anthropic?.baseUrl,
+        version: args.inferenceConfig.providers.anthropic?.version,
       },
     });
   }

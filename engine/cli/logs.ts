@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, watchFile } from 'node:fs';
 import { join } from 'node:path';
 
+import { formatConsoleLine, readConsoleLineTerminator } from '@engine/shared/logger';
 import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
 
 /**
@@ -75,6 +76,7 @@ export function runLogsCommand(
     argv: args.argv,
   });
   const logFilePath = resolveUnifiedLogFilePath();
+  const runtimeConfig = readGlobalRuntimeConfig();
   if (!existsSync(logFilePath)) {
     throw new Error(`Log file not found at ${logFilePath}`);
   }
@@ -89,6 +91,7 @@ export function runLogsCommand(
   writeLogOutput({
     lines: filteredInitialLines.slice(-parsed.tail),
     json: parsed.json,
+    prettyTheme: runtimeConfig.prettyLogTheme,
   });
   if (!parsed.follow) {
     return;
@@ -98,6 +101,7 @@ export function runLogsCommand(
     logFilePath,
     scope: parsed.scope,
     json: parsed.json,
+    prettyTheme: runtimeConfig.prettyLogTheme,
   });
 }
 
@@ -153,6 +157,7 @@ export function writeLogOutput(
   args: {
     lines: string[];
     json: boolean;
+    prettyTheme: ReturnType<typeof readGlobalRuntimeConfig>['prettyLogTheme'];
   },
 ): void {
   for (const line of args.lines) {
@@ -162,7 +167,10 @@ export function writeLogOutput(
     }
     process.stdout.write(`${formatPrettyLogLine({
       line,
-    })}\n`);
+      prettyTheme: args.prettyTheme,
+    })}${readConsoleLineTerminator({
+      consoleLogFormat: 'pretty',
+    })}`);
   }
 }
 
@@ -172,15 +180,16 @@ export function writeLogOutput(
 export function formatPrettyLogLine(
   args: {
     line: string;
+    prettyTheme: ReturnType<typeof readGlobalRuntimeConfig>['prettyLogTheme'];
   },
 ): string {
   try {
     const parsed = JSON.parse(args.line) as Record<string, unknown>;
-    const timestamp = typeof parsed.timestamp === 'string' ? parsed.timestamp : 'unknown-time';
-    const level = typeof parsed.level === 'string' ? parsed.level.toUpperCase() : 'INFO';
-    const scope = typeof parsed.scope === 'string' ? parsed.scope : 'runtime';
-    const event = typeof parsed.event === 'string' ? parsed.event : 'event';
-    return `[${timestamp}] ${level} ${scope}.${event}`;
+    return formatConsoleLine({
+      payload: parsed,
+      consoleLogFormat: 'pretty',
+      prettyLogTheme: args.prettyTheme,
+    });
   } catch {
     return args.line;
   }
@@ -194,6 +203,7 @@ export function startLogsFollowMode(
     logFilePath: string;
     scope: LogsCommandArgs['scope'];
     json: boolean;
+    prettyTheme: ReturnType<typeof readGlobalRuntimeConfig>['prettyLogTheme'];
   },
 ): void {
   let seenLineCount = readLogLines({
@@ -215,6 +225,7 @@ export function startLogsFollowMode(
         scope: args.scope,
       }),
       json: args.json,
+      prettyTheme: args.prettyTheme,
     });
   });
 }

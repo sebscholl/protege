@@ -13,6 +13,7 @@ let jsonOutputLines: string[] = [];
 let prettyOutputLines: string[] = [];
 let schedulerOutputLines: string[] = [];
 let chatOutputLines: string[] = [];
+let prettyOutputLinesSansAnsi: string[] = [];
 
 beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-logs-'));
@@ -38,6 +39,8 @@ beforeAll(async (): Promise<void> => {
       scope: 'harness',
       event: 'harness.inference.started',
       timestamp: '2026-02-16T00:00:01.000Z',
+      correlationId: 'corr-123',
+      threadId: 'thread-abc',
     }),
     JSON.stringify({
       level: 'info',
@@ -75,6 +78,9 @@ beforeAll(async (): Promise<void> => {
     .trim()
     .split('\n')
     .filter((line) => line.length > 0);
+  prettyOutputLinesSansAnsi = prettyOutputLines.map((line) => stripAnsi({
+    value: line,
+  }));
   schedulerOutputLines = (await captureStdout({
     run: async (): Promise<void> => runCli({
       argv: ['logs', '--json', '--scope', 'scheduler', '--tail', '10'],
@@ -108,11 +114,15 @@ describe('logs cli command', () => {
   });
 
   it('filters output lines by requested scope', () => {
-    expect(prettyOutputLines[0]?.includes('harness.harness.inference.started')).toBe(true);
+    expect(prettyOutputLinesSansAnsi[0]?.includes('harness harness.inference.started')).toBe(true);
   });
 
   it('renders non-json output in readable pretty format', () => {
-    expect(prettyOutputLines[0]?.startsWith('[2026-02-16T00:00:01.000Z] INFO')).toBe(true);
+    expect(prettyOutputLinesSansAnsi[0]?.includes('[2026-02-16T00:00:01.000Z]')).toBe(true);
+  });
+
+  it('prints pretty context rows for non-header fields', () => {
+    expect(prettyOutputLinesSansAnsi.some((line) => line.includes('correlationId=corr-123'))).toBe(true);
   });
 
   it('filters output lines by scheduler scope', () => {
@@ -123,3 +133,14 @@ describe('logs cli command', () => {
     expect(chatOutputLines[0]?.includes('"scope":"chat"')).toBe(true);
   });
 });
+
+/**
+ * Removes ANSI escape sequences from one captured console line.
+ */
+export function stripAnsi(
+  args: {
+    value: string;
+  },
+): string {
+  return args.value.replace(/\u001b\[[0-9;]*m/g, '');
+}

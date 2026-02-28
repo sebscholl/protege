@@ -14,6 +14,8 @@ let parsedOverrideTemperature = 0;
 let missingEnvApiKey = '';
 let parsedMaxToolTurns = 0;
 let parsedFallbackMaxToolTurns = 0;
+let parsedAnthropicBaseUrl = '';
+let parsedAnthropicVersion = '';
 
 beforeAll((): void => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-harness-config-'));
@@ -95,11 +97,33 @@ beforeAll((): void => {
     configPath: invalidTurnsConfigPath,
   });
   parsedFallbackMaxToolTurns = invalidTurnsConfig.maxToolTurns;
+
+  const anthropicConfigPath = join(tempRootPath, 'inference.anthropic.json');
+  process.env.ANTHROPIC_API_KEY = 'anthropic-test';
+  writeFileSync(anthropicConfigPath, JSON.stringify({
+    provider: 'anthropic',
+    model: 'claude-3-7-sonnet-latest',
+    providers: {
+      anthropic: {
+        api_key_env: 'ANTHROPIC_API_KEY',
+        base_url: 'https://api.anthropic.com/v1',
+        version: '2023-06-01',
+      },
+    },
+    recursion_depth: 3,
+    whitelist: ['*@example.com'],
+  }));
+  const anthropicConfig = readInferenceRuntimeConfig({
+    configPath: anthropicConfigPath,
+  });
+  parsedAnthropicBaseUrl = anthropicConfig.providers.anthropic?.baseUrl ?? '';
+  parsedAnthropicVersion = anthropicConfig.providers.anthropic?.version ?? '';
 });
 
 afterAll((): void => {
   rmSync(tempRootPath, { recursive: true, force: true });
   delete process.env.OPENAI_API_KEY;
+  delete process.env.ANTHROPIC_API_KEY;
 });
 
 describe('harness inference config parsing', () => {
@@ -129,5 +153,13 @@ describe('harness inference config parsing', () => {
 
   it('falls back to default max_tool_turns when configured value is invalid', () => {
     expect(parsedFallbackMaxToolTurns).toBe(8);
+  });
+
+  it('parses provider-specific anthropic base url fields', () => {
+    expect(parsedAnthropicBaseUrl).toBe('https://api.anthropic.com/v1');
+  });
+
+  it('parses provider-specific anthropic version fields', () => {
+    expect(parsedAnthropicVersion).toBe('2023-06-01');
   });
 });

@@ -1,0 +1,45 @@
+{
+  "request": {
+    "method": "POST",
+    "pathPattern": "^/v1/messages$"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "id": "msg_fixture_200_tool_call",
+      "type": "message",
+      "model": "claude-3-7-sonnet-latest",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": ""
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_send_email_1",
+          "name": "send_email",
+          "input": {
+            "to": [
+              "receiver@example.com"
+            ],
+            "subject": "Tool Subject",
+            "text": "Tool Body"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "usage": {
+        "input_tokens": 32,
+        "output_tokens": 16
+      }
+    }
+  },
+  "meta": {
+    "service": "anthropic",
+    "name": "messages tool call success"
+  }
+}

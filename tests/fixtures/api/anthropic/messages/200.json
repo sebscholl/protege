@@ -1,0 +1,33 @@
+{
+  "request": {
+    "method": "POST",
+    "pathPattern": "^/v1/messages$"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "id": "msg_fixture_200",
+      "type": "message",
+      "model": "claude-3-7-sonnet-latest",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Fixture response"
+        }
+      ],
+      "stop_reason": "end_turn",
+      "usage": {
+        "input_tokens": 24,
+        "output_tokens": 11
+      }
+    }
+  },
+  "meta": {
+    "service": "anthropic",
+    "name": "messages success"
+  }
+}

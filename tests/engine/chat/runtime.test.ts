@@ -21,6 +21,7 @@ import {
   resolvePersonaBySelector,
   scrollThreadBoxToBottom,
   resolveThreadScrollDelta,
+  toChatErrorStackPreview,
 } from '@engine/chat/runtime';
 import { createPersona } from '@engine/shared/personas';
 import { initializeDatabase } from '@engine/shared/database';
@@ -52,6 +53,7 @@ let topRowUnchangedWhenVisible = -1;
 let visibleInboxRowCount = 0;
 let parsedStatusHintCommandsCount = 0;
 let renderedThreadContent = '';
+let chatErrorStackPreviewLength = 0;
 
 const inboundMessage: InboundNormalizedMessage = {
   personaId: 'persona-test',
@@ -273,6 +275,9 @@ beforeAll(async (): Promise<void> => {
     ],
     theme: getDefaultChatUiTheme(),
   });
+  chatErrorStackPreviewLength = toChatErrorStackPreview({
+    stack: 'Error: boom\n    at first\n    at second\n    at third',
+  }).length;
 });
 
 afterAll((): void => {
@@ -396,5 +401,9 @@ describe('chat runtime helper behavior', () => {
 
   it('derives visible row count from widget height and row block height', () => {
     expect(visibleInboxRowCount).toBe(2);
+  });
+
+  it('returns bounded chat error stack previews for logging context', () => {
+    expect(chatErrorStackPreviewLength).toBe(4);
   });
 });

@@ -65,6 +65,8 @@ Optional fields:
    2. `anthropic`:
       1. `api_key_env`
       2. `api_key` (legacy fallback)
+      3. `base_url`: optional override base URL.
+      4. `version`: optional override for `anthropic-version` request header (default `2023-06-01`).
    3. `gemini`:
       1. `api_key_env`
       2. `api_key` (legacy fallback)

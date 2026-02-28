@@ -1,0 +1,23 @@
+{
+  "request": {
+    "method": "POST",
+    "pathPattern": "^/v1/messages$"
+  },
+  "response": {
+    "status": 500,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "type": "error",
+      "error": {
+        "type": "api_error",
+        "message": "Fixture internal error"
+      }
+    }
+  },
+  "meta": {
+    "service": "anthropic",
+    "name": "messages server error"
+  }
+}
