@@ -1,0 +1,32 @@
+{
+  "request": {
+    "method": "POST",
+    "pathPattern": "^/v1/chat/completions$"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "id": "chatcmpl_grok_fixture_200",
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "Fixture response"
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 19,
+        "completion_tokens": 6,
+        "total_tokens": 25
+      }
+    }
+  },
+  "meta": {
+    "service": "grok",
+    "name": "chat completions success"
+  }
+}

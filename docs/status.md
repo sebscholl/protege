@@ -32,7 +32,7 @@ Completed:
 
 1. Persona-scoped temporal memory and active memory model.
 2. Harness runtime loop with provider adapter boundary.
-3. Provider adapters implemented for OpenAI, Anthropic, and Gemini.
+3. Provider adapters implemented for OpenAI, Anthropic, Gemini, and Grok.
 4. Thread history persistence/retrieval and context assembly.
 5. Tool registry + tool execution loop.
 6. `send_email` tool integrated through runtime actions.
@@ -49,7 +49,7 @@ Completed:
 Remaining:
 
 1. Chat UX polish (advanced navigation/search, richer compose ergonomics).
-2. Grok provider adapter implementation and validation.
+2. Provider parity hardening across model families and tool-calling edge cases.
 
 Planning updates:
 

@@ -17,6 +17,7 @@ let parsedFallbackMaxToolTurns = 0;
 let parsedAnthropicBaseUrl = '';
 let parsedAnthropicVersion = '';
 let parsedGeminiBaseUrl = '';
+let parsedGrokBaseUrl = '';
 
 beforeAll((): void => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-harness-config-'));
@@ -138,6 +139,25 @@ beforeAll((): void => {
     configPath: geminiConfigPath,
   });
   parsedGeminiBaseUrl = geminiConfig.providers.gemini?.baseUrl ?? '';
+
+  const grokConfigPath = join(tempRootPath, 'inference.grok.json');
+  process.env.GROK_API_KEY = 'grok-test';
+  writeFileSync(grokConfigPath, JSON.stringify({
+    provider: 'grok',
+    model: 'grok-3-latest',
+    providers: {
+      grok: {
+        api_key_env: 'GROK_API_KEY',
+        base_url: 'https://api.x.ai/v1',
+      },
+    },
+    recursion_depth: 3,
+    whitelist: ['*@example.com'],
+  }));
+  const grokConfig = readInferenceRuntimeConfig({
+    configPath: grokConfigPath,
+  });
+  parsedGrokBaseUrl = grokConfig.providers.grok?.baseUrl ?? '';
 });
 
 afterAll((): void => {
@@ -145,6 +165,7 @@ afterAll((): void => {
   delete process.env.OPENAI_API_KEY;
   delete process.env.ANTHROPIC_API_KEY;
   delete process.env.GEMINI_API_KEY;
+  delete process.env.GROK_API_KEY;
 });
 
 describe('harness inference config parsing', () => {
@@ -186,5 +207,9 @@ describe('harness inference config parsing', () => {
 
   it('parses provider-specific gemini base url fields', () => {
     expect(parsedGeminiBaseUrl).toBe('https://generativelanguage.googleapis.com/v1beta');
+  });
+
+  it('parses provider-specific grok base url fields', () => {
+    expect(parsedGrokBaseUrl).toBe('https://api.x.ai/v1');
   });
 });

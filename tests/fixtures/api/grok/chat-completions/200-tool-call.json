@@ -1,0 +1,38 @@
+{
+  "request": {
+    "method": "POST",
+    "pathPattern": "^/v1/chat/completions$"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "id": "chatcmpl_grok_fixture_200_tool_call",
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+              {
+                "id": "call_send_email_1",
+                "type": "function",
+                "function": {
+                  "name": "send_email",
+                  "arguments": "{\"to\":[\"receiver@example.com\"],\"subject\":\"Tool Subject\",\"text\":\"Tool Body\"}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ]
+    }
+  },
+  "meta": {
+    "service": "grok",
+    "name": "chat completions tool call success"
+  }
+}

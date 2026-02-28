@@ -32,6 +32,7 @@ export type InferenceRuntimeConfig = {
     grok?: {
       apiKey?: string;
       apiKeyEnv?: string;
+      baseUrl?: string;
     };
   };
   temperature?: number;
@@ -171,6 +172,7 @@ export function parseProviderSettings(
             providerConfig: grok,
           }),
           apiKeyEnv: readString({ value: grok.api_key_env }),
+          baseUrl: readString({ value: grok.base_url }),
         }
       : undefined,
   };

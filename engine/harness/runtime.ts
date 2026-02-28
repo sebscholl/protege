@@ -17,6 +17,7 @@ import type {
 import { HarnessProviderError } from '@engine/harness/provider-contract';
 import { createAnthropicProviderAdapter } from '@engine/harness/providers/anthropic';
 import { createGeminiProviderAdapter } from '@engine/harness/providers/gemini';
+import { createGrokProviderAdapter } from '@engine/harness/providers/grok';
 import { createOpenAiProviderAdapter } from '@engine/harness/providers/openai';
 import { storeInboundMessage, storeOutboundMessage } from '@engine/harness/storage';
 import type { HarnessToolExecutionContext, HarnessToolRegistry } from '@engine/harness/tool-contract';
@@ -740,6 +741,10 @@ export function createProviderAdapter(
           apiKey?: string;
           baseUrl?: string;
         };
+        grok?: {
+          apiKey?: string;
+          baseUrl?: string;
+        };
       };
     };
     provider: 'openai' | 'anthropic' | 'gemini' | 'grok';
@@ -784,6 +789,20 @@ export function createProviderAdapter(
       config: {
         apiKey,
         baseUrl: args.inferenceConfig.providers.gemini?.baseUrl,
+      },
+    });
+  }
+
+  if (args.provider === 'grok') {
+    const apiKey = args.inferenceConfig.providers.grok?.apiKey;
+    if (!apiKey) {
+      throw new Error('Missing Grok API key. Set providers.grok.api_key_env and export that env var.');
+    }
+
+    return createGrokProviderAdapter({
+      config: {
+        apiKey,
+        baseUrl: args.inferenceConfig.providers.grok?.baseUrl,
       },
     });
   }

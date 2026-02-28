@@ -46,6 +46,8 @@ let anthropicAdapterProviderId = '';
 let anthropicMissingApiKeyMessage = '';
 let geminiAdapterProviderId = '';
 let geminiMissingApiKeyMessage = '';
+let grokAdapterProviderId = '';
+let grokMissingApiKeyMessage = '';
 let acceptsNonEmptyTerminalResponse = false;
 let acceptsEmptyTerminalResponseWithActions = false;
 let rejectsEmptyTerminalResponseWithoutActions = false;
@@ -141,7 +143,7 @@ beforeAll((): void => {
   try {
     createProviderAdapter({
       inferenceConfig: { providers: {} },
-      provider: 'grok',
+      provider: 'mistral' as 'openai' | 'anthropic' | 'gemini' | 'grok',
     });
   } catch (error) {
     unsupportedProviderCode = (error as HarnessProviderError).code;
@@ -189,6 +191,28 @@ beforeAll((): void => {
     });
   } catch (error) {
     geminiMissingApiKeyMessage = (error as Error).message;
+  }
+  grokAdapterProviderId = createProviderAdapter({
+    inferenceConfig: {
+      providers: {
+        grok: {
+          apiKey: 'grok-test',
+        },
+      },
+    },
+    provider: 'grok',
+  }).providerId;
+  try {
+    createProviderAdapter({
+      inferenceConfig: {
+        providers: {
+          grok: {},
+        },
+      },
+      provider: 'grok',
+    });
+  } catch (error) {
+    grokMissingApiKeyMessage = (error as Error).message;
   }
 
   migrationsDirExists = existsSync(resolveMigrationsDirPath());
@@ -257,6 +281,14 @@ describe('harness runtime helpers', () => {
 
   it('fails gemini provider selection when gemini credentials are missing', () => {
     expect(geminiMissingApiKeyMessage).toContain('Missing Gemini API key');
+  });
+
+  it('creates grok provider adapter when grok credentials are present', () => {
+    expect(grokAdapterProviderId).toBe('grok');
+  });
+
+  it('fails grok provider selection when grok credentials are missing', () => {
+    expect(grokMissingApiKeyMessage).toContain('Missing Grok API key');
   });
 
   it('resolves one existing migrations directory path', () => {

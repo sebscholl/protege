@@ -1,6 +1,6 @@
 {
-  "provider": "gemini",
-  "model": "gemini-2.5-pro",
+  "provider": "grok",
+  "model": "grok-3-latest",
   "max_tool_turns": 20,
   "providers": {
     "openai": {
@@ -17,7 +17,8 @@
       "base_url": "https://generativelanguage.googleapis.com/v1beta"
     },
     "grok": {
-      "api_key_env": "GROK_API_KEY"
+      "api_key_env": "GROK_API_KEY",
+      "base_url": "https://api.x.ai/v1"
     }
   },
   "recursion_depth": 3,
