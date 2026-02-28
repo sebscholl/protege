@@ -32,6 +32,7 @@ export type InboundErrorCode =
   | 'attachment_limit_exceeded'
   | 'attachment_write_failed'
   | 'persona_not_found'
+  | 'access_denied'
   | 'storage_path_unresolved';
 
 /**
@@ -56,7 +57,18 @@ export type GatewayInboundConfig = {
     },
   ) => {
     logsDirPath: string;
-    attachmentsDirPath: string;
+      attachmentsDirPath: string;
+    };
+  evaluateSenderAccess?: (
+    args: {
+      senderAddress: string;
+      session: SMTPServerSession;
+      personaId?: string;
+    },
+  ) => {
+    allowed: boolean;
+    reason: string;
+    matchedRule?: string;
   };
   logger: GatewayLogger;
   onMessage: InboundMessageHandler;
@@ -186,6 +198,28 @@ export async function handleInboundData(
 
   const rawMimeBuffer = await readStreamBuffer({ stream: args.stream });
   const parsedMail = await parseInboundMail({ rawMimeBuffer });
+  const senderAddress = readPrimarySenderAddress({
+    parsedMail,
+  });
+  if (args.config.evaluateSenderAccess) {
+    const accessEvaluation = args.config.evaluateSenderAccess({
+      senderAddress,
+      session: args.session,
+      personaId,
+    });
+    if (!accessEvaluation.allowed) {
+      throw new GatewayInboundError({
+        code: 'access_denied',
+        message: [
+          'Inbound sender is not allowed by gateway access policy.',
+          `sender=${senderAddress}`,
+          `reason=${accessEvaluation.reason}`,
+          accessEvaluation.matchedRule ? `matchedRule=${accessEvaluation.matchedRule}` : '',
+        ].filter((item) => item.length > 0).join(' '),
+      });
+    }
+  }
+
   const receivedAt = new Date().toISOString();
   const messageId = ensureMessageId({ value: parsedMail.messageId });
   const references = normalizeReferences({ references: toReferenceArray({ references: parsedMail.references }) });
@@ -237,6 +271,17 @@ export async function handleInboundData(
   };
 
   await args.config.onMessage({ message });
+}
+
+/**
+ * Reads one normalized sender email address from parsed mail object.
+ */
+export function readPrimarySenderAddress(
+  args: {
+    parsedMail: ParsedMail;
+  },
+): string {
+  return args.parsedMail.from?.value?.[0]?.address?.trim().toLowerCase() ?? '';
 }
 
 /**

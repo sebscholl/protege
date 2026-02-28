@@ -44,6 +44,7 @@ import {
   resolvePersonaMemoryPaths,
   updatePersonaEmailAddress,
 } from '@engine/shared/personas';
+import { evaluateGatewayAccess, readSecurityRuntimeConfig } from '@engine/shared/security-config';
 import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
 
 import { createOutboundTransport } from './outbound';
@@ -128,6 +129,7 @@ export async function startGatewayRuntime(
   },
 ): Promise<void> {
   const globalConfig = readGlobalRuntimeConfig();
+  const securityConfig = readSecurityRuntimeConfig();
   const logger = createUnifiedLogger({
     logsDirPath: globalConfig.logsDirPath,
     scope: 'gateway',
@@ -176,6 +178,7 @@ export async function startGatewayRuntime(
   });
   inboundConfig = createGatewayInboundProcessingConfig({
     runtimeConfig: args.config,
+    securityConfig,
     logger,
     transport,
     relayClientsByPersonaId,
@@ -261,6 +264,7 @@ export function reconcilePersonaMailboxDomains(
 export function createGatewayInboundProcessingConfig(
   args: {
     runtimeConfig: GatewayRuntimeConfig;
+    securityConfig?: ReturnType<typeof readSecurityRuntimeConfig>;
     logger: ReturnType<typeof createUnifiedLogger>;
     transport?: ReturnType<typeof createOutboundTransport>;
     relayClientsByPersonaId?: Map<string, RelayClientController>;
@@ -285,6 +289,17 @@ export function createGatewayInboundProcessingConfig(
     logsDirPath: string;
     attachmentsDirPath: string;
   };
+  evaluateSenderAccess: (
+    args: {
+      senderAddress: string;
+      session: SMTPServerSession;
+      personaId?: string;
+    },
+  ) => {
+    allowed: boolean;
+    reason: string;
+    matchedRule?: string;
+  };
   logger: ReturnType<typeof createUnifiedLogger>;
   relayClientsByPersonaId?: Map<string, RelayClientController>;
   onMessage: (
@@ -293,6 +308,8 @@ export function createGatewayInboundProcessingConfig(
     },
   ) => Promise<void>;
 } {
+  const gatewayAccessPolicy = args.securityConfig?.gatewayAccess ?? readSecurityRuntimeConfig().gatewayAccess;
+
   return {
     host: args.runtimeConfig.host,
     port: args.runtimeConfig.port,
@@ -303,6 +320,10 @@ export function createGatewayInboundProcessingConfig(
       recipientAddress: session.envelope?.rcptTo?.[0]?.address,
     }),
     resolvePersonaPaths: ({ personaId }) => resolveGatewayPersonaPaths({ personaId }),
+    evaluateSenderAccess: ({ senderAddress }) => evaluateGatewayAccess({
+      senderAddress,
+      policy: gatewayAccessPolicy,
+    }),
     logger: args.logger,
     relayClientsByPersonaId: args.relayClientsByPersonaId,
     onMessage: async ({ message }): Promise<void> => {

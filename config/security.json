@@ -1,0 +1,8 @@
+{
+  "gateway_access": {
+    "enabled": true,
+    "default_decision": "allow",
+    "allow": [],
+    "deny": []
+  }
+}

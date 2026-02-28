@@ -13,6 +13,7 @@
     "config/gateway.example.json",
     "config/inference.json",
     "config/inference.local.example.json",
+    "config/security.json",
     "config/system-prompt.md",
     "config/system.json",
     "extensions/extensions.json",

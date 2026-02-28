@@ -236,6 +236,10 @@ export function buildInitCopyMappings(
       targetRelativePath: 'config/system.json',
     },
     {
+      sourceFilePath: join(args.packageRootDirPath, 'config', 'security.json'),
+      targetRelativePath: 'config/security.json',
+    },
+    {
       sourceFilePath: join(args.packageRootDirPath, 'config', 'theme.json'),
       targetRelativePath: 'config/theme.json',
     },

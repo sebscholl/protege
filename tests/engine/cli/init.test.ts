@@ -14,6 +14,7 @@ let firstCreatedCount = 0;
 let secondSkippedCount = 0;
 let forceCreatedCount = 0;
 let gatewayConfigExists = false;
+let securityConfigExists = false;
 let toolsReadmeExists = false;
 let inferenceLocalExampleExists = false;
 let initializedInferenceUsesEnv = false;
@@ -35,6 +36,7 @@ beforeAll(async (): Promise<void> => {
   };
   firstCreatedCount = firstResult.createdFiles.length;
   gatewayConfigExists = existsSync(join(projectPath, 'config', 'gateway.json'));
+  securityConfigExists = existsSync(join(projectPath, 'config', 'security.json'));
   toolsReadmeExists = existsSync(join(projectPath, 'extensions', 'tools', 'README.md'));
   inferenceLocalExampleExists = existsSync(join(projectPath, 'config', 'inference.local.example.json'));
   const inferenceJson = JSON.parse(readFileSync(join(projectPath, 'config', 'inference.json'), 'utf8')) as {
@@ -86,6 +88,10 @@ describe('init cli command', () => {
 
   it('writes gateway config scaffold into target path', () => {
     expect(gatewayConfigExists).toBe(true);
+  });
+
+  it('writes security config scaffold into target path', () => {
+    expect(securityConfigExists).toBe(true);
   });
 
   it('writes extensions tools directory readme scaffold into target path', () => {

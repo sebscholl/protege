@@ -10,8 +10,9 @@ Current top-level config files:
 
 1. `gateway.json` for SMTP gateway runtime behavior.
 2. `inference.json` for harness/provider behavior.
-3. `system.json` for global runtime behavior (for example unified log path).
-4. `system-prompt.md` for the base system prompt text.
+3. `security.json` for gateway access-control policy.
+4. `system.json` for global runtime behavior (for example unified log path).
+5. `system-prompt.md` for the base system prompt text.
 
 ## `gateway.json`
 
@@ -53,7 +54,7 @@ Required fields:
 Optional fields:
 
 1. `recursion_depth`: number (default `3`).
-2. `whitelist`: string array (default `[]`).
+2. `whitelist`: string array (legacy/deprecated; gateway access control now lives in `security.json`).
 3. `temperature`: number.
 4. `max_output_tokens`: number.
 5. `max_tool_turns`: positive integer max provider/tool loop turns per run (default `8`).
@@ -89,6 +90,27 @@ Global fields:
 1. `logs_dir_path`: string path (default `tmp/logs`).
 2. `console_log_format`: `json | pretty` (default `json` when missing).
 3. `admin_contact_email`: optional email for runtime failure alerts.
+
+## `security.json`
+
+Gateway access-control fields:
+
+1. `gateway_access` object:
+   1. `enabled`: boolean.
+   2. `default_decision`: `allow | deny`.
+   3. `allow`: sender email wildcard rules (for example `["*@example.com"]`).
+   4. `deny`: sender email wildcard rules that always override allow rules.
+
+Rule evaluation order:
+
+1. `deny` rules.
+2. `allow` rules.
+3. `default_decision`.
+
+Scope:
+
+1. Applies only to gateway inbound processing.
+2. Does not apply to local chat mode.
 
 `chat` fields:
 
