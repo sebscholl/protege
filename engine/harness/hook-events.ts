@@ -14,6 +14,7 @@ export const HOOK_EVENT = {
   GatewayInboundReceived: 'gateway.inbound.received',
   GatewayInboundServerStarted: 'gateway.inbound.server_started',
   GatewayOutboundQueuedViaRelay: 'gateway.outbound.queued_via_relay',
+  GatewayOutboundSentViaRelay: 'gateway.outbound.sent_via_relay',
   GatewayOutboundRelayDeliverySignalTimeout: 'gateway.outbound.relay_delivery_signal_timeout',
   GatewayOutboundSending: 'gateway.outbound.sending',
   GatewayOutboundSent: 'gateway.outbound.sent',
@@ -84,6 +85,7 @@ export type HookEventPayloadByName = {
   [HOOK_EVENT.GatewayInboundReceived]: HookEventPayloadBase<typeof HOOK_EVENT.GatewayInboundReceived>;
   [HOOK_EVENT.GatewayInboundServerStarted]: HookEventPayloadBase<typeof HOOK_EVENT.GatewayInboundServerStarted>;
   [HOOK_EVENT.GatewayOutboundQueuedViaRelay]: HookEventPayloadBase<typeof HOOK_EVENT.GatewayOutboundQueuedViaRelay>;
+  [HOOK_EVENT.GatewayOutboundSentViaRelay]: HookEventPayloadBase<typeof HOOK_EVENT.GatewayOutboundSentViaRelay>;
   [HOOK_EVENT.GatewayOutboundRelayDeliverySignalTimeout]: HookEventPayloadBase<typeof HOOK_EVENT.GatewayOutboundRelayDeliverySignalTimeout>;
   [HOOK_EVENT.GatewayOutboundSending]: HookEventPayloadBase<typeof HOOK_EVENT.GatewayOutboundSending>;
   [HOOK_EVENT.GatewayOutboundSent]: HookEventPayloadBase<typeof HOOK_EVENT.GatewayOutboundSent>;
@@ -140,4 +142,3 @@ export function isHookEventName(
 ): value is HookEventName {
   return Object.values(HOOK_EVENT).includes(value as HookEventName);
 }
-

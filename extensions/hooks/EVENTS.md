@@ -39,41 +39,98 @@ And may include event-specific context fields emitted by runtime log calls (for 
 10. `gateway.inbound.received`
 11. `gateway.inbound.server_started`
 12. `gateway.outbound.queued_via_relay`
-13. `gateway.outbound.relay_delivery_signal_timeout`
-14. `gateway.outbound.sending`
-15. `gateway.outbound.sent`
-16. `gateway.persona.email_domain_reconciled`
-17. `gateway.relay.authenticated`
-18. `gateway.relay.client_starting`
-19. `gateway.relay.clients_started`
-20. `gateway.relay.control_message`
-21. `gateway.relay.disconnected`
-22. `gateway.relay.frame_invalid`
-23. `gateway.relay.ingest_failed`
-24. `gateway.relay.ingest_uninitialized`
-25. `gateway.runtime_action.completed`
-26. `gateway.runtime_action.invoking`
-27. `gateway.scheduler.start_failed`
-28. `harness.inbound.persisted`
-29. `harness.inference.completed`
-30. `harness.inference.started`
-31. `harness.tool.call.completed`
-32. `harness.tool.call.failed`
-33. `harness.tool.call.started`
-34. `harness.tool.calls.received`
-35. `scheduler.alert.skipped_missing_admin_contact`
-36. `scheduler.cron.enqueued`
-37. `scheduler.cron.invalid_schedule`
-38. `scheduler.cron.skipped_overlap`
-39. `scheduler.cycle.persona_failed`
-40. `scheduler.cycle.throttled`
-41. `scheduler.recovery.interrupted_runs_finalized`
-42. `scheduler.run.claimed`
-43. `scheduler.run.completed`
-44. `scheduler.run.failed`
-45. `scheduler.run.started`
-46. `scheduler.stopped`
-47. `scheduler.sync.completed`
+13. `gateway.outbound.sent_via_relay`
+14. `gateway.outbound.relay_delivery_signal_timeout`
+15. `gateway.outbound.sending`
+16. `gateway.outbound.sent`
+17. `gateway.persona.email_domain_reconciled`
+18. `gateway.relay.authenticated`
+19. `gateway.relay.client_starting`
+20. `gateway.relay.clients_started`
+21. `gateway.relay.control_message`
+22. `gateway.relay.disconnected`
+23. `gateway.relay.frame_invalid`
+24. `gateway.relay.ingest_failed`
+25. `gateway.relay.ingest_uninitialized`
+26. `gateway.runtime_action.completed`
+27. `gateway.runtime_action.invoking`
+28. `gateway.scheduler.start_failed`
+29. `harness.inbound.persisted`
+30. `harness.inference.completed`
+31. `harness.inference.started`
+32. `harness.tool.call.completed`
+33. `harness.tool.call.failed`
+34. `harness.tool.call.started`
+35. `harness.tool.calls.received`
+36. `scheduler.alert.skipped_missing_admin_contact`
+37. `scheduler.cron.enqueued`
+38. `scheduler.cron.invalid_schedule`
+39. `scheduler.cron.skipped_overlap`
+40. `scheduler.cycle.persona_failed`
+41. `scheduler.cycle.throttled`
+42. `scheduler.recovery.interrupted_runs_finalized`
+43. `scheduler.run.claimed`
+44. `scheduler.run.completed`
+45. `scheduler.run.failed`
+46. `scheduler.run.started`
+47. `scheduler.stopped`
+48. `scheduler.sync.completed`
+
+## Payload Fields by Event (Additional to Base Fields)
+
+Base fields are always present: `level`, `scope`, `event`, `timestamp`.
+
+1. `chat.runtime_action.completed`: `action`, `threadId`, `messageId`
+2. `chat.send.failed`: `personaId`, `threadId`, `errorName`, `message`, `errorStackPreview`
+3. `gateway.alert.failed`: `correlationId`, `personaId`, `threadId`, `messageId`, `message`
+4. `gateway.alert.sent`: `correlationId`, `personaId`, `threadId`, `messageId`, `alertMessageId`
+5. `gateway.alert.skipped_missing_admin_contact`: `correlationId`, `personaId`, `threadId`, `messageId`
+6. `gateway.alert.skipped_missing_persona`: `correlationId`, `threadId`, `messageId`
+7. `gateway.error`: union payload from callsite, typically one of:
+   - `reasonCode`, `message`, `smtpSessionId`
+   - `correlationId`, `attempt`, `message`
+   - `correlationId`, `message`, `personaId`, `threadId`, `messageId`
+8. `gateway.inbound.enqueued`: `correlationId`, `personaId`, `threadId`, `messageId`
+9. `gateway.inbound.parsed`: `messageId`, `threadId`, `rawMimePath`, `attachmentCount`, `smtpSessionId`, `personaId`
+10. `gateway.inbound.received`: `correlationId`, `personaId`, `threadId`, `messageId`
+11. `gateway.inbound.server_started`: `host`, `port`, `dev`
+12. `gateway.outbound.queued_via_relay`: `correlationId`, `attempt`, `recipients`, `inReplyTo`, `messageId`, `deliverySignalTimedOut?`
+13. `gateway.outbound.sent_via_relay`: `correlationId`, `attempt`, `recipients`, `inReplyTo`, `messageId`
+14. `gateway.outbound.relay_delivery_signal_timeout`: `correlationId`, `attempt`, `message`, `recipients`, `inReplyTo`, `messageId`
+15. `gateway.outbound.sending`: `correlationId`, `attempt`, `to`, `inReplyTo`
+16. `gateway.outbound.sent`: `correlationId`, `attempt`, `to`, `inReplyTo`
+17. `gateway.persona.email_domain_reconciled`: `personaId`, `from`, `to`
+18. `gateway.relay.authenticated`: `personaId`, `publicKeyBase32`
+19. `gateway.relay.client_starting`: `personaId`, `publicKeyBase32`
+20. `gateway.relay.clients_started`: `relayClientCount`
+21. `gateway.relay.control_message`: `personaId`, `type`, `code`
+22. `gateway.relay.disconnected`: `personaId`, `reconnectAttempt`, `reconnectDelayMs`
+23. `gateway.relay.frame_invalid`: `personaId`, `bytes`
+24. `gateway.relay.ingest_failed`: `message`, `recipientAddress`
+25. `gateway.relay.ingest_uninitialized`: `recipientAddress`
+26. `gateway.runtime_action.completed`: `correlationId`, `action`, `messageId`, optional email fields `to`, `subject`, `attachmentCount`, `attachmentNames`
+27. `gateway.runtime_action.invoking`: `correlationId`, `action`, optional email fields `to`, `subject`, `attachmentCount`, `attachmentNames`
+28. `gateway.scheduler.start_failed`: `message`
+29. `harness.inbound.persisted`: `correlationId`, `personaId`, `threadId`, `messageId`
+30. `harness.inference.completed`: `correlationId`, `personaId`, `threadId`, `messageId`, `responseMessageId`, `suppressedFinalPersistence`
+31. `harness.inference.started`: `correlationId`, `personaId`, `threadId`, `messageId`
+32. `harness.tool.call.completed`: `correlationId`, `toolName`, `toolCallId`
+33. `harness.tool.call.failed`: `correlationId`, `toolName`, `toolCallId`, `message`, optional `errorName`, `errorStackPreview`
+34. `harness.tool.call.started`: `correlationId`, `toolName`, `toolCallId`
+35. `harness.tool.calls.received`: `correlationId`, `count`, optional `toolCalls`
+36. `scheduler.alert.skipped_missing_admin_contact`: `personaId`, `runId`, `responsibilityId`
+37. `scheduler.cron.enqueued`: `personaId`, `responsibilityId`, `triggeredAt`, `runId`
+38. `scheduler.cron.invalid_schedule`: `personaId`, `responsibilityId`, `schedule`
+39. `scheduler.cron.skipped_overlap`: `personaId`, `responsibilityId`, `triggeredAt`, `runId`
+40. `scheduler.cycle.persona_failed`: `personaId`, `message`
+41. `scheduler.cycle.throttled`: `inFlightCount`, `blockedByGlobalLimitCount`, `maxGlobalConcurrentRuns`
+42. `scheduler.recovery.interrupted_runs_finalized`: `personaId`, `recoveredRunCount`
+43. `scheduler.run.claimed`: `personaId`, `runId`, `responsibilityId`, `triggeredAt`
+44. `scheduler.run.completed`: `personaId`, `runId`, `responsibilityId`, `threadId`, `messageId`, `responseMessageId`
+45. `scheduler.run.failed`: `personaId`, `runId`, `responsibilityId`, `threadId`, `messageId`, `failureCategory`, `errorMessage`
+46. `scheduler.run.started`: `personaId`, `runId`, `responsibilityId`, `threadId`, `messageId`
+47. `scheduler.stopped`: `personaCount`
+48. `scheduler.sync.completed`: `personaId`, `upsertedCount`, `disabledCount`
 
 ## TypeScript Usage
 
@@ -90,4 +147,3 @@ export const onEvent: HarnessHookOnEvent = async (event, payload, config) => {
   }
 };
 ```
-

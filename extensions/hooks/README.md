@@ -9,11 +9,18 @@ Hooks are async observers for adjacent automation, not lifecycle controllers.
 Contract (v1):
 
 1. Hook code lives in `extensions/hooks/{hook-name}/`.
-2. Each hook exports from `index.ts`.
+2. Each hook exports from `index.ts` or `index.js`.
 3. Hook execution is non-blocking and failure-isolated.
 4. Hook ordering is deterministic by `extensions/extensions.json` hook manifest order.
 5. Hook callback signature is `onEvent(event, payload, config)`.
 6. Event and payload types are exported from `@engine/harness/hook-events`.
+
+Entry point resolution order is `index.js` first, then `index.ts`.
+
+Distribution guidance:
+
+1. Local/private development: TypeScript entrypoints are fine.
+2. Shared/distributed extensions: prefer shipping `index.js` for runtime portability.
 
 Manifest entries:
 

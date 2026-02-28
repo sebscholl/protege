@@ -133,8 +133,7 @@ Completed:
 Remaining:
 
 1. Security/Ops completion (recursion controls audit and final access-control policy expansion beyond gateway sender rules, if needed).
-2. Hooks runtime and dispatch (`extensions/hooks`).
-3. Chat UX polish (advanced navigation/search and richer compose ergonomics).
+2. Chat UX polish (advanced navigation/search and richer compose ergonomics).
 
 Planning updates:
 
@@ -230,6 +229,12 @@ Planning updates:
 36. Hooks implementation planning initialized:
    - hook manifest and dispatch contract frozen via ADR-0033
    - hooks milestone checklist created in `docs/milestones/hooks-plan.md`
+37. Hooks runtime and dispatch completed:
+   - manifest-driven hook loading supports string/object entries with default-config deep merge
+   - typed hook event contract added (`engine/harness/hook-events.ts`) and applied at dispatch boundary
+   - logger emission now fans out non-blocking hook dispatch in gateway/chat runtimes with failure isolation
+   - edge-case tests added for slow hooks, failing hooks, wildcard/exact subscriptions, and manifest-order execution
+   - e2e observer coverage added via `tests/e2e/hooks-observer.test.ts`
 
 ## ADR Coverage
 
@@ -258,3 +263,4 @@ Recent status-aligned ADRs:
 21. `docs/adr/0030-setup-wizard-command-separation.md`
 22. `docs/adr/0031-scheduler-concurrency-and-no-overlap-policy.md`
 23. `docs/adr/0032-scheduler-run-outcome-and-observability-policy.md`
+24. `docs/adr/0033-hooks-manifest-and-async-dispatch-v1.md`

@@ -10,10 +10,15 @@ Tool contracts should stay stable and explicitly documented per extension.
 
 Each tool must be implemented as:
 
-1. `extensions/tools/{tool-name}/index.ts`
+1. `extensions/tools/{tool-name}/index.ts` or `extensions/tools/{tool-name}/index.js`
 2. `extensions/tools/{tool-name}/README.md`
 
-`index.ts` is the tool's sole code entry point and exports the tool definition and execution method.
+Entry point resolution order is `index.js` first, then `index.ts`.
+
+Distribution guidance:
+
+1. Local/private development: TypeScript entrypoints are fine.
+2. Shared/distributed extensions: prefer shipping `index.js` for runtime portability.
 
 ## Isolation Boundary
 

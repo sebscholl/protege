@@ -1,6 +1,6 @@
 # Milestone Plan: Hooks Runtime and Dispatch
 
-Status: Planned
+Status: Complete
 Scope: Implement extension hooks as async, non-blocking subscribers to runtime events.
 
 ## Decision Anchors
@@ -24,7 +24,7 @@ Scope: Implement extension hooks as async, non-blocking subscribers to runtime e
 
 ## H1: Manifest and Contract
 
-Status: Planned
+Status: Complete
 
 ### Tasks
 
@@ -46,20 +46,19 @@ Status: Planned
 
 ## H2: Hook Loader and Registry
 
-Status: Planned
+Status: Complete
 
 ### Tasks
 
 1. Add generic hook contract types in engine.
-2. Implement hook registry loader for `extensions/hooks/{name}/index.ts`.
+2. Implement hook registry loader for `extensions/hooks/{name}/index.ts` and `index.js`.
 3. Build event subscription index with wildcard support.
 4. Enforce hook callback signature:
    - `onEvent(event, payload, config)`
 
 ### Tests
 
-1. `tests/engine/harness/hooks-registry.test.ts`
-2. `tests/extensions/hooks/*/index.test.ts` for fixture hook modules
+1. `tests/engine/harness/hook-registry.test.ts`
 
 ### Acceptance
 
@@ -68,7 +67,7 @@ Status: Planned
 
 ## H3: Async Event Dispatch
 
-Status: Planned
+Status: Complete
 
 ### Tasks
 
@@ -88,21 +87,33 @@ Status: Planned
 2. Hook failures are logged with hook name and event metadata.
 3. Multiple hooks for same event execute in manifest order.
 
+### Completion Notes
+
+1. Hook dispatch is wired through logger emission callbacks in gateway and chat runtimes.
+2. Dispatch remains non-blocking (fire-and-forget) with per-hook failure isolation.
+3. Edge-case coverage includes slow hooks, failing hooks, wildcard/exact subscriptions, and manifest-order execution.
+4. E2E coverage validates real manifest->loader->logger->dispatcher->hook callback flow.
+
 ## H4: Docs and Operator Guidance
 
-Status: Planned
+Status: Complete
 
 ### Tasks
 
 1. Update `extensions/README.md` with hook object-form schema.
 2. Expand `extensions/hooks/README.md` with authoring contract and examples.
 3. Update `docs/status.md` planning updates after implementation.
-4. Add one example hook README under `extensions/hooks/` docs section only (no default runtime hook entry).
+4. Add hook event catalog and payload contract documentation.
 
 ### Acceptance
 
 1. Hook authoring flow is clear without reading engine internals.
 2. Runtime behavior, ordering, and failure semantics are explicit.
+
+### Completion Notes
+
+1. Hook docs include JS/TS entrypoint guidance and distribution recommendations.
+2. Event names and payload contract are documented in `extensions/hooks/EVENTS.md`.
 
 ## Exit Criteria
 
