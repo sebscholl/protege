@@ -1,10 +1,13 @@
 import type { PersonaMetadata } from '@engine/shared/personas';
 
+import Table from 'cli-table3';
+
 /**
  * Represents one JSON-serializable CLI payload.
  */
 export type CliJsonValue = PersonaMetadata | PersonaMetadata[] | Record<string, unknown>;
 export type CliOutputMode = 'json' | 'pretty';
+export type CliTableCell = string | number | boolean | null | undefined;
 
 /**
  * Emits one plain-text line block to stdout.
@@ -16,7 +19,7 @@ export function emitCliText(
   },
 ): void {
   const trailingNewlines = args.trailingNewlines ?? 1;
-  process.stdout.write(`${args.value}${'\n'.repeat(Math.max(0, trailingNewlines))}`);
+  process.stdout.write(`\n${args.value}${'\n'.repeat(Math.max(0, trailingNewlines))}\n`);
 }
 
 /**
@@ -30,6 +33,65 @@ export function emitCliJson(
   emitCliText({
     value: JSON.stringify(args.value),
   });
+}
+
+/**
+ * Renders one plain terminal table using shared CLI table settings.
+ */
+export function renderCliTable(
+  args: {
+    head: string[];
+    rows: CliTableCell[][];
+    colAligns?: Array<'left' | 'center' | 'right'>;
+  },
+): string {
+  const table = new Table({
+    head: args.head,
+    ...(args.colAligns ? { colAligns: args.colAligns } : {}),
+    style: {
+      head: [],
+      border: [],
+    },
+  });
+  for (const row of args.rows) {
+    table.push(row.map((cell) => stringifyCliTableCell({
+      cell,
+    })));
+  }
+
+  return table.toString();
+}
+
+/**
+ * Renders one two-column key/value table for readable CLI summaries.
+ */
+export function renderCliKeyValueTable(
+  args: {
+    rows: Array<{
+      key: string;
+      value: CliTableCell;
+    }>;
+  },
+): string {
+  return renderCliTable({
+    head: ['Key', 'Value'],
+    rows: args.rows.map((row) => [row.key, row.value]),
+  });
+}
+
+/**
+ * Converts one table cell value into a printable string.
+ */
+export function stringifyCliTableCell(
+  args: {
+    cell: CliTableCell;
+  },
+): string {
+  if (args.cell === null || args.cell === undefined) {
+    return '';
+  }
+
+  return String(args.cell);
 }
 
 /**

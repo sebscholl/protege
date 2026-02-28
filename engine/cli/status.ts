@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { GatewayRuntimeConfig } from '@engine/gateway/index';
 
 import { readGatewayRuntimeConfig, resolveDefaultGatewayConfigPath } from '@engine/gateway/index';
+import { emitCliOutput, renderCliTable } from '@engine/cli/output';
 import {
   listPersonas,
   resolvePersonaMemoryPaths,
@@ -96,18 +97,21 @@ export function renderStatusSnapshot(
     snapshot: CliStatusSnapshot;
   },
 ): string {
-  return [
-    `gateway.running: ${args.snapshot.gateway.running}`,
-    `gateway.mode: ${args.snapshot.gateway.mode}`,
-    `gateway.host: ${args.snapshot.gateway.host}`,
-    `gateway.port: ${args.snapshot.gateway.port}`,
-    `relay.enabled: ${args.snapshot.relay.enabled}`,
-    `relay.relayWsUrl: ${args.snapshot.relay.relayWsUrl ?? 'none'}`,
-    `persona.count: ${args.snapshot.persona.count}`,
-    `memory.personasWithTemporalDb: ${args.snapshot.memory.personasWithTemporalDb}`,
-    `memory.personasWithActiveMd: ${args.snapshot.memory.personasWithActiveMd}`,
-    `paths.logsDir: ${args.snapshot.paths.logsDir}`,
-  ].join('\n');
+  return renderCliTable({
+    head: ['Key', 'Value'],
+    rows: [
+      ['gateway.running', args.snapshot.gateway.running],
+      ['gateway.mode', args.snapshot.gateway.mode],
+      ['gateway.host', args.snapshot.gateway.host],
+      ['gateway.port', args.snapshot.gateway.port],
+      ['relay.enabled', args.snapshot.relay.enabled],
+      ['relay.relayWsUrl', args.snapshot.relay.relayWsUrl ?? 'none'],
+      ['persona.count', args.snapshot.persona.count],
+      ['memory.personasWithTemporalDb', args.snapshot.memory.personasWithTemporalDb],
+      ['memory.personasWithActiveMd', args.snapshot.memory.personasWithActiveMd],
+      ['paths.logsDir', args.snapshot.paths.logsDir],
+    ],
+  });
 }
 
 /**
@@ -122,14 +126,13 @@ export function runStatusCommand(
     argv: args.argv,
   });
   const snapshot = buildStatusSnapshot();
-  if (parsed.json) {
-    process.stdout.write(`${JSON.stringify(snapshot)}\n`);
-    return;
-  }
-
-  process.stdout.write(`${renderStatusSnapshot({
-    snapshot,
-  })}\n`);
+  emitCliOutput({
+    mode: parsed.json ? 'json' : 'pretty',
+    jsonValue: snapshot,
+    prettyText: renderStatusSnapshot({
+      snapshot,
+    }),
+  });
 }
 
 /**

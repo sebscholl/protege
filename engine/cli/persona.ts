@@ -6,7 +6,7 @@ import {
   readPersonaMetadata,
 } from '@engine/shared/personas';
 
-import { emitCliOutput } from '@engine/cli/output';
+import { emitCliOutput, renderCliKeyValueTable, renderCliTable } from '@engine/cli/output';
 
 /**
  * Dispatches persona-specific CLI commands.
@@ -117,9 +117,13 @@ export function renderPersonaCreateResult(
 ): string {
   return [
     'Persona Created',
-    `personaId: ${args.persona.personaId}`,
-    `emailAddress: ${args.persona.emailAddress}`,
-    `label: ${args.persona.label ?? 'none'}`,
+    renderCliKeyValueTable({
+      rows: [
+        { key: 'personaId', value: args.persona.personaId },
+        { key: 'emailAddress', value: args.persona.emailAddress },
+        { key: 'label', value: args.persona.label ?? 'none' },
+      ],
+    }),
   ].join('\n');
 }
 
@@ -137,8 +141,14 @@ export function renderPersonaListResult(
 
   return [
     'Personas',
-    'personaId    |   emailAddress    |   label',
-    ...args.personas.map((persona) => `${persona.personaId}  ${persona.emailAddress}  label=${persona.label ?? 'none'}`),
+    renderCliTable({
+      head: ['Persona ID', 'Email Address', 'Label'],
+      rows: args.personas.map((persona) => [
+        persona.personaId,
+        persona.emailAddress,
+        persona.label ?? 'none',
+      ]),
+    }),
   ].join('\n');
 }
 
@@ -152,10 +162,14 @@ export function renderPersonaInfoResult(
 ): string {
   return [
     'Persona Details',
-    `personaId: ${args.persona.personaId}`,
-    `emailAddress: ${args.persona.emailAddress}`,
-    `publicKeyBase32: ${args.persona.publicKeyBase32}`,
-    `createdAt: ${args.persona.createdAt}`,
-    `label: ${args.persona.label ?? 'none'}`,
+    renderCliKeyValueTable({
+      rows: [
+        { key: 'personaId', value: args.persona.personaId },
+        { key: 'emailAddress', value: args.persona.emailAddress },
+        { key: 'publicKeyBase32', value: args.persona.publicKeyBase32 },
+        { key: 'createdAt', value: args.persona.createdAt },
+        { key: 'label', value: args.persona.label ?? 'none' },
+      ],
+    }),
   ].join('\n');
 }

@@ -10,7 +10,7 @@ import { createInterface } from 'node:readline/promises';
 
 import { runDoctorChecks } from '@engine/cli/doctor';
 import { runInitCommand } from '@engine/cli/init';
-import { emitCliOutput } from '@engine/cli/output';
+import { emitCliOutput, renderCliKeyValueTable } from '@engine/cli/output';
 import {
   inferMailDomainFromRelayWsUrl,
   selectRelayBootstrapMailDomain,
@@ -788,17 +788,21 @@ export function renderSetupResult(
 ): string {
   return [
     'Setup Completed',
-    `targetPath: ${args.result.targetPath}`,
-    `provider: ${args.result.provider}`,
-    `outboundMode: ${args.result.outboundMode}`,
-    `relayWsUrl: ${args.result.relayWsUrl ?? 'none'}`,
-    `mailDomain: ${args.result.mailDomain}`,
-    `personaId: ${args.result.personaId}`,
-    `personaEmailAddress: ${args.result.personaEmailAddress}`,
-    `createdPersona: ${args.result.createdPersona}`,
-    `webSearchProvider: ${args.result.webSearchProvider}`,
-    `wroteEnvKeys: ${args.result.wroteEnvKeys.length > 0 ? args.result.wroteEnvKeys.join(', ') : 'none'}`,
-    `nextCommand: ${args.result.nextCommand}`,
+    renderCliKeyValueTable({
+      rows: [
+        { key: 'targetPath', value: args.result.targetPath },
+        { key: 'provider', value: args.result.provider },
+        { key: 'outboundMode', value: args.result.outboundMode },
+        { key: 'relayWsUrl', value: args.result.relayWsUrl ?? 'none' },
+        { key: 'mailDomain', value: args.result.mailDomain },
+        { key: 'personaId', value: args.result.personaId },
+        { key: 'personaEmailAddress', value: args.result.personaEmailAddress },
+        { key: 'createdPersona', value: args.result.createdPersona },
+        { key: 'webSearchProvider', value: args.result.webSearchProvider },
+        { key: 'wroteEnvKeys', value: args.result.wroteEnvKeys.length > 0 ? args.result.wroteEnvKeys.join(', ') : 'none' },
+        { key: 'nextCommand', value: args.result.nextCommand },
+      ],
+    }),
   ].join('\n');
 }
 

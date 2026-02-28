@@ -76,6 +76,6 @@ describe('status cli command', () => {
   });
 
   it('prints readable status lines without --json', () => {
-    expect(statusText.includes('gateway.running:')).toBe(true);
+    expect(statusText.includes('gateway.running')).toBe(true);
   });
 });

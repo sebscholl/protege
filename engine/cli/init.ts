@@ -2,7 +2,7 @@ import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { emitCliOutput } from '@engine/cli/output';
+import { emitCliOutput, renderCliKeyValueTable, renderCliTable } from '@engine/cli/output';
 
 /**
  * Represents parsed `protege init` command options.
@@ -121,21 +121,34 @@ export function renderInitResult(
     result: InitCommandResult;
   },
 ): string {
-  const createdPreview = args.result.createdFiles.length > 0
-    ? args.result.createdFiles.join(', ')
-    : 'none';
-  const skippedPreview = args.result.skippedFiles.length > 0
-    ? args.result.skippedFiles.join(', ')
-    : 'none';
-
-  return [
+  const sections = [
     'Init Completed',
-    `targetPath: ${args.result.targetPath}`,
-    `createdFiles.count: ${args.result.createdFiles.length}`,
-    `createdFiles.preview: ${createdPreview}`,
-    `skippedFiles.count: ${args.result.skippedFiles.length}`,
-    `skippedFiles.preview: ${skippedPreview}`,
-  ].join('\n');
+    renderCliKeyValueTable({
+      rows: [
+        { key: 'targetPath', value: args.result.targetPath },
+        { key: 'createdFiles.count', value: args.result.createdFiles.length },
+        { key: 'skippedFiles.count', value: args.result.skippedFiles.length },
+      ],
+    }),
+  ];
+
+  if (args.result.createdFiles.length > 0) {
+    sections.push('Created Files');
+    sections.push(renderCliTable({
+      head: ['Path'],
+      rows: args.result.createdFiles.map((filePath) => [filePath]),
+    }));
+  }
+
+  if (args.result.skippedFiles.length > 0) {
+    sections.push('Skipped Files');
+    sections.push(renderCliTable({
+      head: ['Path'],
+      rows: args.result.skippedFiles.map((filePath) => [filePath]),
+    }));
+  }
+
+  return sections.join('\n');
 }
 
 /**

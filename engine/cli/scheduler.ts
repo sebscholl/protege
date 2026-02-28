@@ -1,5 +1,5 @@
 import { syncPersonaResponsibilities } from '@engine/scheduler/sync';
-import { emitCliOutput } from '@engine/cli/output';
+import { emitCliOutput, renderCliTable } from '@engine/cli/output';
 import { initializeDatabase } from '@engine/shared/database';
 import { resolveMigrationsDirPath } from '@engine/harness/runtime';
 import { resolvePersonaBySelector } from '@engine/shared/persona-selector';
@@ -126,17 +126,21 @@ export function renderSchedulerSyncResult(
     result: SchedulerSyncResult;
   },
 ): string {
-  const lines = [
+  return [
     'Scheduler Sync Completed',
     `mode: ${args.result.mode}`,
     `personas.count: ${args.result.personas.length}`,
-  ];
-
-  for (const summary of args.result.personas) {
-    lines.push(`${summary.personaId}  parsed=${summary.parsedCount}  upserted=${summary.upsertedCount}  disabled=${summary.disabledCount}`);
-  }
-
-  return lines.join('\n');
+    renderCliTable({
+      head: ['Persona ID', 'Parsed', 'Upserted', 'Disabled'],
+      rows: args.result.personas.map((summary) => [
+        summary.personaId,
+        summary.parsedCount,
+        summary.upsertedCount,
+        summary.disabledCount,
+      ]),
+      colAligns: ['left', 'right', 'right', 'right'],
+    }),
+  ].join('\n');
 }
 
 /**

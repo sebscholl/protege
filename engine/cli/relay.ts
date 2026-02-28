@@ -1,5 +1,5 @@
 import { parseRelayBootstrapArgs, runRelayBootstrap } from '@engine/cli/relay-bootstrap';
-import { emitCliOutput } from '@engine/cli/output';
+import { emitCliOutput, renderCliKeyValueTable } from '@engine/cli/output';
 
 /**
  * Dispatches relay-specific CLI commands.
@@ -45,10 +45,14 @@ export function renderRelayBootstrapResult(
 ): string {
   return [
     'Relay Bootstrap Completed',
-    `relayEnabled: ${args.result.relayEnabled}`,
-    `relayWsUrl: ${args.result.relayWsUrl}`,
-    `personaId: ${args.result.personaId}`,
-    `createdPersona: ${args.result.createdPersona}`,
-    `gatewayConfigPath: ${args.result.gatewayConfigPath}`,
+    renderCliKeyValueTable({
+      rows: [
+        { key: 'relayEnabled', value: args.result.relayEnabled },
+        { key: 'relayWsUrl', value: args.result.relayWsUrl },
+        { key: 'personaId', value: args.result.personaId },
+        { key: 'createdPersona', value: args.result.createdPersona },
+        { key: 'gatewayConfigPath', value: args.result.gatewayConfigPath },
+      ],
+    }),
   ].join('\n');
 }
