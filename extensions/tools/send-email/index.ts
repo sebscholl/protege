@@ -1,7 +1,7 @@
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from '@engine/harness/tool-contract';
+} from '@engine/harness/tools/contract';
 
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';

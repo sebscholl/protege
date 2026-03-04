@@ -39,6 +39,7 @@ export type InboundNormalizedMessage = {
   receivedAt: string;
   rawMimePath: string;
   attachments: InboundAttachment[];
+  metadata?: Record<string, unknown>;
 };
 
 /**

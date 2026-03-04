@@ -10,9 +10,10 @@ Current top-level config files:
 
 1. `gateway.json` for SMTP gateway runtime behavior.
 2. `inference.json` for harness/provider behavior.
-3. `security.json` for gateway access-control policy.
-4. `system.json` for global runtime behavior (for example unified log path).
-5. `system-prompt.md` for the base system prompt text.
+3. `context.json` for harness context-loading pipeline behavior.
+4. `security.json` for gateway access-control policy.
+5. `system.json` for global runtime behavior (for example unified log path).
+6. `system-prompt.md` for the base system prompt text.
 
 ## `gateway.json`
 
@@ -57,30 +58,27 @@ Optional fields:
 2. `temperature`: number.
 3. `max_output_tokens`: number.
 4. `max_tool_turns`: positive integer max provider/tool loop turns per run (default `8`).
-5. `providers` object:
-   1. `openai`:
-      1. `api_key_env`: env var key name (recommended).
-      2. `api_key`: literal API key (legacy fallback).
-      3. `base_url`: optional override base URL.
-   2. `anthropic`:
-      1. `api_key_env`
-      2. `api_key` (legacy fallback)
-      3. `base_url`: optional override base URL.
-      4. `version`: optional override for `anthropic-version` request header (default `2023-06-01`).
-   3. `gemini`:
-      1. `api_key_env`
-      2. `api_key` (legacy fallback)
-      3. `base_url`: optional override base URL.
-   4. `grok`:
-      1. `api_key_env`
-      2. `api_key` (legacy fallback)
-      3. `base_url`: optional override base URL.
 
-Credential resolution order per provider:
+Provider credentials and per-provider transport settings are configured in `extensions/extensions.json` under `providers[]`.
 
-1. `providers.{provider}.api_key` when set.
-2. `providers.{provider}.api_key_env` resolved from process env when set.
-3. otherwise undefined (doctor/runtime will fail for selected provider).
+## `context.json`
+
+Profile fields:
+
+1. `thread`: ordered string steps for email/chat thread runs.
+2. `responsibility`: ordered string steps for scheduler responsibility runs.
+
+Supported step forms:
+
+1. `file:<path>`
+2. `resolver:<name>`
+
+Step execution notes:
+
+1. Steps execute in declared order.
+2. `file:` steps read optional text files (missing files are skipped).
+3. `resolver:` steps execute manifest-enabled resolver modules from `extensions/resolvers/*`.
+4. Default context scaffold uses resolver-only steps and ships built-in resolver implementations as extension modules.
 
 ## `system.json`
 

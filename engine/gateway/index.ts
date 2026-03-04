@@ -22,9 +22,9 @@ import { applyRelayTunnelFrame, createRelayTunnelAssemblyState } from '@engine/g
 import { startRelayClient } from '@engine/gateway/relay-client';
 import type { RelayClientController } from '@engine/gateway/relay-client';
 import { buildReplySubject } from '@engine/gateway/threading';
-import type { HookEventPayloadByName } from '@engine/harness/hook-events';
-import { isHookEventName } from '@engine/harness/hook-events';
-import { createHookDispatcher, loadHookRegistry } from '@engine/harness/hook-registry';
+import type { HookEventPayloadByName } from '@engine/harness/hooks/events';
+import { isHookEventName } from '@engine/harness/hooks/events';
+import { createHookDispatcher, loadHookRegistry } from '@engine/harness/hooks/registry';
 import type { HarnessRuntimeActionInvoker } from '@engine/harness/runtime';
 import {
   persistInboundMessageForRuntime,

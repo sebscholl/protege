@@ -300,6 +300,17 @@ export function buildResponsibilityInboundMessage(
     receivedAt: args.receivedAt,
     rawMimePath: '__responsibility__',
     attachments: [],
+    metadata: {
+      source: 'responsibility',
+      responsibility: {
+        id: args.responsibility.id,
+        name: args.responsibility.name,
+        schedule: args.responsibility.schedule,
+        promptPath: args.responsibility.promptPath,
+        promptHash: args.responsibility.promptHash,
+        enabled: args.responsibility.enabled,
+      },
+    },
   };
 }
 

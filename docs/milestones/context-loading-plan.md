@@ -79,11 +79,23 @@ Budget tuning and true tokenizer support are follow-up work.
 
 ## Configuration Surface (Planned)
 
-No new config is required for initial rollout. Use current defaults, then add optional controls later:
+Add one dedicated config for context assembly:
 
-1. `inference.max_context_tokens` (future)
-2. `inference.max_history_tokens` (existing behavior anchor)
-3. `inference.max_active_memory_tokens` (future)
+1. `config/context.json`
+
+Minimal v1 surface:
+
+1. `pipelines.thread` with ordered step strings.
+2. `pipelines.responsibility` with ordered step strings.
+3. Step forms:
+   1. `file:<path>`
+   2. `resolver:<name>`
+
+Notes:
+
+1. All shipped dynamic loaders are referenced as `resolver:<name>` entries.
+2. Custom dynamic loaders use the same resolver contract and naming.
+3. No separate `builtin` step type is introduced.
 
 ## Implementation Checklist
 

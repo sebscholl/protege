@@ -13,7 +13,7 @@ import {
   shouldSuppressFinalResponsePersistence,
   toHarnessInput,
 } from '@engine/harness/runtime';
-import { HarnessProviderError } from '@engine/harness/provider-contract';
+import { HarnessProviderError } from '@engine/harness/providers/contract';
 
 const inboundMessage: InboundNormalizedMessage = {
   personaId: 'persona-1',
@@ -142,73 +142,49 @@ beforeAll((): void => {
 
   try {
     createProviderAdapter({
-      inferenceConfig: { providers: {} },
+      providerConfig: {},
       provider: 'mistral' as 'openai' | 'anthropic' | 'gemini' | 'grok',
     });
   } catch (error) {
     unsupportedProviderCode = (error as HarnessProviderError).code;
   }
   anthropicAdapterProviderId = createProviderAdapter({
-    inferenceConfig: {
-      providers: {
-        anthropic: {
-          apiKey: 'anthropic-test',
-        },
-      },
+    providerConfig: {
+      apiKey: 'anthropic-test',
     },
     provider: 'anthropic',
   }).providerId;
   try {
     createProviderAdapter({
-      inferenceConfig: {
-        providers: {
-          anthropic: {},
-        },
-      },
+      providerConfig: {},
       provider: 'anthropic',
     });
   } catch (error) {
     anthropicMissingApiKeyMessage = (error as Error).message;
   }
   geminiAdapterProviderId = createProviderAdapter({
-    inferenceConfig: {
-      providers: {
-        gemini: {
-          apiKey: 'gemini-test',
-        },
-      },
+    providerConfig: {
+      apiKey: 'gemini-test',
     },
     provider: 'gemini',
   }).providerId;
   try {
     createProviderAdapter({
-      inferenceConfig: {
-        providers: {
-          gemini: {},
-        },
-      },
+      providerConfig: {},
       provider: 'gemini',
     });
   } catch (error) {
     geminiMissingApiKeyMessage = (error as Error).message;
   }
   grokAdapterProviderId = createProviderAdapter({
-    inferenceConfig: {
-      providers: {
-        grok: {
-          apiKey: 'grok-test',
-        },
-      },
+    providerConfig: {
+      apiKey: 'grok-test',
     },
     provider: 'grok',
   }).providerId;
   try {
     createProviderAdapter({
-      inferenceConfig: {
-        providers: {
-          grok: {},
-        },
-      },
+      providerConfig: {},
       provider: 'grok',
     });
   } catch (error) {

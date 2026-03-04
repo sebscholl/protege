@@ -24,6 +24,66 @@ This plan defines:
 5. Thread memory persists reasoning continuity at low token cost.
 6. Memory synthesis is async; inference reads committed snapshots only.
 
+## Context Pipeline API (v1)
+
+Use one declarative config: `config/context.json`.
+
+Step syntax is intentionally minimal:
+
+1. `file:<path>` for static or templated file loads.
+2. `resolver:<name>` for dynamic context providers.
+
+All dynamic context providers use the same contract, whether shipped by core or custom extension code.
+
+### Example
+
+```json
+{
+  "version": 1,
+  "pipelines": {
+    "thread": [
+      "file:config/system-prompt.md",
+      "file:personas/{persona_id}/PERSONA.md",
+      "file:memory/{persona_id}/active.md",
+      "resolver:thread_memory",
+      "resolver:invocation_metadata",
+      "resolver:knowledge_guidance",
+      "resolver:thread_history",
+      "resolver:current_input"
+    ],
+    "responsibility": [
+      "file:config/system-prompt.md",
+      "file:personas/{persona_id}/PERSONA.md",
+      "file:memory/{persona_id}/active.md",
+      "resolver:responsibility_metadata",
+      "resolver:knowledge_guidance",
+      "resolver:current_input"
+    ]
+  }
+}
+```
+
+### Path placeholders
+
+Supported placeholders for `file:` entries:
+
+1. `{persona_id}`
+2. `{thread_id}` (thread pipeline only)
+3. `{responsibility_id}` (responsibility pipeline only)
+
+Missing `file:` targets are skipped with structured warnings in v1.
+
+### Resolver contract (single model)
+
+Resolver input includes invocation context such as:
+
+1. `persona_id`
+2. `thread_id` when applicable
+3. `responsibility_id` when applicable
+4. current inbound message metadata
+
+Resolver output is text (or empty/null to skip).
+
 ## Runtime Context Profiles
 
 ## Profile A: Email/Chat Thread Turn

@@ -1,17 +1,17 @@
-import type { HarnessProviderGenerateRequest } from '@engine/harness/provider-contract';
+import type { HarnessProviderGenerateRequest } from '@engine/harness/providers/contract';
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { HarnessProviderError } from '@engine/harness/provider-contract';
+import { HarnessProviderError } from '@engine/harness/providers/contract';
 import {
-  buildGrokChatMessage,
-  createGrokProviderAdapter,
-  generateWithGrok,
-} from '@engine/harness/providers/grok';
+  buildOpenAiChatMessage,
+  createOpenAiProviderAdapter,
+  generateWithOpenAi,
+} from '@extensions/providers/openai';
 import { mswIntercept } from '@tests/network/index';
 
 const request: HarnessProviderGenerateRequest = {
-  modelId: 'grok/grok-3-latest',
+  modelId: 'openai/gpt-4.1',
   messages: [
     {
       role: 'user',
@@ -28,17 +28,17 @@ let invalidToolArgumentsCode = '';
 let emptyAssistantContent = '__unset__';
 
 beforeAll(async (): Promise<void> => {
-  mswIntercept({ fixtureKey: 'grok/chat-completions/200' });
-  const adapter = createGrokProviderAdapter({
+  mswIntercept({ fixtureKey: 'openai/chat-completions/200' });
+  const adapter = createOpenAiProviderAdapter({
     config: {
       apiKey: 'test-key',
-      baseUrl: 'https://api.x.ai/v1',
+      baseUrl: 'https://api.openai.com/v1',
     },
   });
   const success = await adapter.generate({ request });
   successText = success.text ?? '';
 
-  mswIntercept({ fixtureKey: 'grok/chat-completions/200-tool-call' });
+  mswIntercept({ fixtureKey: 'openai/chat-completions/200-tool-call' });
   const toolCallResponse = await adapter.generate({
     request: {
       ...request,
@@ -53,13 +53,13 @@ beforeAll(async (): Promise<void> => {
   });
   successToolCallName = toolCallResponse.toolCalls[0]?.name ?? '';
 
-  mswIntercept({ fixtureKey: 'grok/chat-completions/500' });
+  mswIntercept({ fixtureKey: 'openai/chat-completions/500' });
   try {
-    await generateWithGrok({
+    await generateWithOpenAi({
       request,
       config: {
         apiKey: 'test-key',
-        baseUrl: 'https://api.x.ai/v1',
+        baseUrl: 'https://api.openai.com/v1',
       },
     });
   } catch (error) {
@@ -67,44 +67,21 @@ beforeAll(async (): Promise<void> => {
   }
 
   try {
-    await generateWithGrok({
+    await generateWithOpenAi({
       request: {
         ...request,
-        modelId: 'openai/gpt-4.1',
+        modelId: 'anthropic/claude-3-7-sonnet',
       },
       config: {
         apiKey: 'test-key',
-        baseUrl: 'https://api.x.ai/v1',
+        baseUrl: 'https://api.openai.com/v1',
       },
     });
   } catch (error) {
     unsupportedProviderCode = (error as HarnessProviderError).code;
   }
 
-  mswIntercept({
-    fixtureKey: 'grok/chat-completions/200-tool-call',
-    merge: {
-      response: {
-        body: {
-          choices: [{
-            message: {
-              role: 'assistant',
-              content: '',
-              tool_calls: [{
-                id: 'call_send_email_1',
-                type: 'function',
-                function: {
-                  name: 'send_email',
-                  arguments: '{bad json}',
-                },
-              }],
-            },
-            finish_reason: 'tool_calls',
-          }],
-        },
-      },
-    },
-  });
+  mswIntercept({ fixtureKey: 'openai/chat-completions/200-tool-call-invalid-arguments' });
   try {
     await adapter.generate({
       request: {
@@ -122,7 +99,7 @@ beforeAll(async (): Promise<void> => {
     invalidToolArgumentsCode = (error as HarnessProviderError).code;
   }
 
-  emptyAssistantContent = buildGrokChatMessage({
+  emptyAssistantContent = buildOpenAiChatMessage({
     message: {
       role: 'assistant',
       parts: [],
@@ -130,7 +107,7 @@ beforeAll(async (): Promise<void> => {
   }).content;
 });
 
-describe('grok provider adapter', () => {
+describe('openai provider adapter', () => {
   it('returns normalized assistant text on successful responses', () => {
     expect(successText).toBe('Fixture response');
   });
@@ -147,7 +124,7 @@ describe('grok provider adapter', () => {
     expect(invalidToolArgumentsCode).toBe('response_parse_failed');
   });
 
-  it('rejects non-grok provider model ids', () => {
+  it('rejects non-openai provider model ids', () => {
     expect(unsupportedProviderCode).toBe('unsupported_provider');
   });
 

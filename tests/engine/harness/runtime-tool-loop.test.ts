@@ -1,11 +1,11 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { HarnessProviderError } from '@engine/harness/provider-contract';
-import type { HarnessProviderAdapter } from '@engine/harness/provider-contract';
-import type { HarnessProviderGenerateRequest } from '@engine/harness/provider-contract';
-import { createOpenAiProviderAdapter } from '@engine/harness/providers/openai';
+import { HarnessProviderError } from '@engine/harness/providers/contract';
+import type { HarnessProviderAdapter } from '@engine/harness/providers/contract';
+import type { HarnessProviderGenerateRequest } from '@engine/harness/providers/contract';
+import { createOpenAiProviderAdapter } from '@extensions/providers/openai';
 import { executeProviderToolLoop } from '@engine/harness/runtime';
-import { loadToolRegistry } from '@engine/harness/tool-registry';
+import { loadToolRegistry } from '@engine/harness/tools/registry';
 import { mswIntercept } from '@tests/network/index';
 
 let maxTurnsErrorCode = '';

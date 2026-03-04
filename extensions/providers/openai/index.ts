@@ -3,12 +3,12 @@ import type {
   HarnessProviderGenerateRequest,
   HarnessProviderGenerateResponse,
   HarnessProviderMessage,
-} from '@engine/harness/provider-contract';
+} from '@engine/harness/providers/contract';
 
 import {
   HarnessProviderError,
   parseProviderModelId,
-} from '@engine/harness/provider-contract';
+} from '@engine/harness/providers/contract';
 
 /**
  * Represents one OpenAI adapter runtime dependency configuration.

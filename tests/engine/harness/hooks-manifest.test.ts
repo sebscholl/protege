@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   normalizeEnabledHookEntries,
   readExtensionManifest,
-} from '@engine/harness/tool-registry';
+} from '@engine/harness/tools/registry';
 
 let tempRootPath = '';
 let parsedHookEntryCount = -1;

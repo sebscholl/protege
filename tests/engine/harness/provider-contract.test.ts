@@ -1,4 +1,4 @@
-import type { HarnessProviderCapabilities } from '@engine/harness/provider-contract';
+import type { HarnessProviderCapabilities } from '@engine/harness/providers/contract';
 
 import { describe, expect, it } from 'vitest';
 
@@ -7,7 +7,7 @@ import {
   assertProviderCapability,
   isSupportedProviderId,
   parseProviderModelId,
-} from '@engine/harness/provider-contract';
+} from '@engine/harness/providers/contract';
 
 let supportedProviderCheck = false;
 let unsupportedProviderCheck = false;

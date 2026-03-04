@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { buildProviderTools } from '@engine/harness/runtime';
-import { loadToolRegistry } from '@engine/harness/tool-registry';
+import { loadToolRegistry } from '@engine/harness/tools/registry';
 
 let providerToolNames: string[] = [];
 

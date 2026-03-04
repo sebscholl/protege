@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { readGatewayRuntimeConfig, resolveDefaultGatewayConfigPath } from '@engine/gateway/index';
 import { emitCliOutput } from '@engine/cli/output';
 import { readInferenceRuntimeConfig } from '@engine/harness/config';
+import { resolveSelectedProviderRuntimeConfig } from '@engine/harness/providers/registry';
 import {
   isValidEmailAddress,
   readEmailAddressDomain,
@@ -313,30 +314,10 @@ export function checkGatewayPidStaleOrValid(): DoctorCheckResult {
 export function checkProviderConfigPresent(): DoctorCheckResult {
   try {
     const config = readInferenceRuntimeConfig();
-    if (config.provider === 'openai') {
-      if (config.providers.openai?.apiKey) {
-        return {
-          id: 'provider.config_present_for_selected_provider',
-          status: 'pass',
-          message: 'selected provider credentials are configured.',
-        };
-      }
-    }
-    if (config.provider === 'anthropic' && config.providers.anthropic?.apiKey) {
-      return {
-        id: 'provider.config_present_for_selected_provider',
-        status: 'pass',
-        message: 'selected provider credentials are configured.',
-      };
-    }
-    if (config.provider === 'gemini' && config.providers.gemini?.apiKey) {
-      return {
-        id: 'provider.config_present_for_selected_provider',
-        status: 'pass',
-        message: 'selected provider credentials are configured.',
-      };
-    }
-    if (config.provider === 'grok' && config.providers.grok?.apiKey) {
+    const providerRuntimeConfig = resolveSelectedProviderRuntimeConfig({
+      provider: config.provider,
+    });
+    if (providerRuntimeConfig.apiKey) {
       return {
         id: 'provider.config_present_for_selected_provider',
         status: 'pass',
@@ -348,7 +329,7 @@ export function checkProviderConfigPresent(): DoctorCheckResult {
       id: 'provider.config_present_for_selected_provider',
       status: 'fail',
       message: `missing credentials for selected provider ${config.provider}.`,
-      hint: 'Set provider api_key_env in config/inference.json and ensure the env var is set.',
+      hint: 'Set providers[].config.api_key_env in extensions/extensions.json and ensure the env var is set.',
     };
   } catch (error) {
     return {

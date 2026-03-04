@@ -17,7 +17,8 @@ let gatewayConfigExists = false;
 let securityConfigExists = false;
 let toolsReadmeExists = false;
 let inferenceLocalExampleExists = false;
-let initializedInferenceUsesEnv = false;
+let initializedInferenceHasNoProvidersBlock = false;
+let initializedExtensionsIncludesOpenAiProvider = false;
 let initializedAdminContactEmailBlank = false;
 let sentinelPreserved = false;
 
@@ -40,13 +41,24 @@ beforeAll(async (): Promise<void> => {
   toolsReadmeExists = existsSync(join(projectPath, 'extensions', 'tools', 'README.md'));
   inferenceLocalExampleExists = existsSync(join(projectPath, 'config', 'inference.local.example.json'));
   const inferenceJson = JSON.parse(readFileSync(join(projectPath, 'config', 'inference.json'), 'utf8')) as {
-    providers?: {
-      openai?: {
+    providers?: unknown;
+  };
+  initializedInferenceHasNoProvidersBlock = inferenceJson.providers === undefined;
+  const extensionsManifest = JSON.parse(readFileSync(join(projectPath, 'extensions', 'extensions.json'), 'utf8')) as {
+    providers?: Array<string | {
+      name?: string;
+      config?: {
         api_key_env?: string;
       };
-    };
+    }>;
   };
-  initializedInferenceUsesEnv = inferenceJson.providers?.openai?.api_key_env === 'OPENAI_API_KEY';
+  initializedExtensionsIncludesOpenAiProvider = extensionsManifest.providers?.some((entry) => {
+    if (typeof entry === 'string') {
+      return entry === 'openai';
+    }
+
+    return entry.name === 'openai';
+  }) ?? false;
   const systemJson = JSON.parse(readFileSync(join(projectPath, 'config', 'system.json'), 'utf8')) as {
     admin_contact_email?: unknown;
   };
@@ -102,8 +114,12 @@ describe('init cli command', () => {
     expect(inferenceLocalExampleExists).toBe(false);
   });
 
-  it('scaffolds inference provider credentials as env indirection', () => {
-    expect(initializedInferenceUsesEnv).toBe(true);
+  it('does not scaffold provider credentials in inference config', () => {
+    expect(initializedInferenceHasNoProvidersBlock).toBe(true);
+  });
+
+  it('scaffolds openai provider in extensions manifest', () => {
+    expect(initializedExtensionsIncludesOpenAiProvider).toBe(true);
   });
 
   it('scaffolds blank admin contact email by default', () => {

@@ -1,25 +1,6 @@
 {
-  "provider": "grok",
-  "model": "grok-3-latest",
+  "provider": "openai",
+  "model": "gpt-4.1",
   "recursion_depth": 6,
-  "max_tool_turns": 20,
-  "providers": {
-    "openai": {
-      "api_key_env": "OPENAI_API_KEY",
-      "base_url": "https://api.openai.com/v1"
-    },
-    "anthropic": {
-      "api_key_env": "ANTHROPIC_API_KEY",
-      "base_url": "https://api.anthropic.com/v1",
-      "version": "2023-06-01"
-    },
-    "gemini": {
-      "api_key_env": "GEMINI_API_KEY",
-      "base_url": "https://generativelanguage.googleapis.com/v1beta"
-    },
-    "grok": {
-      "api_key_env": "GROK_API_KEY",
-      "base_url": "https://api.x.ai/v1"
-    }
-  }
+  "max_tool_turns": 20
 }

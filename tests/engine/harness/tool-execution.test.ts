@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import {
   executeRegisteredTool,
   loadToolRegistry,
-} from '@engine/harness/tool-registry';
+} from '@engine/harness/tools/registry';
 
 let sentMessageId = '';
 let toolNotFoundMessage = '';

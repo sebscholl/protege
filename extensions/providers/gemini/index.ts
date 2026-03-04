@@ -4,12 +4,12 @@ import type {
   HarnessProviderGenerateResponse,
   HarnessProviderMessage,
   HarnessProviderToolCall,
-} from '@engine/harness/provider-contract';
+} from '@engine/harness/providers/contract';
 
 import {
   HarnessProviderError,
   parseProviderModelId,
-} from '@engine/harness/provider-contract';
+} from '@engine/harness/providers/contract';
 
 /**
  * Represents one Gemini adapter runtime dependency configuration.

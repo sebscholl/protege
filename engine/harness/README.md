@@ -10,8 +10,8 @@ This is the core agent reasoning loop.
 
 Provider adapters implement a normalized contract defined in:
 
-1. `engine/harness/provider-contract.ts`
-2. `engine/harness/providers/`
+1. `engine/harness/providers/contract.ts`
+2. `extensions/providers/*`
 3. `engine/harness/runtime.ts`
 
 Contract highlights:
@@ -28,8 +28,8 @@ Contract highlights:
 
 Tool execution is defined by:
 
-1. `engine/harness/tool-contract.ts`
-2. `engine/harness/tool-registry.ts`
+1. `engine/harness/tools/contract.ts`
+2. `engine/harness/tools/registry.ts`
 3. `extensions/tools/*`
 
 The harness loads enabled tools from `extensions/extensions.json`, validates the exported contract, and executes tools by stable tool name.

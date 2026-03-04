@@ -2,7 +2,7 @@ import type { InboundNormalizedMessage } from '@engine/gateway/types';
 import type { HarnessRuntimeActionInvoker } from '@engine/harness/runtime';
 import type { GatewayLogger } from '@engine/gateway/types';
 import type { ChatUiTheme } from '@engine/shared/runtime-config';
-import type { HookEventPayloadByName } from '@engine/harness/hook-events';
+import type { HookEventPayloadByName } from '@engine/harness/hooks/events';
 
 import { randomUUID } from 'node:crypto';
 
@@ -15,8 +15,8 @@ import { normalizeBlessedKeypress } from '@engine/chat/keys';
 import { listChatThreadSummaries, readChatThreadDetail } from '@engine/chat/queries';
 import { buildInboxViewModel, buildThreadViewModel } from '@engine/chat/view-model';
 import { createLocalChatThreadSeed, storeLocalChatUserMessage } from '@engine/chat/writes';
-import { isHookEventName } from '@engine/harness/hook-events';
-import { createHookDispatcher, loadHookRegistry } from '@engine/harness/hook-registry';
+import { isHookEventName } from '@engine/harness/hooks/events';
+import { createHookDispatcher, loadHookRegistry } from '@engine/harness/hooks/registry';
 import { resolveMigrationsDirPath, runHarnessForPersistedInboundMessage } from '@engine/harness/runtime';
 import { storeOutboundMessage } from '@engine/harness/storage';
 import { initializeDatabase } from '@engine/shared/database';
