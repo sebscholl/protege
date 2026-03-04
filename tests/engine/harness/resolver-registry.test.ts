@@ -111,6 +111,7 @@ beforeAll(async (): Promise<void> => {
       context: {},
     },
     config: loadedResolvers[0]?.config ?? {},
+    resolverArgs: [],
   }) ?? '');
   const loadedResolverNestedConfig = loadedResolvers[0]?.config.nested as {
     flag?: string;

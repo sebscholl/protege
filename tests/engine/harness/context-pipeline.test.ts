@@ -14,6 +14,7 @@ let previousCwd = '';
 let renderedSystemText = '';
 let renderedInputText = '';
 let renderedActiveMemory = '';
+let renderedTemplatedFileText = '';
 
 beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-context-pipeline-'));
@@ -23,16 +24,18 @@ beforeAll(async (): Promise<void> => {
   mkdirSync(join(tempRootPath, 'config'), { recursive: true });
   mkdirSync(join(tempRootPath, 'extensions', 'resolvers', 'demo-resolver'), { recursive: true });
   mkdirSync(join(tempRootPath, 'memory', 'persona-demo'), { recursive: true });
+  writeFileSync(join(tempRootPath, 'memory', 'persona-demo', 'active.md'), 'Active memory from template');
 
   writeFileSync(join(tempRootPath, 'config', 'snippet.md'), 'System section from file');
   writeFileSync(
     join(tempRootPath, 'config', 'context.json'),
     JSON.stringify({
       thread: [
-        'file:config/snippet.md',
-        'resolver:demo-resolver',
+        'load-file(config/snippet.md)',
+        'load-file("memory/{ persona_id }/active.md")',
+        'demo-resolver(foo, bar)',
       ],
-      responsibility: ['resolver:demo-resolver'],
+      responsibility: ['demo-resolver(foo, bar)'],
     }),
   );
   writeFileSync(
@@ -41,6 +44,7 @@ beforeAll(async (): Promise<void> => {
       tools: [],
       hooks: [],
       resolvers: [
+        'load-file',
         {
           name: 'demo-resolver',
           config: {
@@ -61,10 +65,10 @@ beforeAll(async (): Promise<void> => {
     [
       'export const resolver = {',
       "  name: 'demo-resolver',",
-      '  resolve: async ({ invocation, config }) => ({',
-      '    sections: [`Resolver section ${config.suffix}`],',
+      '  resolve: async ({ invocation, config, resolverArgs }) => ({',
+      '    sections: [`Resolver section ${config.suffix} ${String(resolverArgs.join("|"))}`],',
       "    activeMemory: 'active from resolver',",
-      '    inputText: String(invocation.context.input?.text ?? ""),',
+      '    inputText: `${String(invocation.context.input?.text ?? "")} ${String(invocation.context.personaId ?? "")}`.trim(),',
       '  }),',
       '};',
     ].join('\n'),
@@ -98,6 +102,7 @@ beforeAll(async (): Promise<void> => {
   renderedSystemText = (context.systemSections ?? []).join('\n\n');
   renderedInputText = context.input.text;
   renderedActiveMemory = context.activeMemory;
+  renderedTemplatedFileText = String((context.systemSections ?? []).find((section) => section.includes('Active memory from template')) ?? '');
   db.close();
 });
 
@@ -108,14 +113,18 @@ afterAll((): void => {
 
 describe('harness context pipeline', () => {
   it('merges file and resolver sections in configured order', () => {
-    expect(renderedSystemText.includes('System section from file\n\nResolver section from-manifest')).toBe(true);
+    expect(renderedSystemText.includes('System section from file\n\nActive memory from template\n\nResolver section from-manifest foo|bar')).toBe(true);
   });
 
   it('applies resolver input override to final input text', () => {
-    expect(renderedInputText).toBe('latest input text');
+    expect(renderedInputText).toBe('latest input text persona-demo');
   });
 
   it('applies resolver active-memory value to final context', () => {
     expect(renderedActiveMemory).toBe('active from resolver');
+  });
+
+  it('resolves persona_id template tokens in load-file resolver args', () => {
+    expect(renderedTemplatedFileText).toBe('Active memory from template');
   });
 });

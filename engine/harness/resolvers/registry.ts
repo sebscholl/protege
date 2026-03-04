@@ -16,12 +16,9 @@ import {
   readExtensionManifest,
   resolveDefaultExtensionsManifestPath,
 } from '@engine/harness/tools/registry';
-import { resolver as activeMemoryResolver } from '@extensions/resolvers/active-memory/index';
 import { resolver as currentInputResolver } from '@extensions/resolvers/current-input/index';
 import { resolver as invocationMetadataResolver } from '@extensions/resolvers/invocation-metadata/index';
-import { resolver as knowledgeGuidanceResolver } from '@extensions/resolvers/knowledge-guidance/index';
-import { resolver as personaPromptResolver } from '@extensions/resolvers/persona-prompt/index';
-import { resolver as systemPromptResolver } from '@extensions/resolvers/system-prompt/index';
+import { resolver as loadFileResolver } from '@extensions/resolvers/load-file/index';
 import { resolver as threadHistoryResolver } from '@extensions/resolvers/thread-history/index';
 import { resolver as threadMemoryStateResolver } from '@extensions/resolvers/thread-memory-state/index';
 
@@ -142,29 +139,20 @@ export function readBuiltInResolverDefinition(
     resolverName: string;
   },
 ): HarnessResolverDefinition | undefined {
-  if (args.resolverName === 'system-prompt') {
-    return systemPromptResolver;
-  }
-  if (args.resolverName === 'persona-prompt') {
-    return personaPromptResolver;
-  }
-  if (args.resolverName === 'active-memory') {
-    return activeMemoryResolver;
-  }
   if (args.resolverName === 'thread-memory-state') {
     return threadMemoryStateResolver;
   }
   if (args.resolverName === 'invocation-metadata') {
     return invocationMetadataResolver;
   }
-  if (args.resolverName === 'knowledge-guidance') {
-    return knowledgeGuidanceResolver;
-  }
   if (args.resolverName === 'thread-history') {
     return threadHistoryResolver;
   }
   if (args.resolverName === 'current-input') {
     return currentInputResolver;
+  }
+  if (args.resolverName === 'load-file') {
+    return loadFileResolver;
   }
 
   return undefined;

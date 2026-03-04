@@ -1,22 +1,19 @@
 {
   "thread": [
-    "resolver:system-prompt",
-    "resolver:persona-prompt",
-    "resolver:active-memory",
-    "resolver:thread-memory-state",
-    "resolver:invocation-metadata",
-    "resolver:knowledge-guidance",
-    "resolver:thread-history",
-    "resolver:current-input"
+    "load-file(config/system-prompt.md)",
+    "load-file(personas/{persona_id}/PERSONA.md)",
+    "load-file(memory/{persona_id}/active.md)",
+    "thread-memory-state",
+    "thread-history",
+    "load-file(personas/{persona_id}/knowledge/CONTENT.md)",
+    "invocation-metadata",
+    "current-input"
   ],
   "responsibility": [
-    "resolver:system-prompt",
-    "resolver:persona-prompt",
-    "resolver:active-memory",
-    "resolver:thread-memory-state",
-    "resolver:invocation-metadata",
-    "resolver:knowledge-guidance",
-    "resolver:thread-history",
-    "resolver:current-input"
+    "load-file(config/system-prompt.md)",
+    "load-file(personas/{persona_id}/PERSONA.md)",
+    "load-file(memory/{persona_id}/active.md)",
+    "load-file(personas/{persona_id}/knowledge/CONTENT.md)",
+    "current-input"
   ]
 }

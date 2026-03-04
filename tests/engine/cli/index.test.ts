@@ -4,7 +4,10 @@ import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { runCli, stopGatewayCommand } from '@engine/cli/index';
+import {
+  runCli,
+  stopGatewayCommand,
+} from '@engine/cli/index';
 import { captureStdout } from '@tests/helpers/stdout';
 
 const PID_PATH = join(process.cwd(), 'tmp', 'gateway.pid');

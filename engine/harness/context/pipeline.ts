@@ -4,9 +4,6 @@ import type { ContextPipelineStep } from '@engine/harness/context/config';
 import type { HarnessResolverEntry, ResolverOutput } from '@engine/harness/resolvers/types';
 import type { HarnessContext, HarnessContextHistoryEntry, HarnessInput } from '@engine/harness/types';
 
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import { readContextPipelineConfig } from '@engine/harness/context/config';
 import { loadResolverRegistry } from '@engine/harness/resolvers/registry';
 
@@ -97,27 +94,14 @@ export async function executePipelineSteps(
   let inputText = args.input.text;
 
   for (const step of args.steps) {
-    if (step.kind === 'file') {
-      const expandedPath = expandContextPathTemplate({
-        template: step.value,
-        context: args.invocation.context,
-      });
-      const content = readOptionalTrimmedFile({
-        filePath: expandedPath,
-      });
-      if (content.length > 0) {
-        systemSections.push(content);
-      }
-      continue;
-    }
-
     const resolver = resolveRegistryEntry({
       resolverRegistry: args.resolverRegistry,
-      resolverName: step.value,
+      resolverName: step.resolverName,
     });
     const output = await resolver.resolve({
       invocation: args.invocation,
       config: resolver.config,
+      resolverArgs: step.resolverArgs,
     });
     applyResolverOutput({
       output,
@@ -211,39 +195,4 @@ export function resolveRegistryEntry(
   }
 
   return match;
-}
-
-/**
- * Expands `{placeholder}` tokens in one path template from invocation context keys.
- */
-export function expandContextPathTemplate(
-  args: {
-    template: string;
-    context: Record<string, unknown>;
-  },
-): string {
-  const expanded = args.template.replaceAll(/\{([^{}]+)\}/g, (
-    _,
-    key,
-  ) => {
-    const value = args.context[key];
-    return typeof value === 'string' ? value : '';
-  });
-
-  return join(process.cwd(), expanded);
-}
-
-/**
- * Reads one optional file and returns trimmed text when present.
- */
-export function readOptionalTrimmedFile(
-  args: {
-    filePath: string;
-  },
-): string {
-  if (!existsSync(args.filePath)) {
-    return '';
-  }
-
-  return readFileSync(args.filePath, 'utf8').trim();
 }

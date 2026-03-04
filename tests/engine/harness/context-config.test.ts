@@ -9,6 +9,8 @@ import { readContextPipelineConfig } from '@engine/harness/context/config';
 let tempRootPath = '';
 let threadStepCount = -1;
 let responsibilityResolverStep = '';
+let parsedResolverArgs = '';
+let parsedQuotedResolverArgs = '';
 let invalidStepError = '';
 let invalidProfileError = '';
 
@@ -18,8 +20,8 @@ beforeAll((): void => {
   writeFileSync(
     validConfigPath,
     JSON.stringify({
-      thread: ['file:config/system-prompt.md', 'resolver:thread-history'],
-      responsibility: ['resolver:current-input'],
+      thread: ['load-file(config/system-prompt.md)', 'thread-history'],
+      responsibility: ['current-input(foo, bar)'],
     }),
   );
 
@@ -27,14 +29,28 @@ beforeAll((): void => {
     configPath: validConfigPath,
   });
   threadStepCount = validConfig.thread.length;
-  responsibilityResolverStep = `${validConfig.responsibility[0]?.kind}:${validConfig.responsibility[0]?.value}`;
+  responsibilityResolverStep = `${validConfig.responsibility[0]?.kind}:${validConfig.responsibility[0]?.resolverName}`;
+  parsedResolverArgs = (validConfig.responsibility[0]?.resolverArgs ?? []).join('|');
+
+  const quotedArgsConfigPath = join(tempRootPath, 'quoted-args.json');
+  writeFileSync(
+    quotedArgsConfigPath,
+    JSON.stringify({
+      thread: ['load-file("memory/{ persona_id }/active.md")'],
+      responsibility: ['current-input'],
+    }),
+  );
+  const quotedConfig = readContextPipelineConfig({
+    configPath: quotedArgsConfigPath,
+  });
+  parsedQuotedResolverArgs = (quotedConfig.thread[0]?.resolverArgs ?? []).join('|');
 
   const invalidStepConfigPath = join(tempRootPath, 'invalid-step.json');
   writeFileSync(
     invalidStepConfigPath,
     JSON.stringify({
       thread: ['bogus:step'],
-      responsibility: ['resolver:current-input'],
+      responsibility: ['current-input'],
     }),
   );
   try {
@@ -49,8 +65,8 @@ beforeAll((): void => {
   writeFileSync(
     invalidProfileConfigPath,
     JSON.stringify({
-      thread: ['resolver:thread-history'],
-      responsibility: 'resolver:current-input',
+      thread: ['thread-history'],
+      responsibility: 'current-input',
     }),
   );
   try {
@@ -75,8 +91,16 @@ describe('harness context config', () => {
     expect(responsibilityResolverStep).toBe('resolver:current-input');
   });
 
+  it('parses positional resolver args', () => {
+    expect(parsedResolverArgs).toBe('foo|bar');
+  });
+
+  it('normalizes quoted resolver args and preserves template tokens', () => {
+    expect(parsedQuotedResolverArgs).toBe('memory/{ persona_id }/active.md');
+  });
+
   it('fails clearly for unsupported step prefixes', () => {
-    expect(invalidStepError.includes('must start with "file:" or "resolver:"')).toBe(true);
+    expect(invalidStepError.includes('Invalid resolver name')).toBe(true);
   });
 
   it('fails clearly when one profile step list is not an array', () => {

@@ -70,14 +70,14 @@ Profile fields:
 
 Supported step forms:
 
-1. `file:<path>`
-2. `resolver:<name>`
+1. `<name>`
+2. `<name>(arg1, arg2, ...)`
 
 Step execution notes:
 
 1. Steps execute in declared order.
-2. `file:` steps read optional text files (missing files are skipped).
-3. `resolver:` steps execute manifest-enabled resolver modules from `extensions/resolvers/*`.
+2. Steps execute manifest-enabled resolver modules from `extensions/resolvers/*`.
+3. Positional resolver args are strings and support `{placeholder}` substitution from invocation context keys (for example `{persona_id}`).
 4. Default context scaffold uses resolver-only steps and ships built-in resolver implementations as extension modules.
 
 ## `system.json`

@@ -12,7 +12,7 @@ Resolver contract:
 2. Entry point: `index.ts` or `index.js`
 3. Export: `resolver` definition with:
    1. `name`
-   2. `resolve({ invocation, config })`
+   2. `resolve({ invocation, config, resolverArgs })`
 
 Invocation contract:
 
@@ -23,6 +23,12 @@ Where:
 
 1. `type` is `thread` or `responsibility`
 2. `context` contains source-specific fields (`personaId`, `threadId`, etc.)
+3. `resolverArgs` contains positional string args parsed from `config/context.json` resolver step calls
+
+Resolver step syntax:
+
+1. `resolver-name`
+2. `resolver-name(arg1, arg2, arg3)`
 
 Guidance:
 

@@ -18,12 +18,9 @@
   ],
   "hooks": [],
   "resolvers": [
-    "system-prompt",
-    "persona-prompt",
-    "active-memory",
+    "load-file",
     "thread-memory-state",
     "invocation-metadata",
-    "knowledge-guidance",
     "thread-history",
     "current-input"
   ]

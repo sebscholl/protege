@@ -27,6 +27,7 @@ export type HarnessResolverDefinition = {
     args: {
       invocation: ResolverInvocation;
       config: Record<string, unknown>;
+      resolverArgs: string[];
     },
   ) => Promise<ResolverOutput | null | undefined> | ResolverOutput | null | undefined;
 };

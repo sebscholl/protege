@@ -1,22 +1,5 @@
-type HarnessResolverDefinition = {
-  name: string;
-  resolve: (
-    args: {
-      invocation: {
-        context: Record<string, unknown>;
-      };
-    },
-  ) => unknown;
-};
-
-type HistoryEntry = {
-  direction: string;
-  sender: string;
-  subject: string;
-  text: string;
-  receivedAt: string;
-  messageId: string;
-};
+import type { HarnessResolverDefinition } from '@engine/harness/resolvers/types';
+import type { HarnessContextHistoryEntry } from '@engine/harness/types';
 
 type ThreadToolEvent = {
   id: string;
@@ -80,7 +63,7 @@ function buildHistoryEntries(
     db: DatabaseLike;
     threadId: string;
   },
-): HistoryEntry[] {
+): HarnessContextHistoryEntry[] {
   const messages = readThreadMessages({
     db: args.db,
     threadId: args.threadId,
@@ -91,7 +74,7 @@ function buildHistoryEntries(
       threadId: args.threadId,
     }),
   });
-  const history: HistoryEntry[] = [];
+  const history: HarnessContextHistoryEntry[] = [];
 
   for (const message of messages) {
     history.push({
@@ -119,7 +102,7 @@ function readThreadMessages(
     db: DatabaseLike;
     threadId: string;
   },
-): HistoryEntry[] {
+): HarnessContextHistoryEntry[] {
   const rows = args.db.prepare(
     `SELECT direction, sender, subject, text_body, received_at, message_id
        FROM messages
@@ -130,7 +113,9 @@ function readThreadMessages(
   });
 
   return rows.map((row) => ({
-    direction: typeof row.direction === 'string' ? row.direction : 'unknown',
+    direction: readHistoryDirection({
+      value: row.direction,
+    }),
     sender: typeof row.sender === 'string' ? row.sender : 'unknown',
     subject: typeof row.subject === 'string' ? row.subject : '',
     text: typeof row.text_body === 'string' ? row.text_body : '',
@@ -199,7 +184,7 @@ function toToolHistoryEntry(
   args: {
     event: ThreadToolEvent;
   },
-): HistoryEntry {
+): HarnessContextHistoryEntry {
   const label = args.event.eventType === 'tool_call' ? 'Tool call' : 'Tool result';
   return {
     direction: 'synthetic',
@@ -216,11 +201,11 @@ function toToolHistoryEntry(
  */
 function truncateHistoryToTokenBudget(
   args: {
-    history: HistoryEntry[];
+    history: HarnessContextHistoryEntry[];
     maxHistoryTokens: number;
   },
-): HistoryEntry[] {
-  const selected: HistoryEntry[] = [];
+): HarnessContextHistoryEntry[] {
+  const selected: HarnessContextHistoryEntry[] = [];
   let runningTotal = 0;
   for (let index = args.history.length - 1; index >= 0; index -= 1) {
     const entry = args.history[index];
@@ -267,6 +252,21 @@ function parsePayloadJson(
   } catch {
     return {};
   }
+}
+
+/**
+ * Reads one persisted message direction into known history direction union.
+ */
+function readHistoryDirection(
+  args: {
+    value: unknown;
+  },
+): HarnessContextHistoryEntry['direction'] {
+  if (args.value === 'inbound' || args.value === 'outbound' || args.value === 'synthetic') {
+    return args.value;
+  }
+
+  return 'inbound';
 }
 
 /**

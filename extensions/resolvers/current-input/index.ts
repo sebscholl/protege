@@ -1,13 +1,4 @@
-type HarnessResolverDefinition = {
-  name: string;
-  resolve: (
-    args: {
-      invocation: {
-        context: Record<string, unknown>;
-      };
-    },
-  ) => unknown;
-};
+import type { HarnessResolverDefinition } from '@engine/harness/resolvers/types';
 
 /**
  * Injects latest inbound text as current input for terminal provider turn.

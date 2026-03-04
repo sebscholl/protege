@@ -300,16 +300,8 @@ export function buildInitCopyMappings(
       targetRelativePath: 'extensions/resolvers/README.md',
     },
     {
-      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'system-prompt', 'index.ts'),
-      targetRelativePath: 'extensions/resolvers/system-prompt/index.ts',
-    },
-    {
-      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'persona-prompt', 'index.ts'),
-      targetRelativePath: 'extensions/resolvers/persona-prompt/index.ts',
-    },
-    {
-      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'active-memory', 'index.ts'),
-      targetRelativePath: 'extensions/resolvers/active-memory/index.ts',
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'load-file', 'index.ts'),
+      targetRelativePath: 'extensions/resolvers/load-file/index.ts',
     },
     {
       sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'thread-memory-state', 'index.ts'),
@@ -318,10 +310,6 @@ export function buildInitCopyMappings(
     {
       sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'invocation-metadata', 'index.ts'),
       targetRelativePath: 'extensions/resolvers/invocation-metadata/index.ts',
-    },
-    {
-      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'knowledge-guidance', 'index.ts'),
-      targetRelativePath: 'extensions/resolvers/knowledge-guidance/index.ts',
     },
     {
       sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'thread-history', 'index.ts'),

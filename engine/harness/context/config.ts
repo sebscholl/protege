@@ -5,8 +5,9 @@ import { join } from 'node:path';
  * Represents one configured context step in ordered pipeline execution.
  */
 export type ContextPipelineStep = {
-  kind: 'file' | 'resolver';
-  value: string;
+  kind: 'resolver';
+  resolverName: string;
+  resolverArgs: string[];
 };
 
 /**
@@ -86,7 +87,7 @@ export function parseStepList(
 }
 
 /**
- * Parses one `file:` or `resolver:` step string into kind/value representation.
+ * Parses one resolver-call step string into normalized resolver call representation.
  */
 export function parseStep(
   args: {
@@ -100,29 +101,106 @@ export function parseStep(
   }
 
   const step = args.rawStep.trim();
-  if (step.startsWith('file:')) {
-    const filePath = step.slice('file:'.length).trim();
-    if (filePath.length === 0) {
-      throw new Error(`Context config step ${args.profileName}[${args.index}] has empty file path.`);
-    }
-
-    return {
-      kind: 'file',
-      value: filePath,
-    };
+  const parsedCall = parseResolverCall({
+    resolverCall: step,
+  });
+  if (parsedCall.resolverName.length === 0) {
+    throw new Error(`Context config step ${args.profileName}[${args.index}] has empty resolver name.`);
   }
 
-  if (step.startsWith('resolver:')) {
-    const resolverName = step.slice('resolver:'.length).trim();
-    if (resolverName.length === 0) {
-      throw new Error(`Context config step ${args.profileName}[${args.index}] has empty resolver name.`);
-    }
+  return {
+    kind: 'resolver',
+    resolverName: parsedCall.resolverName,
+    resolverArgs: parsedCall.resolverArgs,
+  };
+}
 
-    return {
-      kind: 'resolver',
+/**
+ * Parses one resolver call string into resolver name and positional string args.
+ */
+export function parseResolverCall(
+  args: {
+    resolverCall: string;
+  },
+): {
+  resolverName: string;
+  resolverArgs: string[];
+} {
+  const openParenIndex = args.resolverCall.indexOf('(');
+  const closeParenIndex = args.resolverCall.lastIndexOf(')');
+  if (openParenIndex === -1 || closeParenIndex === -1) {
+    const resolverName = args.resolverCall.trim();
+    if (!isValidResolverName({
       value: resolverName,
+    })) {
+      throw new Error(`Invalid resolver name: ${resolverName}`);
+    }
+
+    return {
+      resolverName,
+      resolverArgs: [],
+    };
+  }
+  if (closeParenIndex < openParenIndex) {
+    throw new Error(`Invalid resolver call: ${args.resolverCall}`);
+  }
+
+  const resolverName = args.resolverCall.slice(0, openParenIndex).trim();
+  if (!isValidResolverName({
+    value: resolverName,
+  })) {
+    throw new Error(`Invalid resolver name: ${resolverName}`);
+  }
+  const rawArgs = args.resolverCall.slice(openParenIndex + 1, closeParenIndex).trim();
+  if (rawArgs.length === 0) {
+    return {
+      resolverName,
+      resolverArgs: [],
     };
   }
 
-  throw new Error(`Context config step ${args.profileName}[${args.index}] must start with "file:" or "resolver:".`);
+  return {
+    resolverName,
+    resolverArgs: rawArgs
+      .split(',')
+      .map((value) => normalizeResolverArg({
+        value,
+      }))
+      .filter((value) => value.length > 0),
+  };
+}
+
+/**
+ * Returns true when one resolver name matches supported call-token format.
+ */
+export function isValidResolverName(
+  args: {
+    value: string;
+  },
+): boolean {
+  return /^[a-zA-Z0-9._-]+$/.test(args.value);
+}
+
+/**
+ * Normalizes one resolver arg by trimming and removing one matching quote pair.
+ */
+export function normalizeResolverArg(
+  args: {
+    value: string;
+  },
+): string {
+  const trimmed = args.value.trim();
+  if (trimmed.length < 2) {
+    return trimmed;
+  }
+
+  const first = trimmed[0];
+  const last = trimmed[trimmed.length - 1];
+  const hasSingleQuotes = first === '\'' && last === '\'';
+  const hasDoubleQuotes = first === '"' && last === '"';
+  if (hasSingleQuotes || hasDoubleQuotes) {
+    return trimmed.slice(1, -1).trim();
+  }
+
+  return trimmed;
 }

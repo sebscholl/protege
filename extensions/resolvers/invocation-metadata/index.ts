@@ -1,13 +1,4 @@
-type HarnessResolverDefinition = {
-  name: string;
-  resolve: (
-    args: {
-      invocation: {
-        context: Record<string, unknown>;
-      };
-    },
-  ) => unknown;
-};
+import type { HarnessResolverDefinition } from '@engine/harness/resolvers/types';
 
 /**
  * Emits routing and invocation metadata note for deterministic email tool calls.
