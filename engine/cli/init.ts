@@ -232,6 +232,10 @@ export function buildInitCopyMappings(
       targetRelativePath: 'config/system-prompt.md',
     },
     {
+      sourceFilePath: join(args.packageRootDirPath, 'config', 'context.json'),
+      targetRelativePath: 'config/context.json',
+    },
+    {
       sourceFilePath: join(args.packageRootDirPath, 'config', 'system.json'),
       targetRelativePath: 'config/system.json',
     },
@@ -254,6 +258,78 @@ export function buildInitCopyMappings(
     {
       sourceFilePath: join(args.packageRootDirPath, 'extensions', 'hooks', 'README.md'),
       targetRelativePath: 'extensions/hooks/README.md',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'providers', 'README.md'),
+      targetRelativePath: 'extensions/providers/README.md',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'providers', 'openai', 'index.ts'),
+      targetRelativePath: 'extensions/providers/openai/index.ts',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'providers', 'openai', 'config.json'),
+      targetRelativePath: 'extensions/providers/openai/config.json',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'providers', 'anthropic', 'index.ts'),
+      targetRelativePath: 'extensions/providers/anthropic/index.ts',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'providers', 'anthropic', 'config.json'),
+      targetRelativePath: 'extensions/providers/anthropic/config.json',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'providers', 'gemini', 'index.ts'),
+      targetRelativePath: 'extensions/providers/gemini/index.ts',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'providers', 'gemini', 'config.json'),
+      targetRelativePath: 'extensions/providers/gemini/config.json',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'providers', 'grok', 'index.ts'),
+      targetRelativePath: 'extensions/providers/grok/index.ts',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'providers', 'grok', 'config.json'),
+      targetRelativePath: 'extensions/providers/grok/config.json',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'README.md'),
+      targetRelativePath: 'extensions/resolvers/README.md',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'system-prompt', 'index.ts'),
+      targetRelativePath: 'extensions/resolvers/system-prompt/index.ts',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'persona-prompt', 'index.ts'),
+      targetRelativePath: 'extensions/resolvers/persona-prompt/index.ts',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'active-memory', 'index.ts'),
+      targetRelativePath: 'extensions/resolvers/active-memory/index.ts',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'thread-memory-state', 'index.ts'),
+      targetRelativePath: 'extensions/resolvers/thread-memory-state/index.ts',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'invocation-metadata', 'index.ts'),
+      targetRelativePath: 'extensions/resolvers/invocation-metadata/index.ts',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'knowledge-guidance', 'index.ts'),
+      targetRelativePath: 'extensions/resolvers/knowledge-guidance/index.ts',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'thread-history', 'index.ts'),
+      targetRelativePath: 'extensions/resolvers/thread-history/index.ts',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'current-input', 'index.ts'),
+      targetRelativePath: 'extensions/resolvers/current-input/index.ts',
     },
     {
       sourceFilePath: join(args.packageRootDirPath, 'personas', 'README.md'),

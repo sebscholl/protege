@@ -2,6 +2,12 @@
 
 Extension Surface: No
 
-Provider adapter implementations for harness inference.
+Provider contract definitions for harness inference.
 
-Adapters map normalized requests from `engine/harness/provider-contract.ts` into provider-specific HTTP/SDK calls and return normalized responses.
+This directory is contract-only:
+
+1. `contract.ts` defines the normalized provider request/response API used by harness runtime.
+
+Provider adapter implementations live in:
+
+1. `extensions/providers/*`

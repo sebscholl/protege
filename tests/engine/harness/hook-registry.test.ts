@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createHookDispatcher, isHookSubscribedToEvent, loadHookRegistry } from '@engine/harness/hook-registry';
+import { createHookDispatcher, isHookSubscribedToEvent, loadHookRegistry } from '@engine/harness/hooks/registry';
 
 let tempRootPath = '';
 let loadedHookNames: string[] = [];

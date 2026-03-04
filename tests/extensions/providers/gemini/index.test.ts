@@ -1,8 +1,8 @@
-import type { HarnessProviderGenerateRequest } from '@engine/harness/provider-contract';
+import type { HarnessProviderGenerateRequest } from '@engine/harness/providers/contract';
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { HarnessProviderError } from '@engine/harness/provider-contract';
+import { HarnessProviderError } from '@engine/harness/providers/contract';
 import {
   buildGeminiContents,
   buildGeminiTools,
@@ -10,7 +10,7 @@ import {
   decodeGeminiToolCallId,
   encodeGeminiToolCallId,
   generateWithGemini,
-} from '@engine/harness/providers/gemini';
+} from '@extensions/providers/gemini';
 import { mswIntercept } from '@tests/network/index';
 
 const request: HarnessProviderGenerateRequest = {

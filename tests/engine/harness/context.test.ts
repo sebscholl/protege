@@ -12,7 +12,7 @@ import {
   estimateTokens,
   loadActiveMemory,
   truncateHistoryToTokenBudget,
-} from '@engine/harness/context';
+} from '@engine/harness/context/history';
 import type { HarnessContextHistoryEntry, HarnessInput } from '@engine/harness/types';
 import { storeInboundMessage, storeThreadToolEvent } from '@engine/harness/storage';
 import { initializeDatabase } from '@engine/shared/database';

@@ -2,9 +2,9 @@ import { appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { GatewayLogger } from '@engine/gateway/types';
-import type { HookEventName, HookEventPayloadByName } from '@engine/harness/hook-events';
+import type { HookEventName, HookEventPayloadByName } from '@engine/harness/hooks/events';
 import type { PrettyLogStyleToken, PrettyLogTheme } from '@engine/shared/runtime-config';
-import { isHookEventName } from '@engine/harness/hook-events';
+import { isHookEventName } from '@engine/harness/hooks/events';
 
 /**
  * Represents one logger creation input for unified runtime logging.

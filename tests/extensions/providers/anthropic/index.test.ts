@@ -1,15 +1,15 @@
-import type { HarnessProviderGenerateRequest } from '@engine/harness/provider-contract';
+import type { HarnessProviderGenerateRequest } from '@engine/harness/providers/contract';
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { HarnessProviderError } from '@engine/harness/provider-contract';
+import { HarnessProviderError } from '@engine/harness/providers/contract';
 import {
   buildAnthropicMessage,
   createAnthropicProviderAdapter,
   generateWithAnthropic,
   parseAnthropicToolInput,
   sanitizeAnthropicMessages,
-} from '@engine/harness/providers/anthropic';
+} from '@extensions/providers/anthropic';
 import { mswIntercept } from '@tests/network/index';
 
 const request: HarnessProviderGenerateRequest = {

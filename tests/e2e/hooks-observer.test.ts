@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createHookDispatcher, loadHookRegistry } from '@engine/harness/hook-registry';
+import { createHookDispatcher, loadHookRegistry } from '@engine/harness/hooks/registry';
 import { createUnifiedLogger } from '@engine/shared/logger';
 import { getDefaultPrettyLogTheme } from '@engine/shared/runtime-config';
 

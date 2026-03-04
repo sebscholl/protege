@@ -47,7 +47,13 @@ export function storeInboundMessage(
   const id = randomUUID();
   const sender = args.request.message.from[0]?.address ?? '';
   const recipients = args.request.message.to.map((item) => item.address);
+  const messageMetadata = typeof args.request.message.metadata === 'object'
+    && args.request.message.metadata !== null
+    && !Array.isArray(args.request.message.metadata)
+    ? args.request.message.metadata
+    : {};
   const metadata = {
+    ...messageMetadata,
     references: args.request.message.references,
     cc: args.request.message.cc,
     bcc: args.request.message.bcc,

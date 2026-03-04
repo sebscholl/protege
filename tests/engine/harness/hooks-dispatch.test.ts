@@ -1,8 +1,8 @@
-import type { HarnessHookEntry } from '@engine/harness/hook-registry';
+import type { HarnessHookEntry } from '@engine/harness/hooks/registry';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createHookDispatcher } from '@engine/harness/hook-registry';
+import { createHookDispatcher } from '@engine/harness/hooks/registry';
 
 let dispatchReturnedImmediately = false;
 let slowHookCompleted = false;

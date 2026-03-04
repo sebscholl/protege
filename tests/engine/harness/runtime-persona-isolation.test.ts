@@ -60,10 +60,11 @@ beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-runtime-persona-isolation-'));
   previousCwd = process.cwd();
   process.chdir(tempRootPath);
+  process.env.OPENAI_API_KEY = 'test-key';
 
   mkdirSync(join(tempRootPath, 'config'), { recursive: true });
   mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'extensions'), { recursive: true });
+  mkdirSync(join(tempRootPath, 'extensions', 'providers', 'openai'), { recursive: true });
   mkdirSync(join(tempRootPath, 'personas', 'persona-a'), { recursive: true });
   mkdirSync(join(tempRootPath, 'personas', 'persona-b'), { recursive: true });
 
@@ -83,13 +84,12 @@ beforeAll(async (): Promise<void> => {
     provider: 'openai',
     model: 'gpt-4.1',
     recursion_depth: 3,
-    providers: {
-      openai: {
-        api_key: 'test-key',
-      },
-    },
   }));
   writeFileSync(join(tempRootPath, 'config', 'system-prompt.md'), 'You are Protege.');
+  writeFileSync(join(tempRootPath, 'extensions', 'providers', 'openai', 'config.json'), JSON.stringify({
+    api_key_env: 'OPENAI_API_KEY',
+    base_url: 'https://api.openai.com/v1',
+  }));
   writeFileSync(join(tempRootPath, 'extensions', 'extensions.json'), JSON.stringify({
     tools: [],
     hooks: [],
@@ -136,6 +136,7 @@ beforeAll(async (): Promise<void> => {
 afterAll((): void => {
   process.chdir(previousCwd);
   rmSync(tempRootPath, { recursive: true, force: true });
+  delete process.env.OPENAI_API_KEY;
 });
 
 describe('harness runtime persona isolation under concurrent runs', () => {

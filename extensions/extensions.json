@@ -1,4 +1,10 @@
 {
+  "providers": [
+    "openai",
+    "anthropic",
+    "gemini",
+    "grok"
+  ],
   "tools": [
     "shell",
     "glob",
@@ -10,5 +16,15 @@
     "web-search",
     "send-email"
   ],
-  "hooks": []
+  "hooks": [],
+  "resolvers": [
+    "system-prompt",
+    "persona-prompt",
+    "active-memory",
+    "thread-memory-state",
+    "invocation-metadata",
+    "knowledge-guidance",
+    "thread-history",
+    "current-input"
+  ]
 }

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { HarnessProviderId } from '@engine/harness/provider-contract';
+import type { HarnessProviderId } from '@engine/harness/providers/contract';
 
 /**
  * Represents one typed inference runtime configuration.
@@ -11,29 +11,6 @@ export type InferenceRuntimeConfig = {
   model: string;
   recursionDepth: number;
   maxToolTurns: number;
-  providers: {
-    openai?: {
-      apiKey?: string;
-      apiKeyEnv?: string;
-      baseUrl?: string;
-    };
-    anthropic?: {
-      apiKey?: string;
-      apiKeyEnv?: string;
-      baseUrl?: string;
-      version?: string;
-    };
-    gemini?: {
-      apiKey?: string;
-      apiKeyEnv?: string;
-      baseUrl?: string;
-    };
-    grok?: {
-      apiKey?: string;
-      apiKeyEnv?: string;
-      baseUrl?: string;
-    };
-  };
   temperature?: number;
   maxOutputTokens?: number;
 };
@@ -81,9 +58,6 @@ export function readInferenceRuntimeConfig(
       value: parsed.max_tool_turns,
       fallback: 8,
     }),
-    providers: parseProviderSettings({
-      providers: parsed.providers,
-    }),
     temperature: typeof parsed.temperature === 'number' ? parsed.temperature : undefined,
     maxOutputTokens: typeof parsed.max_output_tokens === 'number'
       ? parsed.max_output_tokens
@@ -115,122 +89,6 @@ export function readJsonRecord(
 ): Record<string, unknown> {
   const text = readFileSync(args.filePath, 'utf8');
   return JSON.parse(text) as Record<string, unknown>;
-}
-
-/**
- * Parses provider-specific inference settings from config json shape.
- */
-export function parseProviderSettings(
-  args: {
-    providers: unknown;
-  },
-): InferenceRuntimeConfig['providers'] {
-  const providers = asRecord({ value: args.providers });
-  const openai = asRecord({ value: providers?.openai });
-  const anthropic = asRecord({ value: providers?.anthropic });
-  const gemini = asRecord({ value: providers?.gemini });
-  const grok = asRecord({ value: providers?.grok });
-
-  return {
-    openai: openai
-      ? {
-          apiKey: resolveApiKey({
-            providerName: 'openai',
-            providerConfig: openai,
-          }),
-          apiKeyEnv: readString({ value: openai.api_key_env }),
-          baseUrl: readString({ value: openai.base_url }),
-        }
-      : undefined,
-    anthropic: anthropic
-      ? {
-          apiKey: resolveApiKey({
-            providerName: 'anthropic',
-            providerConfig: anthropic,
-          }),
-          apiKeyEnv: readString({ value: anthropic.api_key_env }),
-          baseUrl: readString({ value: anthropic.base_url }),
-          version: readString({ value: anthropic.version }),
-        }
-      : undefined,
-    gemini: gemini
-      ? {
-          apiKey: resolveApiKey({
-            providerName: 'gemini',
-            providerConfig: gemini,
-          }),
-          apiKeyEnv: readString({ value: gemini.api_key_env }),
-          baseUrl: readString({ value: gemini.base_url }),
-        }
-      : undefined,
-    grok: grok
-      ? {
-          apiKey: resolveApiKey({
-            providerName: 'grok',
-            providerConfig: grok,
-          }),
-          apiKeyEnv: readString({ value: grok.api_key_env }),
-          baseUrl: readString({ value: grok.base_url }),
-        }
-      : undefined,
-  };
-}
-
-/**
- * Resolves one provider API key from literal config or env-key indirection.
- */
-export function resolveApiKey(
-  args: {
-    providerName: string;
-    providerConfig: Record<string, unknown>;
-  },
-): string | undefined {
-  const directApiKey = readString({
-    value: args.providerConfig.api_key,
-  });
-  if (directApiKey) {
-    return directApiKey;
-  }
-
-  const apiKeyEnv = readString({
-    value: args.providerConfig.api_key_env,
-  });
-  if (!apiKeyEnv) {
-    return undefined;
-  }
-
-  const envValue = process.env[apiKeyEnv];
-  return typeof envValue === 'string' && envValue.trim().length > 0
-    ? envValue
-    : undefined;
-}
-
-/**
- * Returns value as record when input is a plain object.
- */
-export function asRecord(
-  args: {
-    value: unknown;
-  },
-): Record<string, unknown> | undefined {
-  return typeof args.value === 'object'
-    && args.value !== null
-    && !Array.isArray(args.value)
-    ? args.value as Record<string, unknown>
-    : undefined;
-}
-
-/**
- * Returns a string when value is a non-empty string, otherwise undefined.
- */
-export function readString(
-  args: {
-    value: unknown;
-  },
-): string | undefined {
-  return typeof args.value === 'string' && args.value.trim().length > 0
-    ? args.value
-    : undefined;
 }
 
 /**

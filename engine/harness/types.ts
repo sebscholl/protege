@@ -95,6 +95,7 @@ export type HarnessThreadToolEvent = {
 export type HarnessContext = {
   threadId: string;
   activeMemory: string;
+  systemSections?: string[];
   history: HarnessContextHistoryEntry[];
   input: HarnessInput;
 };

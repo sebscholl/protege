@@ -1,6 +1,6 @@
 import type { DoctorReport } from '@engine/cli/doctor';
 import type { InitCommandResult } from '@engine/cli/init';
-import type { ExtensionManifest, ToolManifestEntry } from '@engine/harness/tool-registry';
+import type { ExtensionManifest, ToolManifestEntry } from '@engine/harness/tools/registry';
 import type { GatewayRuntimeConfig } from '@engine/gateway/index';
 import type { PersonaMetadata } from '@engine/shared/personas';
 

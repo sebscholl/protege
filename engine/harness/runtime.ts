@@ -7,21 +7,24 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-import { buildHarnessContext } from '@engine/harness/context';
+import { buildHarnessContext } from '@engine/harness/context/history';
+import { buildHarnessContextFromPipeline } from '@engine/harness/context/pipeline';
+import { hasContextConfigFile } from '@engine/harness/context/config';
 import { loadSystemPrompt, readInferenceRuntimeConfig } from '@engine/harness/config';
 import type {
   HarnessProviderAdapter,
   HarnessProviderMessage,
   HarnessProviderTool,
-} from '@engine/harness/provider-contract';
-import { HarnessProviderError } from '@engine/harness/provider-contract';
-import { createAnthropicProviderAdapter } from '@engine/harness/providers/anthropic';
-import { createGeminiProviderAdapter } from '@engine/harness/providers/gemini';
-import { createGrokProviderAdapter } from '@engine/harness/providers/grok';
-import { createOpenAiProviderAdapter } from '@engine/harness/providers/openai';
+} from '@engine/harness/providers/contract';
+import { HarnessProviderError } from '@engine/harness/providers/contract';
+import { resolveSelectedProviderRuntimeConfig } from '@engine/harness/providers/registry';
+import { createAnthropicProviderAdapter } from '@extensions/providers/anthropic';
+import { createGeminiProviderAdapter } from '@extensions/providers/gemini';
+import { createGrokProviderAdapter } from '@extensions/providers/grok';
+import { createOpenAiProviderAdapter } from '@extensions/providers/openai';
 import { storeInboundMessage, storeOutboundMessage, storeThreadToolEvent } from '@engine/harness/storage';
-import type { HarnessToolExecutionContext, HarnessToolRegistry } from '@engine/harness/tool-contract';
-import { executeRegisteredTool, loadToolRegistry } from '@engine/harness/tool-registry';
+import type { HarnessToolExecutionContext, HarnessToolRegistry } from '@engine/harness/tools/contract';
+import { executeRegisteredTool, loadToolRegistry } from '@engine/harness/tools/registry';
 import type { HarnessInput } from '@engine/harness/types';
 import { initializeDatabase } from '@engine/shared/database';
 import { resolveDefaultPersonaRoots, resolvePersonaMemoryPaths } from '@engine/shared/personas';
@@ -123,16 +126,19 @@ export async function runHarnessForPersistedInboundMessage(
       roots: resolveDefaultPersonaRoots(),
     });
     const input = toHarnessInput({ message: args.message });
-    const context = buildHarnessContext({
+    const context = await buildHarnessContextForRun({
       db,
       input,
+      personaId: args.message.personaId as string,
       activeMemoryPath: personaMemoryPaths.activeMemoryPath,
     });
 
     const inferenceConfig = readInferenceRuntimeConfig();
     const modelId = `${inferenceConfig.provider}/${inferenceConfig.model}` as const;
     const adapter = createProviderAdapter({
-      inferenceConfig,
+      providerConfig: resolveSelectedProviderRuntimeConfig({
+        provider: inferenceConfig.provider,
+      }),
       provider: inferenceConfig.provider,
     });
     const registry = await loadToolRegistry();
@@ -609,8 +615,14 @@ export function toHarnessInput(
     message: InboundNormalizedMessage;
   },
 ): HarnessInput {
+  const messageMetadata = isRecord(args.message.metadata)
+    ? args.message.metadata
+    : {};
+  const source = inferHarnessInputSource({
+    message: args.message,
+  });
   return {
-    source: 'email',
+    source,
     threadId: args.message.threadId,
     messageId: args.message.messageId,
     sender: args.message.from[0]?.address ?? '',
@@ -619,6 +631,7 @@ export function toHarnessInput(
     text: args.message.text,
     receivedAt: args.message.receivedAt,
     metadata: {
+      ...messageMetadata,
       references: args.message.references,
       personaId: args.message.personaId,
       from: args.message.from.map((item) => item.address),
@@ -632,6 +645,67 @@ export function toHarnessInput(
 }
 
 /**
+ * Builds one harness context using configured context pipeline with legacy fallback compatibility.
+ */
+export async function buildHarnessContextForRun(
+  args: {
+    db: ProtegeDatabase;
+    input: HarnessInput;
+    personaId: string;
+    activeMemoryPath: string;
+  },
+): Promise<{
+  threadId: string;
+  activeMemory: string;
+  systemSections?: string[];
+  history: Array<{
+    direction: 'inbound' | 'outbound' | 'synthetic';
+    messageId: string;
+    text: string;
+  }>;
+  input: {
+    messageId: string;
+    text: string;
+    metadata?: Record<string, unknown>;
+  };
+}> {
+  if (!hasContextConfigFile()) {
+    return buildHarnessContext({
+      db: args.db,
+      input: args.input,
+      activeMemoryPath: args.activeMemoryPath,
+    });
+  }
+
+  return buildHarnessContextFromPipeline({
+    db: args.db,
+    input: args.input,
+    personaId: args.personaId,
+    maxHistoryTokens: 1200,
+  });
+}
+
+/**
+ * Infers harness input source from inbound message provenance.
+ */
+export function inferHarnessInputSource(
+  args: {
+    message: InboundNormalizedMessage;
+  },
+): 'email' | 'responsibility' {
+  if (args.message.rawMimePath === '__responsibility__') {
+    return 'responsibility';
+  }
+
+  const metadata = args.message.metadata;
+  if (!isRecord(metadata)) {
+    return 'email';
+  }
+
+  return metadata.source === 'responsibility' ? 'responsibility' : 'email';
+}
+
+/**
  * Builds normalized provider messages from system prompt, active memory, history, and input.
  */
 export function buildProviderMessages(
@@ -639,6 +713,7 @@ export function buildProviderMessages(
     context: {
       threadId: string;
       activeMemory: string;
+      systemSections?: string[];
       history: Array<{
         direction: 'inbound' | 'outbound' | 'synthetic';
         messageId: string;
@@ -654,25 +729,34 @@ export function buildProviderMessages(
   },
 ): HarnessProviderMessage[] {
   const messages: HarnessProviderMessage[] = [];
-  const systemParts: string[] = [];
-  if (args.systemPrompt.length > 0) {
-    systemParts.push(args.systemPrompt);
-  }
-  if (args.context.activeMemory.length > 0) {
-    systemParts.push(`Active memory:\n${args.context.activeMemory}`);
-  }
-  const inboundRoutingContext = buildInboundRoutingContextNote({
-    input: args.context.input,
-    threadId: args.context.threadId,
-  });
-  if (inboundRoutingContext.length > 0) {
-    systemParts.push(inboundRoutingContext);
-  }
-  if (systemParts.length > 0) {
+  if (Array.isArray(args.context.systemSections) && args.context.systemSections.length > 0) {
     messages.push({
       role: 'system',
-      parts: [{ type: 'text', text: systemParts.join('\n\n') }],
+      parts: [{ type: 'text', text: args.context.systemSections.join('\n\n') }],
     });
+  }
+
+  if (messages.length === 0) {
+    const systemParts: string[] = [];
+    if (args.systemPrompt.length > 0) {
+      systemParts.push(args.systemPrompt);
+    }
+    if (args.context.activeMemory.length > 0) {
+      systemParts.push(`Active memory:\n${args.context.activeMemory}`);
+    }
+    const inboundRoutingContext = buildInboundRoutingContextNote({
+      input: args.context.input,
+      threadId: args.context.threadId,
+    });
+    if (inboundRoutingContext.length > 0) {
+      systemParts.push(inboundRoutingContext);
+    }
+    if (systemParts.length > 0) {
+      messages.push({
+        role: 'system',
+        parts: [{ type: 'text', text: systemParts.join('\n\n') }],
+      });
+    }
   }
 
   for (const entry of args.context.history) {
@@ -774,87 +858,80 @@ export function readStringArrayMetadata(
 }
 
 /**
+ * Returns true when one unknown value is a plain object record.
+ */
+export function isRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
  * Creates one provider adapter implementation for the requested provider id.
  */
 export function createProviderAdapter(
   args: {
-    inferenceConfig: {
-      providers: {
-        openai?: {
-          apiKey?: string;
-          baseUrl?: string;
-        };
-        anthropic?: {
-          apiKey?: string;
-          baseUrl?: string;
-          version?: string;
-        };
-        gemini?: {
-          apiKey?: string;
-          baseUrl?: string;
-        };
-        grok?: {
-          apiKey?: string;
-          baseUrl?: string;
-        };
-      };
+    providerConfig: {
+      apiKey?: string;
+      baseUrl?: string;
+      version?: string;
     };
     provider: 'openai' | 'anthropic' | 'gemini' | 'grok';
   },
 ): HarnessProviderAdapter {
   if (args.provider === 'openai') {
-    const apiKey = args.inferenceConfig.providers.openai?.apiKey;
+    const apiKey = args.providerConfig.apiKey;
     if (!apiKey) {
-      throw new Error('Missing OpenAI API key. Set providers.openai.api_key_env and export that env var.');
+      throw new Error('Missing OpenAI API key. Set providers[].config.api_key_env in extensions/extensions.json and export that env var.');
     }
 
     return createOpenAiProviderAdapter({
       config: {
         apiKey,
-        baseUrl: args.inferenceConfig.providers.openai?.baseUrl,
+        baseUrl: args.providerConfig.baseUrl,
       },
     });
   }
 
   if (args.provider === 'anthropic') {
-    const apiKey = args.inferenceConfig.providers.anthropic?.apiKey;
+    const apiKey = args.providerConfig.apiKey;
     if (!apiKey) {
-      throw new Error('Missing Anthropic API key. Set providers.anthropic.api_key_env and export that env var.');
+      throw new Error('Missing Anthropic API key. Set providers[].config.api_key_env in extensions/extensions.json and export that env var.');
     }
 
     return createAnthropicProviderAdapter({
       config: {
         apiKey,
-        baseUrl: args.inferenceConfig.providers.anthropic?.baseUrl,
-        version: args.inferenceConfig.providers.anthropic?.version,
+        baseUrl: args.providerConfig.baseUrl,
+        version: args.providerConfig.version,
       },
     });
   }
 
   if (args.provider === 'gemini') {
-    const apiKey = args.inferenceConfig.providers.gemini?.apiKey;
+    const apiKey = args.providerConfig.apiKey;
     if (!apiKey) {
-      throw new Error('Missing Gemini API key. Set providers.gemini.api_key_env and export that env var.');
+      throw new Error('Missing Gemini API key. Set providers[].config.api_key_env in extensions/extensions.json and export that env var.');
     }
 
     return createGeminiProviderAdapter({
       config: {
         apiKey,
-        baseUrl: args.inferenceConfig.providers.gemini?.baseUrl,
+        baseUrl: args.providerConfig.baseUrl,
       },
     });
   }
 
   if (args.provider === 'grok') {
-    const apiKey = args.inferenceConfig.providers.grok?.apiKey;
+    const apiKey = args.providerConfig.apiKey;
     if (!apiKey) {
-      throw new Error('Missing Grok API key. Set providers.grok.api_key_env and export that env var.');
+      throw new Error('Missing Grok API key. Set providers[].config.api_key_env in extensions/extensions.json and export that env var.');
     }
 
     return createGrokProviderAdapter({
       config: {
         apiKey,
-        baseUrl: args.inferenceConfig.providers.grok?.baseUrl,
+        baseUrl: args.providerConfig.baseUrl,
       },
     });
   }

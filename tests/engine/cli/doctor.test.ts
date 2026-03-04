@@ -24,7 +24,7 @@ beforeAll(async (): Promise<void> => {
   process.chdir(tempRootPath);
 
   mkdirSync(join(tempRootPath, 'config'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'extensions'), { recursive: true });
+  mkdirSync(join(tempRootPath, 'extensions', 'providers', 'openai'), { recursive: true });
   mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
 
   writeFileSync(join(tempRootPath, 'config', 'gateway.json'), JSON.stringify({
@@ -43,16 +43,23 @@ beforeAll(async (): Promise<void> => {
   writeFileSync(join(tempRootPath, 'config', 'inference.json'), JSON.stringify({
     provider: 'openai',
     model: 'gpt-4.1',
-    providers: {
-      openai: {
-        api_key_env: 'OPENAI_API_KEY',
-      },
-    },
     recursion_depth: 3,
   }, null, 2));
   writeFileSync(join(tempRootPath, 'extensions', 'extensions.json'), JSON.stringify({
+    providers: [
+      {
+        name: 'openai',
+        config: {
+          api_key_env: 'OPENAI_API_KEY',
+        },
+      },
+    ],
     tools: ['send-email'],
     hooks: [],
+  }, null, 2));
+  writeFileSync(join(tempRootPath, 'extensions', 'providers', 'openai', 'config.json'), JSON.stringify({
+    api_key_env: 'OPENAI_API_KEY',
+    base_url: 'https://api.openai.com/v1',
   }, null, 2));
   writeFileSync(join(tempRootPath, 'config', 'system.json'), JSON.stringify({
     logs_dir_path: join(tempRootPath, 'tmp', 'logs'),
@@ -93,12 +100,19 @@ beforeAll(async (): Promise<void> => {
   writeFileSync(join(tempRootPath, 'config', 'inference.json'), JSON.stringify({
     provider: 'openai',
     model: 'gpt-4.1',
-    providers: {
-      openai: {
-        api_key_env: 'OPENAI_API_KEY_MISSING',
-      },
-    },
     recursion_depth: 3,
+  }, null, 2));
+  writeFileSync(join(tempRootPath, 'extensions', 'extensions.json'), JSON.stringify({
+    providers: [
+      {
+        name: 'openai',
+        config: {
+          api_key_env: 'OPENAI_API_KEY_MISSING',
+        },
+      },
+    ],
+    tools: ['send-email'],
+    hooks: [],
   }, null, 2));
   process.exitCode = 0;
   const unhealthyJson = JSON.parse((await captureStdout({

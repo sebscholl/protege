@@ -31,6 +31,7 @@ beforeAll(async (): Promise<void> => {
   tempRootPath = mkdtempSync(join(tmpdir(), 'protege-e2e-relay-roundtrip-'));
   previousCwd = process.cwd();
   process.chdir(tempRootPath);
+  process.env.OPENAI_API_KEY = 'test-key';
 
   mkdirSync(join(tempRootPath, 'config'), { recursive: true });
   mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
@@ -42,11 +43,6 @@ beforeAll(async (): Promise<void> => {
     provider: 'openai',
     model: 'gpt-4.1',
     recursion_depth: 3,
-    providers: {
-      openai: {
-        api_key: 'test-key',
-      },
-    },
   }));
   writeFileSync(join(tempRootPath, 'config', 'system-prompt.md'), 'You are Protege.');
   writeFileSync(join(tempRootPath, 'config', 'system.json'), JSON.stringify({
@@ -195,6 +191,7 @@ beforeAll(async (): Promise<void> => {
 afterAll((): void => {
   process.chdir(previousCwd);
   rmSync(tempRootPath, { recursive: true, force: true });
+  delete process.env.OPENAI_API_KEY;
 });
 
 describe('relay roundtrip e2e', () => {

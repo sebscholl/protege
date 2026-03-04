@@ -1,0 +1,22 @@
+{
+  "thread": [
+    "resolver:system-prompt",
+    "resolver:persona-prompt",
+    "resolver:active-memory",
+    "resolver:thread-memory-state",
+    "resolver:invocation-metadata",
+    "resolver:knowledge-guidance",
+    "resolver:thread-history",
+    "resolver:current-input"
+  ],
+  "responsibility": [
+    "resolver:system-prompt",
+    "resolver:persona-prompt",
+    "resolver:active-memory",
+    "resolver:thread-memory-state",
+    "resolver:invocation-metadata",
+    "resolver:knowledge-guidance",
+    "resolver:thread-history",
+    "resolver:current-input"
+  ]
+}

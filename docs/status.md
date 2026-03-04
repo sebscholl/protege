@@ -238,6 +238,20 @@ Planning updates:
 38. Context-loading planning initialized:
    - layered, file-first context model frozen via ADR-0034
    - milestone checklist created in `docs/milestones/context-loading-plan.md`
+39. Context pipeline migration (CP1-CP5 initial slice) implemented:
+   - `config/context.json` scaffold added with ordered `thread` and `responsibility` profiles
+   - resolver manifest support added to `extensions/extensions.json` with normalization + registry loading
+   - shipped resolver modules added under `extensions/resolvers/*` (`system-prompt`, `persona-prompt`, `active-memory`, `thread-memory-state`, `invocation-metadata`, `knowledge-guidance`, `thread-history`, `current-input`)
+   - harness runtime now builds context through resolver pipeline when `config/context.json` exists, with legacy context-builder fallback when absent
+   - harness topology cleanup landed with compatibility shims:
+     - `engine/harness/context/history.ts` (+ `engine/harness/context.ts` shim)
+     - `engine/harness/tools/registry.ts` (+ `engine/harness/tool-registry.ts` shim)
+     - `engine/harness/hooks/registry.ts` (+ `engine/harness/hook-registry.ts` shim)
+40. Context pipeline validation coverage added:
+   - `tests/engine/harness/context-config.test.ts`
+   - `tests/engine/harness/context-pipeline.test.ts`
+   - `tests/engine/harness/resolver-registry.test.ts`
+   - regression suites remain green across harness/gateway/scheduler/e2e slices.
 39. Holistic context-management planning expanded:
    - end-to-end scenario plan added in `docs/milestones/context-management-plan.md` covering thread, responsibility, and relationship-aware context profiles
 40. Context-management planning refined:
@@ -245,6 +259,12 @@ Planning updates:
 41. Tool-trace continuity planning initialized:
    - persistence and causal ordering policy frozen via ADR-0035
    - implementation checklist created in `docs/milestones/tool-trace-persistence-plan.md`
+42. Context API planning refined:
+   - context pipeline config is now explicitly `file:` + `resolver:` only in planning docs
+   - shipped and custom dynamic loaders are unified under the same resolver contract
+43. Context pipeline migration initiated:
+   - ADR-0036 accepted for resolver-extension boundary and harness module topology
+   - migration checklist added in `docs/milestones/context-pipeline-filesystem-migration-checklist.md`
 
 ## ADR Coverage
 

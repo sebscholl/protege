@@ -1,15 +1,15 @@
-import type { HookManifestEntry, NormalizedHookManifestEntry } from '@engine/harness/tool-registry';
+import type { HookManifestEntry, NormalizedHookManifestEntry } from '@engine/harness/tools/registry';
 import type {
   HarnessHookOnEvent,
   HookEventName,
   HookEventPayloadByName,
-} from '@engine/harness/hook-events';
+} from '@engine/harness/hooks/events';
 
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { normalizeEnabledHookEntries, readExtensionManifest, resolveDefaultExtensionsManifestPath } from '@engine/harness/tool-registry';
+import { normalizeEnabledHookEntries, readExtensionManifest, resolveDefaultExtensionsManifestPath } from '@engine/harness/tools/registry';
 
 /**
  * Represents one runtime hook entry with resolved subscriptions and config.

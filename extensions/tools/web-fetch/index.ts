@@ -1,7 +1,7 @@
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from '@engine/harness/tool-contract';
+} from '@engine/harness/tools/contract';
 
 /**
  * Represents accepted input payload for web fetch tool execution.

@@ -2,7 +2,7 @@ import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
   HarnessToolRegistry,
-} from '@engine/harness/tool-contract';
+} from '@engine/harness/tools/contract';
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -45,6 +45,24 @@ export type HookManifestEntry = string | {
 };
 
 /**
+ * Represents one manifest entry for enabling a resolver extension by name.
+ */
+export type ResolverManifestEntry = string | {
+  name: string;
+  enabled?: boolean;
+  config?: Record<string, unknown>;
+};
+
+/**
+ * Represents one manifest entry for enabling a provider extension by name.
+ */
+export type ProviderManifestEntry = string | {
+  name: string;
+  enabled?: boolean;
+  config?: Record<string, unknown>;
+};
+
+/**
  * Represents one normalized hook manifest entry.
  */
 export type NormalizedHookManifestEntry = {
@@ -54,11 +72,29 @@ export type NormalizedHookManifestEntry = {
 };
 
 /**
+ * Represents one normalized enabled resolver manifest entry.
+ */
+export type NormalizedResolverManifestEntry = {
+  name: string;
+  config?: Record<string, unknown>;
+};
+
+/**
+ * Represents one normalized enabled provider manifest entry.
+ */
+export type NormalizedProviderManifestEntry = {
+  name: string;
+  config?: Record<string, unknown>;
+};
+
+/**
  * Represents the extension manifest shape used by runtime registry loading.
  */
 export type ExtensionManifest = {
   tools: ToolManifestEntry[];
   hooks: HookManifestEntry[];
+  resolvers: ResolverManifestEntry[];
+  providers: ProviderManifestEntry[];
 };
 
 /**
@@ -81,6 +117,8 @@ export function readExtensionManifest(
     return {
       tools: [],
       hooks: [],
+      resolvers: [],
+      providers: [],
     };
   }
 
@@ -88,9 +126,13 @@ export function readExtensionManifest(
   const parsed = JSON.parse(text) as Record<string, unknown>;
   const tools = Array.isArray(parsed.tools) ? parsed.tools as ToolManifestEntry[] : [];
   const hooks = Array.isArray(parsed.hooks) ? parsed.hooks as HookManifestEntry[] : [];
+  const resolvers = Array.isArray(parsed.resolvers) ? parsed.resolvers as ResolverManifestEntry[] : [];
+  const providers = Array.isArray(parsed.providers) ? parsed.providers as ProviderManifestEntry[] : [];
   return {
     tools,
     hooks,
+    resolvers,
+    providers,
   };
 }
 
@@ -240,6 +282,102 @@ export function normalizeEnabledHookEntries(
     entries.push({
       name: normalizedName,
       events: normalizedEvents,
+      config: entry.config,
+    });
+  }
+
+  return entries;
+}
+
+/**
+ * Normalizes resolver manifest entries into unique enabled resolver entries.
+ */
+export function normalizeEnabledResolverEntries(
+  args: {
+    resolvers: ResolverManifestEntry[];
+  },
+): NormalizedResolverManifestEntry[] {
+  const seen = new Set<string>();
+  const entries: NormalizedResolverManifestEntry[] = [];
+  for (const [index, entry] of args.resolvers.entries()) {
+    if (typeof entry === 'string') {
+      const normalizedName = entry.trim();
+      if (normalizedName.length > 0 && !seen.has(normalizedName)) {
+        seen.add(normalizedName);
+        entries.push({ name: normalizedName });
+      }
+      continue;
+    }
+
+    if (!isRecord(entry)) {
+      throw new Error(`Invalid resolver manifest entry at index ${index}: expected string or object.`);
+    }
+    if (typeof entry.name !== 'string' || entry.name.trim().length === 0) {
+      throw new Error(`Invalid resolver manifest entry at index ${index}: "name" must be a non-empty string.`);
+    }
+    if (entry.enabled !== undefined && typeof entry.enabled !== 'boolean') {
+      throw new Error(`Invalid resolver manifest entry "${entry.name}": "enabled" must be boolean when provided.`);
+    }
+    if (entry.config !== undefined && !isRecord(entry.config)) {
+      throw new Error(`Invalid resolver manifest entry "${entry.name}": "config" must be an object when provided.`);
+    }
+
+    const normalizedName = entry.name.trim();
+    if (entry.enabled === false || seen.has(normalizedName)) {
+      continue;
+    }
+
+    seen.add(normalizedName);
+    entries.push({
+      name: normalizedName,
+      config: entry.config,
+    });
+  }
+
+  return entries;
+}
+
+/**
+ * Normalizes provider manifest entries into unique enabled provider entries.
+ */
+export function normalizeEnabledProviderEntries(
+  args: {
+    providers: ProviderManifestEntry[];
+  },
+): NormalizedProviderManifestEntry[] {
+  const seen = new Set<string>();
+  const entries: NormalizedProviderManifestEntry[] = [];
+  for (const [index, entry] of args.providers.entries()) {
+    if (typeof entry === 'string') {
+      const normalizedName = entry.trim();
+      if (normalizedName.length > 0 && !seen.has(normalizedName)) {
+        seen.add(normalizedName);
+        entries.push({ name: normalizedName });
+      }
+      continue;
+    }
+
+    if (!isRecord(entry)) {
+      throw new Error(`Invalid provider manifest entry at index ${index}: expected string or object.`);
+    }
+    if (typeof entry.name !== 'string' || entry.name.trim().length === 0) {
+      throw new Error(`Invalid provider manifest entry at index ${index}: "name" must be a non-empty string.`);
+    }
+    if (entry.enabled !== undefined && typeof entry.enabled !== 'boolean') {
+      throw new Error(`Invalid provider manifest entry "${entry.name}": "enabled" must be boolean when provided.`);
+    }
+    if (entry.config !== undefined && !isRecord(entry.config)) {
+      throw new Error(`Invalid provider manifest entry "${entry.name}": "config" must be an object when provided.`);
+    }
+
+    const normalizedName = entry.name.trim();
+    if (entry.enabled === false || seen.has(normalizedName)) {
+      continue;
+    }
+
+    seen.add(normalizedName);
+    entries.push({
+      name: normalizedName,
       config: entry.config,
     });
   }

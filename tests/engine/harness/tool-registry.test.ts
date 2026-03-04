@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   loadToolRegistry,
   normalizeEnabledToolEntries,
-} from '@engine/harness/tool-registry';
+} from '@engine/harness/tools/registry';
 
 let toolNames: string[] = [];
 let missingManifestToolCount = -1;
