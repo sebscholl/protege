@@ -1,6 +1,7 @@
 {
   "provider": "grok",
   "model": "grok-3-latest",
+  "recursion_depth": 6,
   "max_tool_turns": 20,
   "providers": {
     "openai": {
@@ -20,9 +21,5 @@
       "api_key_env": "GROK_API_KEY",
       "base_url": "https://api.x.ai/v1"
     }
-  },
-  "recursion_depth": 3,
-  "whitelist": [
-    "*@example.com"
-  ]
+  }
 }

@@ -11,7 +11,6 @@ export type InferenceRuntimeConfig = {
   model: string;
   recursionDepth: number;
   maxToolTurns: number;
-  whitelist: string[];
   providers: {
     openai?: {
       apiKey?: string;
@@ -82,7 +81,6 @@ export function readInferenceRuntimeConfig(
       value: parsed.max_tool_turns,
       fallback: 8,
     }),
-    whitelist: Array.isArray(parsed.whitelist) ? parsed.whitelist as string[] : [],
     providers: parseProviderSettings({
       providers: parsed.providers,
     }),

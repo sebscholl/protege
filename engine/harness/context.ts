@@ -4,12 +4,13 @@ import type {
   HarnessContext,
   HarnessContextHistoryEntry,
   HarnessInput,
+  HarnessThreadToolEvent,
 } from '@engine/harness/types';
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { listThreadMessages } from '@engine/harness/storage';
+import { listThreadMessages, listThreadToolEventsByThread } from '@engine/harness/storage';
 
 /**
  * Resolves the default active-memory file path for local runtime context.
@@ -47,15 +48,73 @@ export function buildHistoryEntries(
     db: args.db,
     threadId: args.threadId,
   });
+  const threadToolEvents = listThreadToolEventsByThread({
+    db: args.db,
+    threadId: args.threadId,
+  });
+  const toolEventsByParentMessageId = groupToolEventsByParentMessageId({
+    events: threadToolEvents,
+  });
+  const historyEntries: HarnessContextHistoryEntry[] = [];
 
-  return storedMessages.map((message) => ({
-    direction: message.direction,
-    sender: message.sender,
-    subject: message.subject,
-    text: message.textBody,
-    receivedAt: message.receivedAt,
-    messageId: message.messageId,
-  }));
+  for (const message of storedMessages) {
+    historyEntries.push({
+      direction: message.direction,
+      sender: message.sender,
+      subject: message.subject,
+      text: message.textBody,
+      receivedAt: message.receivedAt,
+      messageId: message.messageId,
+    });
+
+    const eventsForMessage = toolEventsByParentMessageId.get(message.messageId) ?? [];
+    for (const event of eventsForMessage) {
+      historyEntries.push(toToolHistoryEntry({ event }));
+    }
+  }
+
+  return historyEntries;
+}
+
+/**
+ * Groups thread tool events by parent inbound message id for deterministic timeline insertion.
+ */
+export function groupToolEventsByParentMessageId(
+  args: {
+    events: HarnessThreadToolEvent[];
+  },
+): Map<string, HarnessThreadToolEvent[]> {
+  const grouped = new Map<string, HarnessThreadToolEvent[]>();
+  for (const event of args.events) {
+    const existing = grouped.get(event.parentMessageId) ?? [];
+    existing.push(event);
+    grouped.set(event.parentMessageId, existing);
+  }
+
+  for (const [key, value] of grouped.entries()) {
+    grouped.set(key, value.sort((left, right) => left.stepIndex - right.stepIndex));
+  }
+
+  return grouped;
+}
+
+/**
+ * Converts one stored thread tool event into a synthetic history entry for provider context.
+ */
+export function toToolHistoryEntry(
+  args: {
+    event: HarnessThreadToolEvent;
+  },
+): HarnessContextHistoryEntry {
+  const eventLabel = args.event.eventType === 'tool_call' ? 'Tool call' : 'Tool result';
+  return {
+    direction: 'synthetic',
+    sender: 'tool@protege.local',
+    subject: `${eventLabel}: ${args.event.toolName}`,
+    text: `${eventLabel} (${args.event.toolName}): ${JSON.stringify(args.event.payload)}`,
+    receivedAt: args.event.createdAt,
+    messageId: `tool-event:${args.event.id}`,
+  };
 }
 
 /**

@@ -97,7 +97,7 @@ Exit:
 1. Trusted in-process extension loader via `extensions.json`.
 2. Ship first-party `web_search` and `web_fetch` tools.
 3. Build scheduler responsibilities + cron runner + retry behavior.
-4. Implement whitelist matching and recursion-depth safeguards.
+4. Implement gateway sender access policy matching and recursion-depth safeguards.
 5. Implement hook loading and dispatch.
 
 Exit:

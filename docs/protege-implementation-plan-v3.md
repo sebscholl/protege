@@ -147,7 +147,7 @@ Exit:
 1. Implement trusted in-process extension loading via `extensions.json`.
 2. Ship first-party `web_fetch` first, then `web_search`.
 3. Implement scheduler responsibilities + cron + retry.
-4. Implement whitelist and recursion-depth safeguards.
+4. Implement gateway sender access policy and recursion-depth safeguards.
 5. Implement hooks loading and event dispatch.
 6. Persist inbound attachments to `memory/{persona_id}/attachments/` with metadata.
 

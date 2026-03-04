@@ -14,7 +14,7 @@ import {
   truncateHistoryToTokenBudget,
 } from '@engine/harness/context';
 import type { HarnessContextHistoryEntry, HarnessInput } from '@engine/harness/types';
-import { storeInboundMessage } from '@engine/harness/storage';
+import { storeInboundMessage, storeThreadToolEvent } from '@engine/harness/storage';
 import { initializeDatabase } from '@engine/shared/database';
 
 let tempRootPath = '';
@@ -24,6 +24,8 @@ let harnessContextHistoryCount = 0;
 let harnessContextActiveMemory = '';
 let truncatedHistoryCount = 0;
 let estimatedTokenCount = 0;
+let harnessContextContainsToolCall = false;
+let harnessContextContainsToolResult = false;
 
 const inboundA: InboundNormalizedMessage = {
   messageId: '<a@fixture.local>',
@@ -70,6 +72,40 @@ beforeAll((): void => {
   });
 
   storeInboundMessage({ db: db as ProtegeDatabase, request: { message: inboundA } });
+  storeThreadToolEvent({
+    db: db as ProtegeDatabase,
+    event: {
+      threadId: inboundA.threadId,
+      parentMessageId: inboundA.messageId,
+      runId: 'run-context-1',
+      stepIndex: 1,
+      eventType: 'tool_call',
+      toolName: 'read_file',
+      toolCallId: 'call-context-1',
+      payload: {
+        input: {
+          path: '/tmp/example.txt',
+        },
+      },
+      createdAt: '2026-02-14T10:00:30.000Z',
+    },
+  });
+  storeThreadToolEvent({
+    db: db as ProtegeDatabase,
+    event: {
+      threadId: inboundA.threadId,
+      parentMessageId: inboundA.messageId,
+      runId: 'run-context-1',
+      stepIndex: 2,
+      eventType: 'tool_result',
+      toolName: 'read_file',
+      toolCallId: 'call-context-1',
+      payload: {
+        content: 'file content',
+      },
+      createdAt: '2026-02-14T10:00:31.000Z',
+    },
+  });
   storeInboundMessage({ db: db as ProtegeDatabase, request: { message: inboundB } });
 
   const input: HarnessInput = {
@@ -93,6 +129,8 @@ beforeAll((): void => {
 
   harnessContextHistoryCount = context.history.length;
   harnessContextActiveMemory = context.activeMemory;
+  harnessContextContainsToolCall = context.history.some((entry) => entry.text.includes('Tool call (read_file)'));
+  harnessContextContainsToolResult = context.history.some((entry) => entry.text.includes('Tool result (read_file)'));
 
   const tinyBudgetHistory: HarnessContextHistoryEntry[] = [
     {
@@ -131,7 +169,7 @@ describe('harness context builder', () => {
   });
 
   it('builds context with stored thread history entries', () => {
-    expect(harnessContextHistoryCount).toBe(2);
+    expect(harnessContextHistoryCount).toBe(4);
   });
 
   it('attaches active memory content to built context', () => {
@@ -144,5 +182,13 @@ describe('harness context builder', () => {
 
   it('estimates tokens from character length using fixed ratio', () => {
     expect(estimatedTokenCount).toBe(2);
+  });
+
+  it('includes persisted tool call events in context history', () => {
+    expect(harnessContextContainsToolCall).toBe(true);
+  });
+
+  it('includes persisted tool result events in context history', () => {
+    expect(harnessContextContainsToolResult).toBe(true);
   });
 });

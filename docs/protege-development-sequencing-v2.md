@@ -57,7 +57,7 @@ For current completion state against this sequence, see `docs/status.md`.
 |---|---|---|---|---|
 | 13 | **Extensions (Tools)** | Build the tool-loading system and the `extensions.json` manifest. Implement the initial toolset (`web_search`, `web_fetch`). | Unit test | M2 |
 | 14 | **Scheduler** | Build the `engine/scheduler/` system. Implement the `Responsibility` data model, the `node-cron` runner, and the LLM tools to manage it. | Unit test | M2 |
-| 15 | **Security & Ops** | Implement the access control whitelist, error handling/retry logic, and the recursion depth system. | Unit test | M2 |
+| 15 | **Security & Ops** | Implement gateway sender access policy controls, error handling/retry logic, and the recursion depth system. | Unit test | M2 |
 | 16 | **Extensions (Hooks)** | Build the hook-loading system. | Unit test | M2 |
 
 **Outcome of M4:** The fully-featured Protege agent as specified. It can use tools, schedule its own tasks, and is robust against common failure modes.

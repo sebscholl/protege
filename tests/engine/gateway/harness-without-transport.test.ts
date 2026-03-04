@@ -32,7 +32,6 @@ beforeAll(async (): Promise<void> => {
     provider: 'openai',
     model: 'gpt-4.1',
     recursion_depth: 3,
-    whitelist: ['*@example.com'],
     providers: {
       openai: {
         api_key: 'test-key',

@@ -35,6 +35,8 @@ Accepted ADRs:
 31. `0031-scheduler-concurrency-and-no-overlap-policy.md`
 32. `0032-scheduler-run-outcome-and-observability-policy.md`
 33. `0033-hooks-manifest-and-async-dispatch-v1.md`
+34. `0034-context-loading-layered-file-first-v1.md`
+35. `0035-thread-tool-trace-persistence-and-ordering-v1.md`
 
 Notes:
 

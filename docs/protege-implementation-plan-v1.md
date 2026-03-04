@@ -127,7 +127,7 @@ This plan translates the specification and sequencing documents into an executio
 3. Ship `web_search` and `web_fetch` as first-party extensions.
 4. Implement scheduler runner with cron parsing + jitter + retry model.
 5. Add LLM-manageable responsibility operations (create/list/update/disable).
-6. Implement sender whitelist wildcard matching.
+6. Implement gateway sender access policy wildcard matching.
 7. Implement recursion depth header strategy and enforcement.
 8. Implement cross-cutting retry/backoff policy with owner notifications.
 9. Implement hooks runtime and event dispatch points.

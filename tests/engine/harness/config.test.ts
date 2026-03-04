@@ -34,7 +34,6 @@ beforeAll((): void => {
     },
     recursion_depth: 3,
     max_tool_turns: 12,
-    whitelist: ['*@example.com'],
   }));
 
   const parsed = readInferenceRuntimeConfig({
@@ -55,7 +54,6 @@ beforeAll((): void => {
     },
     temperature: 0.5,
     recursion_depth: 3,
-    whitelist: ['*@example.com'],
   }));
 
   const directConfig = readInferenceRuntimeConfig({
@@ -74,7 +72,6 @@ beforeAll((): void => {
       },
     },
     recursion_depth: 3,
-    whitelist: ['*@example.com'],
   }));
 
   const missingEnvConfig = readInferenceRuntimeConfig({
@@ -93,7 +90,6 @@ beforeAll((): void => {
     },
     recursion_depth: 3,
     max_tool_turns: 0,
-    whitelist: ['*@example.com'],
   }));
   const invalidTurnsConfig = readInferenceRuntimeConfig({
     configPath: invalidTurnsConfigPath,
@@ -113,7 +109,6 @@ beforeAll((): void => {
       },
     },
     recursion_depth: 3,
-    whitelist: ['*@example.com'],
   }));
   const anthropicConfig = readInferenceRuntimeConfig({
     configPath: anthropicConfigPath,
@@ -133,7 +128,6 @@ beforeAll((): void => {
       },
     },
     recursion_depth: 3,
-    whitelist: ['*@example.com'],
   }));
   const geminiConfig = readInferenceRuntimeConfig({
     configPath: geminiConfigPath,
@@ -152,7 +146,6 @@ beforeAll((): void => {
       },
     },
     recursion_depth: 3,
-    whitelist: ['*@example.com'],
   }));
   const grokConfig = readInferenceRuntimeConfig({
     configPath: grokConfigPath,

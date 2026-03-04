@@ -49,7 +49,6 @@ beforeAll(async (): Promise<void> => {
       },
     },
     recursion_depth: 3,
-    whitelist: ['*@example.com'],
   }, null, 2));
   writeFileSync(join(tempRootPath, 'extensions', 'extensions.json'), JSON.stringify({
     tools: ['send-email'],
@@ -100,7 +99,6 @@ beforeAll(async (): Promise<void> => {
       },
     },
     recursion_depth: 3,
-    whitelist: ['*@example.com'],
   }, null, 2));
   process.exitCode = 0;
   const unhealthyJson = JSON.parse((await captureStdout({

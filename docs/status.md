@@ -235,6 +235,16 @@ Planning updates:
    - logger emission now fans out non-blocking hook dispatch in gateway/chat runtimes with failure isolation
    - edge-case tests added for slow hooks, failing hooks, wildcard/exact subscriptions, and manifest-order execution
    - e2e observer coverage added via `tests/e2e/hooks-observer.test.ts`
+38. Context-loading planning initialized:
+   - layered, file-first context model frozen via ADR-0034
+   - milestone checklist created in `docs/milestones/context-loading-plan.md`
+39. Holistic context-management planning expanded:
+   - end-to-end scenario plan added in `docs/milestones/context-management-plan.md` covering thread, responsibility, and relationship-aware context profiles
+40. Context-management planning refined:
+   - async memory synthesis model added (post-turn thread-memory updates + cadence/debounced active-memory updates), with inference reading committed snapshots only
+41. Tool-trace continuity planning initialized:
+   - persistence and causal ordering policy frozen via ADR-0035
+   - implementation checklist created in `docs/milestones/tool-trace-persistence-plan.md`
 
 ## ADR Coverage
 

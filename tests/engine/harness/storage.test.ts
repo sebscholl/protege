@@ -8,10 +8,12 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
+  listThreadToolEventsByThread,
   listThreadMessages,
   searchMessages,
   storeInboundMessage,
   storeOutboundMessage,
+  storeThreadToolEvent,
 } from '@engine/harness/storage';
 import { initializeDatabase } from '@engine/shared/database';
 
@@ -21,6 +23,9 @@ let storedMessageId = '';
 let threadMessagesCount = 0;
 let searchResultsCount = 0;
 let outboundDirection = '';
+let threadToolEventsCount = 0;
+let firstThreadToolEventType = '';
+let secondThreadToolEventType = '';
 
 const inboundFixture: InboundNormalizedMessage = {
   messageId: '<fixture-inbound@protege.local>',
@@ -82,6 +87,49 @@ beforeAll((): void => {
     db: db as ProtegeDatabase,
     threadId: inboundFixture.threadId,
   })[1]?.direction ?? '';
+
+  storeThreadToolEvent({
+    db: db as ProtegeDatabase,
+    event: {
+      threadId: inboundFixture.threadId,
+      parentMessageId: inboundFixture.messageId,
+      runId: 'run-1',
+      stepIndex: 1,
+      eventType: 'tool_call',
+      toolName: 'read_file',
+      toolCallId: 'call-1',
+      payload: {
+        input: {
+          path: '/tmp/a.txt',
+        },
+      },
+      createdAt: '2026-02-14T00:00:05.000Z',
+    },
+  });
+  storeThreadToolEvent({
+    db: db as ProtegeDatabase,
+    event: {
+      threadId: inboundFixture.threadId,
+      parentMessageId: inboundFixture.messageId,
+      runId: 'run-1',
+      stepIndex: 2,
+      eventType: 'tool_result',
+      toolName: 'read_file',
+      toolCallId: 'call-1',
+      payload: {
+        content: 'hello',
+      },
+      createdAt: '2026-02-14T00:00:06.000Z',
+    },
+  });
+
+  const threadToolEvents = listThreadToolEventsByThread({
+    db: db as ProtegeDatabase,
+    threadId: inboundFixture.threadId,
+  });
+  threadToolEventsCount = threadToolEvents.length;
+  firstThreadToolEventType = threadToolEvents[0]?.eventType ?? '';
+  secondThreadToolEventType = threadToolEvents[1]?.eventType ?? '';
 });
 
 afterAll((): void => {
@@ -104,5 +152,13 @@ describe('harness storage persistence', () => {
 
   it('stores outbound messages with outbound direction', () => {
     expect(outboundDirection).toBe('outbound');
+  });
+
+  it('stores thread tool events linked to a thread timeline', () => {
+    expect(threadToolEventsCount).toBe(2);
+  });
+
+  it('returns thread tool events ordered by causal sequence', () => {
+    expect(firstThreadToolEventType === 'tool_call' && secondThreadToolEventType === 'tool_result').toBe(true);
   });
 });

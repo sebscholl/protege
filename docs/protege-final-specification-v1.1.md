@@ -163,7 +163,7 @@ For v1, conversation history search will be handled by SQLite's built-in FTS5 fu
 
 ## 7. Security & Operational Concerns
 
-*   **Access Control:** A user-configurable whitelist in `config/inference.json` (supporting wildcards) determines who the agent will respond to.
+*   **Access Control:** A user-configurable sender policy in `config/security.json` (supporting wildcards) determines who the gateway will accept inbound mail from.
 *   **Error Handling:** Critical operations will retry up to 3 times with exponential backoff before failing and notifying the owner.
 *   **Agent-to-Agent Loops:** A `recursion_depth` setting in `config/inference.json` (default: 3) prevents infinite loops. The agent tracks this by adding a `X-Protege-Recursion: N` header to all outbound mail, decrementing the value from any inbound mail it receives from another agent.
 

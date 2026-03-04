@@ -19,7 +19,7 @@ import { createAnthropicProviderAdapter } from '@engine/harness/providers/anthro
 import { createGeminiProviderAdapter } from '@engine/harness/providers/gemini';
 import { createGrokProviderAdapter } from '@engine/harness/providers/grok';
 import { createOpenAiProviderAdapter } from '@engine/harness/providers/openai';
-import { storeInboundMessage, storeOutboundMessage } from '@engine/harness/storage';
+import { storeInboundMessage, storeOutboundMessage, storeThreadToolEvent } from '@engine/harness/storage';
 import type { HarnessToolExecutionContext, HarnessToolRegistry } from '@engine/harness/tool-contract';
 import { executeRegisteredTool, loadToolRegistry } from '@engine/harness/tool-registry';
 import type { HarnessInput } from '@engine/harness/types';
@@ -33,6 +33,16 @@ export type HarnessRunResult = {
   responseText: string;
   responseMessageId: string;
   invokedActions: string[];
+};
+
+/**
+ * Represents one persisted tool-event payload emitted during a single provider loop run.
+ */
+export type PersistToolEventCallbackArgs = {
+  eventType: 'tool_call' | 'tool_result';
+  toolName: string;
+  toolCallId: string;
+  payload: Record<string, unknown>;
 };
 
 /**
@@ -96,6 +106,8 @@ export async function runHarnessForPersistedInboundMessage(
     message: args.message,
   });
   try {
+    const runId = randomUUID();
+    let runStepIndex = 0;
     args.logger?.info({
       event: 'harness.inference.started',
       context: {
@@ -142,6 +154,24 @@ export async function runHarnessForPersistedInboundMessage(
       }),
       registry,
       maxTurns: inferenceConfig.maxToolTurns,
+      persistToolEvent: (
+        toolEvent,
+      ): void => {
+        runStepIndex += 1;
+        storeThreadToolEvent({
+          db,
+          event: {
+            threadId: args.message.threadId,
+            parentMessageId: args.message.messageId,
+            runId,
+            stepIndex: runStepIndex,
+            eventType: toolEvent.eventType,
+            toolName: toolEvent.toolName,
+            toolCallId: toolEvent.toolCallId,
+            payload: toolEvent.payload,
+          },
+        });
+      },
     });
 
     const responseText = toolResult.responseText.trim();
@@ -304,6 +334,7 @@ export async function executeProviderToolLoop(
     toolContext: HarnessToolExecutionContext;
     registry: HarnessToolRegistry;
     maxTurns?: number;
+    persistToolEvent?: (toolEvent: PersistToolEventCallbackArgs) => void;
   },
 ): Promise<ProviderToolLoopResult> {
   const maxTurns = args.maxTurns ?? 8;
@@ -354,6 +385,14 @@ export async function executeProviderToolLoop(
       toolCalls: response.toolCalls,
     });
     for (const toolCall of response.toolCalls) {
+      args.persistToolEvent?.({
+        eventType: 'tool_call',
+        toolName: toolCall.name,
+        toolCallId: toolCall.id,
+        payload: {
+          input: toolCall.input,
+        },
+      });
       args.toolContext.logger?.info({
         event: 'harness.tool.call.started',
         context: {
@@ -391,18 +430,25 @@ export async function executeProviderToolLoop(
         if (isNonRecoverableToolError({ error })) {
           throw error;
         }
+        const toolFailureResult = buildToolFailureResult({
+          toolName: toolCall.name,
+          toolCallId: toolCall.id,
+          input: toolCall.input,
+          error,
+        });
         providerMessages.push({
           role: 'tool',
           toolCallId: toolCall.id,
           parts: [{
             type: 'text',
-            text: JSON.stringify(buildToolFailureResult({
-              toolName: toolCall.name,
-              toolCallId: toolCall.id,
-              input: toolCall.input,
-              error,
-            })),
+            text: JSON.stringify(toolFailureResult),
           }],
+        });
+        args.persistToolEvent?.({
+          eventType: 'tool_result',
+          toolName: toolCall.name,
+          toolCallId: toolCall.id,
+          payload: toolFailureResult,
         });
         break;
       }
@@ -421,6 +467,12 @@ export async function executeProviderToolLoop(
           type: 'text',
           text: JSON.stringify(toolResult),
         }],
+      });
+      args.persistToolEvent?.({
+        eventType: 'tool_result',
+        toolName: toolCall.name,
+        toolCallId: toolCall.id,
+        payload: toolResult,
       });
     }
   }

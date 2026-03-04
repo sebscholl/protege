@@ -74,6 +74,22 @@ export type HarnessContextHistoryEntry = {
 };
 
 /**
+ * Represents one persisted tool loop event tied to a thread turn.
+ */
+export type HarnessThreadToolEvent = {
+  id: string;
+  threadId: string;
+  parentMessageId: string;
+  runId: string;
+  stepIndex: number;
+  eventType: 'tool_call' | 'tool_result';
+  toolName: string;
+  toolCallId: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+};
+
+/**
  * Represents the assembled harness context prior to provider invocation.
  */
 export type HarnessContext = {

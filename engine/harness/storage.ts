@@ -2,6 +2,7 @@ import type { ProtegeDatabase } from '@engine/shared/database';
 
 import type {
   HarnessStoredMessage,
+  HarnessThreadToolEvent,
   StoreInboundMessageRequest,
   StoreOutboundMessageRequest,
 } from '@engine/harness/types';
@@ -169,6 +170,74 @@ export function storeOutboundMessage(
 }
 
 /**
+ * Persists one synthetic tool event tied to a specific inbound parent message in a thread.
+ */
+export function storeThreadToolEvent(
+  args: {
+    db: ProtegeDatabase;
+    event: {
+      threadId: string;
+      parentMessageId: string;
+      runId: string;
+      stepIndex: number;
+      eventType: 'tool_call' | 'tool_result';
+      toolName: string;
+      toolCallId: string;
+      payload: Record<string, unknown>;
+      createdAt?: string;
+    };
+  },
+): HarnessThreadToolEvent {
+  const id = randomUUID();
+  const createdAt = args.event.createdAt ?? new Date().toISOString();
+  ensureThread({
+    db: args.db,
+    threadId: args.event.threadId,
+    rootMessageId: args.event.parentMessageId,
+    nowIso: createdAt,
+  });
+
+  args.db.prepare(`
+    INSERT INTO thread_tool_events (
+      id,
+      thread_id,
+      parent_message_id,
+      run_id,
+      step_index,
+      event_type,
+      tool_name,
+      tool_call_id,
+      payload_json,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    args.event.threadId,
+    args.event.parentMessageId,
+    args.event.runId,
+    args.event.stepIndex,
+    args.event.eventType,
+    args.event.toolName,
+    args.event.toolCallId,
+    JSON.stringify(args.event.payload),
+    createdAt,
+  );
+
+  return {
+    id,
+    threadId: args.event.threadId,
+    parentMessageId: args.event.parentMessageId,
+    runId: args.event.runId,
+    stepIndex: args.event.stepIndex,
+    eventType: args.event.eventType,
+    toolName: args.event.toolName,
+    toolCallId: args.event.toolCallId,
+    payload: args.event.payload,
+    createdAt,
+  };
+}
+
+/**
  * Lists stored messages for one thread in ascending receive order.
  */
 export function listThreadMessages(
@@ -211,6 +280,46 @@ export function listThreadMessages(
     receivedAt: row.received_at ?? '',
     rawMimePath: row.raw_mime_path ?? '',
     metadata: JSON.parse(row.metadata_json ?? '{}') as Record<string, unknown>,
+  }));
+}
+
+/**
+ * Lists persisted tool events for one thread ordered by run and step sequence.
+ */
+export function listThreadToolEventsByThread(
+  args: {
+    db: ProtegeDatabase;
+    threadId: string;
+  },
+): HarnessThreadToolEvent[] {
+  const rows = args.db.prepare(`
+    SELECT
+      id,
+      thread_id,
+      parent_message_id,
+      run_id,
+      step_index,
+      event_type,
+      tool_name,
+      tool_call_id,
+      payload_json,
+      created_at
+    FROM thread_tool_events
+    WHERE thread_id = ?
+    ORDER BY created_at ASC, run_id ASC, step_index ASC
+  `).all(args.threadId) as Array<Record<string, string | number>>;
+
+  return rows.map((row) => ({
+    id: String(row.id ?? ''),
+    threadId: String(row.thread_id ?? ''),
+    parentMessageId: String(row.parent_message_id ?? ''),
+    runId: String(row.run_id ?? ''),
+    stepIndex: Number(row.step_index ?? 0),
+    eventType: String(row.event_type ?? 'tool_result') as 'tool_call' | 'tool_result',
+    toolName: String(row.tool_name ?? ''),
+    toolCallId: String(row.tool_call_id ?? ''),
+    payload: JSON.parse(String(row.payload_json ?? '{}')) as Record<string, unknown>,
+    createdAt: String(row.created_at ?? ''),
   }));
 }
 
