@@ -1,5 +1,4 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import Database from 'better-sqlite3';
@@ -15,6 +14,7 @@ import { createUnifiedLogger } from '@engine/shared/logger';
 import { createPersona } from '@engine/shared/personas';
 import { toJsonRecord } from '@tests/helpers/json';
 import { waitForCondition } from '@tests/helpers/async';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { loadNetworkFixture } from '@tests/network/index';
 import { networkServer } from '@tests/network/server';
 
@@ -26,29 +26,30 @@ let temporalInboundCount = 0;
 let temporalOutboundCount = 0;
 let correlatedLogFound = false;
 let correlationIdPropagated = false;
+let cleanupWorkspace = (): void => undefined;
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-e2e-relay-roundtrip-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
+  const workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-e2e-relay-roundtrip-',
+    symlinkExtensionsFromRepo: true,
+  });
+  tempRootPath = workspace.tempRootPath;
+  previousCwd = workspace.previousCwd;
+  cleanupWorkspace = workspace.cleanup;
   process.env.OPENAI_API_KEY = 'test-key';
 
-  mkdirSync(join(tempRootPath, 'config'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'personas'), { recursive: true });
-  symlinkSync(join(previousCwd, 'extensions'), join(tempRootPath, 'extensions'));
-
   const persona = createPersona({});
-  writeFileSync(join(tempRootPath, 'config', 'inference.json'), JSON.stringify({
-    provider: 'openai',
-    model: 'gpt-4.1',
-    recursion_depth: 3,
-  }));
-  writeFileSync(join(tempRootPath, 'config', 'system-prompt.md'), 'You are Protege.');
-  writeFileSync(join(tempRootPath, 'config', 'system.json'), JSON.stringify({
-    logs_dir_path: join(tempRootPath, 'tmp', 'logs'),
-    console_log_format: 'json',
-  }));
+  workspace.patchConfigFiles({
+    'context.json': {
+      thread: ['thread-history', 'current-input'],
+      responsibility: ['current-input'],
+    },
+    'system.json': {
+      logs_dir_path: join(tempRootPath, 'tmp', 'logs'),
+      console_log_format: 'json',
+    },
+  });
 
   const firstResponseFixture = loadNetworkFixture({
     fixtureKey: 'openai/chat-completions/200-tool-call',
@@ -189,8 +190,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
+  cleanupWorkspace();
   process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
   delete process.env.OPENAI_API_KEY;
 });
 

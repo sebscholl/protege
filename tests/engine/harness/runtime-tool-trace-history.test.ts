@@ -1,7 +1,6 @@
 import type { InboundNormalizedMessage } from '@engine/gateway/types';
 
-import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import Database from 'better-sqlite3';
@@ -12,6 +11,7 @@ import {
   persistInboundMessageForRuntime,
   runHarnessForPersistedInboundMessage,
 } from '@engine/harness/runtime';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { networkServer } from '@tests/network/server';
 
 let tempRootPath = '';
@@ -19,6 +19,7 @@ let previousCwd = '';
 let temporalDbPath = '';
 let secondTurnProviderMessages: Array<Record<string, unknown>> = [];
 let threadToolEventCount = 0;
+let cleanupWorkspace = (): void => undefined;
 
 const firstInboundMessage: InboundNormalizedMessage = {
   personaId: 'persona-tool-trace-history',
@@ -55,13 +56,15 @@ const secondInboundMessage: InboundNormalizedMessage = {
 };
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-runtime-tool-trace-history-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
+  const workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-runtime-tool-trace-history-',
+  });
+  tempRootPath = workspace.tempRootPath;
+  previousCwd = workspace.previousCwd;
+  cleanupWorkspace = workspace.cleanup;
   process.env.OPENAI_API_KEY = 'test-key';
 
-  mkdirSync(join(tempRootPath, 'config'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
   mkdirSync(join(tempRootPath, 'extensions', 'providers', 'openai'), { recursive: true });
   mkdirSync(join(tempRootPath, 'personas', firstInboundMessage.personaId as string), {
     recursive: true,
@@ -76,15 +79,12 @@ beforeAll(async (): Promise<void> => {
       createdAt: '2026-03-04T10:00:00.000Z',
     }),
   );
-  writeFileSync(
-    join(tempRootPath, 'config', 'inference.json'),
-    JSON.stringify({
-      provider: 'openai',
-      model: 'gpt-4.1',
-      recursion_depth: 3,
-    }),
-  );
-  writeFileSync(join(tempRootPath, 'config', 'system-prompt.md'), 'You are Protege.');
+  workspace.patchConfigFiles({
+    'context.json': {
+      thread: ['thread-history', 'current-input'],
+      responsibility: ['current-input'],
+    },
+  });
   writeFileSync(
     join(tempRootPath, 'extensions', 'providers', 'openai', 'config.json'),
     JSON.stringify({
@@ -94,7 +94,12 @@ beforeAll(async (): Promise<void> => {
   );
   writeFileSync(
     join(tempRootPath, 'extensions', 'extensions.json'),
-    JSON.stringify({ tools: ['send-email'], hooks: [] }),
+    JSON.stringify({
+      tools: ['send-email'],
+      hooks: [],
+      providers: ['openai'],
+      resolvers: ['thread-history', 'current-input'],
+    }),
   );
 
   let providerCallCount = 0;
@@ -194,8 +199,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
+  cleanupWorkspace();
   process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
   delete process.env.OPENAI_API_KEY;
 });
 

@@ -88,12 +88,12 @@ Minimal v1 surface:
 1. `pipelines.thread` with ordered step strings.
 2. `pipelines.responsibility` with ordered step strings.
 3. Step forms:
-   1. `file:<path>`
-   2. `resolver:<name>`
+   1. `<resolver-name>`
+   2. `<resolver-name>(arg1, arg2, ...)`
 
 Notes:
 
-1. All shipped dynamic loaders are referenced as `resolver:<name>` entries.
+1. All shipped dynamic loaders are referenced as resolver-call entries.
 2. Custom dynamic loaders use the same resolver contract and naming.
 3. No separate `builtin` step type is introduced.
 

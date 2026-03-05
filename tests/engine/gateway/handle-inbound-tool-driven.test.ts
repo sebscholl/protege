@@ -1,5 +1,4 @@
-import { existsSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import Database from 'better-sqlite3';
@@ -8,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { handleInboundForRuntime } from '@engine/gateway/index';
 import { toJsonRecord } from '@tests/helpers/json';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { loadNetworkFixture } from '@tests/network/index';
 import { networkServer } from '@tests/network/server';
 
@@ -17,31 +17,38 @@ let noToolRunFailed = false;
 let noToolOutboundMessageCount = 0;
 let toolRunErrorMessage = '';
 let noToolTemporalDbPath = '';
+let cleanupWorkspace = (): void => undefined;
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-gateway-tool-driven-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
+  const workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-gateway-tool-driven-',
+    symlinkExtensionsFromRepo: true,
+  });
+  tempRootPath = workspace.tempRootPath;
+  previousCwd = workspace.previousCwd;
+  cleanupWorkspace = workspace.cleanup;
   process.env.OPENAI_API_KEY = 'test-key';
 
-  mkdirSync(join(tempRootPath, 'config'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
   mkdirSync(join(tempRootPath, 'personas', 'persona-tool-driven'), { recursive: true });
-  symlinkSync(join(previousCwd, 'extensions'), join(tempRootPath, 'extensions'));
-
   writeFileSync(join(tempRootPath, 'personas', 'persona-tool-driven', 'persona.json'), JSON.stringify({
     personaId: 'persona-tool-driven',
     publicKeyBase32: 'fixture',
     emailLocalPart: 'fixture',
     createdAt: '2026-02-14T00:00:00.000Z',
   }));
-  writeFileSync(join(tempRootPath, 'config', 'inference.json'), JSON.stringify({
-    provider: 'openai',
-    model: 'gpt-4.1',
-    recursion_depth: 3,
-    whitelist: ['*@example.com'],
-  }));
-  writeFileSync(join(tempRootPath, 'config', 'system-prompt.md'), 'You are Protege.');
+  workspace.patchConfigFiles({
+    'inference.json': {
+      provider: 'openai',
+      model: 'gpt-4.1',
+      recursion_depth: 3,
+      whitelist: ['*@example.com'],
+    },
+    'context.json': {
+      thread: ['thread-history', 'current-input'],
+      responsibility: ['current-input'],
+    },
+  });
 
   networkServer.use(http.post(
     'https://api.openai.com/v1/chat/completions',
@@ -148,8 +155,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
+  cleanupWorkspace();
   process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
   delete process.env.OPENAI_API_KEY;
 });
 

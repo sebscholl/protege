@@ -7,9 +7,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-import { buildHarnessContext } from '@engine/harness/context/history';
 import { buildHarnessContextFromPipeline } from '@engine/harness/context/pipeline';
-import { hasContextConfigFile } from '@engine/harness/context/config';
 import { loadSystemPrompt, readInferenceRuntimeConfig } from '@engine/harness/config';
 import type {
   HarnessProviderAdapter,
@@ -121,16 +119,11 @@ export async function runHarnessForPersistedInboundMessage(
       },
     });
 
-    const personaMemoryPaths = resolvePersonaMemoryPaths({
-      personaId: args.message.personaId as string,
-      roots: resolveDefaultPersonaRoots(),
-    });
     const input = toHarnessInput({ message: args.message });
     const context = await buildHarnessContextForRun({
       db,
       input,
       personaId: args.message.personaId as string,
-      activeMemoryPath: personaMemoryPaths.activeMemoryPath,
     });
 
     const inferenceConfig = readInferenceRuntimeConfig();
@@ -645,14 +638,13 @@ export function toHarnessInput(
 }
 
 /**
- * Builds one harness context using configured context pipeline with legacy fallback compatibility.
+ * Builds one harness context using configured context pipeline.
  */
 export async function buildHarnessContextForRun(
   args: {
     db: ProtegeDatabase;
     input: HarnessInput;
     personaId: string;
-    activeMemoryPath: string;
   },
 ): Promise<{
   threadId: string;
@@ -669,14 +661,6 @@ export async function buildHarnessContextForRun(
     metadata?: Record<string, unknown>;
   };
 }> {
-  if (!hasContextConfigFile()) {
-    return buildHarnessContext({
-      db: args.db,
-      input: args.input,
-      activeMemoryPath: args.activeMemoryPath,
-    });
-  }
-
   return buildHarnessContextFromPipeline({
     db: args.db,
     input: args.input,

@@ -1,0 +1,10 @@
+{
+  "thread": [
+    "load-file(config/system-prompt.md)",
+    "current-input"
+  ],
+  "responsibility": [
+    "load-file(config/system-prompt.md)",
+    "current-input"
+  ]
+}

@@ -1,5 +1,4 @@
-import { existsSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { http, HttpResponse } from 'msw';
@@ -13,6 +12,7 @@ import {
 import { persistInboundMessageForRuntime } from '@engine/harness/runtime';
 import { createPersona } from '@engine/shared/personas';
 import { toJsonRecord } from '@tests/helpers/json';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { loadNetworkFixture } from '@tests/network/index';
 import { networkServer } from '@tests/network/server';
 
@@ -22,25 +22,26 @@ let missingPersonaRejected = false;
 let missingPersonaTemporalDbCreated = true;
 let relayToolFailureRaised = false;
 let relayToolFailureLogFound = false;
+let cleanupWorkspace = (): void => undefined;
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-e2e-relay-failures-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
+  const workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-e2e-relay-failures-',
+    symlinkExtensionsFromRepo: true,
+  });
+  tempRootPath = workspace.tempRootPath;
+  previousCwd = workspace.previousCwd;
+  cleanupWorkspace = workspace.cleanup;
   process.env.OPENAI_API_KEY = 'test-key';
 
-  mkdirSync(join(tempRootPath, 'config'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'personas'), { recursive: true });
-  symlinkSync(join(previousCwd, 'extensions'), join(tempRootPath, 'extensions'));
-
   const knownPersona = createPersona({});
-  writeFileSync(join(tempRootPath, 'config', 'inference.json'), JSON.stringify({
-    provider: 'openai',
-    model: 'gpt-4.1',
-    recursion_depth: 3,
-  }));
-  writeFileSync(join(tempRootPath, 'config', 'system-prompt.md'), 'You are Protege.');
+  workspace.patchConfigFiles({
+    'context.json': {
+      thread: ['thread-history', 'current-input'],
+      responsibility: ['current-input'],
+    },
+  });
 
   const eventLog: Array<{ event: string; context: Record<string, unknown> }> = [];
   const logger = {
@@ -167,8 +168,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
+  cleanupWorkspace();
   process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
   delete process.env.OPENAI_API_KEY;
 });
 
