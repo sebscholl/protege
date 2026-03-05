@@ -1,14 +1,13 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runCli } from '@engine/cli/index';
 import { captureStdout } from '@tests/helpers/stdout';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
-let previousCwd = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let projectPath = '';
 let firstCreatedCount = 0;
 let secondSkippedCount = 0;
@@ -23,10 +22,11 @@ let initializedAdminContactEmailBlank = false;
 let sentinelPreserved = false;
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-init-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
-  projectPath = join(tempRootPath, 'sample-project');
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-cli-init-',
+  });
+  projectPath = join(workspace.tempRootPath, 'sample-project');
 
   const firstResult = JSON.parse((await captureStdout({
     run: async (): Promise<void> => runCli({
@@ -89,8 +89,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('init cli command', () => {

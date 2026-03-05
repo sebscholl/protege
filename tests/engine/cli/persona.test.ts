@@ -1,22 +1,22 @@
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runCli } from '@engine/cli/index';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
-let previousCwd = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let createdPersonaId = '';
 let listedPersonasLength = 0;
 let personaInfoId = '';
 let personaDeleted = false;
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-persona-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-cli-persona-',
+  });
 
   const stdoutWrite = process.stdout.write.bind(process.stdout);
   const outputs: string[] = [];
@@ -39,14 +39,13 @@ beforeAll(async (): Promise<void> => {
 
   await runCli({ argv: ['persona', 'delete', createdPersonaId, '--json'] });
   void outputs.pop();
-  personaDeleted = !existsSync(join(tempRootPath, 'personas', createdPersonaId));
+  personaDeleted = !existsSync(join(workspace.tempRootPath, 'personas', createdPersonaId));
 
   process.stdout.write = stdoutWrite;
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('persona cli commands', () => {
