@@ -1,5 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -9,8 +8,9 @@ import {
   normalizeResolverManifestEntries,
 } from '@engine/harness/resolvers/registry';
 import { readExtensionManifest } from '@engine/harness/tools/registry';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let parsedResolverEntryCount = -1;
 let normalizedResolverNames: string[] = [];
 let normalizedResolverConfigValue = '';
@@ -23,12 +23,16 @@ let invalidResolverConfigError = '';
 let invalidResolverEnabledError = '';
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-resolvers-manifest-'));
-  const manifestPath = join(tempRootPath, 'extensions.json');
-  mkdirSync(join(tempRootPath, 'resolvers', 'sample-resolver'), { recursive: true });
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-resolvers-manifest-',
+    chdir: false,
+  });
+  const manifestPath = join(workspace.tempRootPath, 'extensions.json');
+  mkdirSync(join(workspace.tempRootPath, 'resolvers', 'sample-resolver'), { recursive: true });
 
   writeFileSync(
-    join(tempRootPath, 'resolvers', 'sample-resolver', 'index.js'),
+    join(workspace.tempRootPath, 'resolvers', 'sample-resolver', 'index.js'),
     [
       'export const resolver = {',
       "  name: 'sample-resolver',",
@@ -42,7 +46,7 @@ beforeAll(async (): Promise<void> => {
     'utf8',
   );
   writeFileSync(
-    join(tempRootPath, 'resolvers', 'sample-resolver', 'config.json'),
+    join(workspace.tempRootPath, 'resolvers', 'sample-resolver', 'config.json'),
     JSON.stringify({
       prefix: 'base',
       nested: {
@@ -156,7 +160,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('harness resolver registry', () => {

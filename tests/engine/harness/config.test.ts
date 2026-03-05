@@ -1,12 +1,12 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { readInferenceRuntimeConfig } from '@engine/harness/config';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let parsedProvider = '';
 let parsedModel = '';
 let parsedRecursionDepth = 0;
@@ -16,8 +16,12 @@ let parsedMaxOutputTokens = 0;
 let parsedFallbackMaxToolTurns = 0;
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-harness-config-'));
-  const configPath = join(tempRootPath, 'inference.json');
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-harness-config-',
+    chdir: false,
+  });
+  const configPath = join(workspace.tempRootPath, 'inference.json');
   writeFileSync(configPath, JSON.stringify({
     provider: 'openai',
     model: 'gpt-4.1',
@@ -36,7 +40,7 @@ beforeAll((): void => {
   parsedTemperature = parsed.temperature ?? 0;
   parsedMaxOutputTokens = parsed.maxOutputTokens ?? 0;
 
-  const invalidTurnsConfigPath = join(tempRootPath, 'inference.invalid-turns.json');
+  const invalidTurnsConfigPath = join(workspace.tempRootPath, 'inference.invalid-turns.json');
   writeFileSync(invalidTurnsConfigPath, JSON.stringify({
     provider: 'openai',
     model: 'gpt-4.1',
@@ -50,7 +54,7 @@ beforeAll((): void => {
 });
 
 afterAll((): void => {
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('harness inference config parsing', () => {

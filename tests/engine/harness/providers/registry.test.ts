@@ -1,23 +1,27 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { resolveSelectedProviderRuntimeConfig } from '@engine/harness/providers/registry';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let resolvedOpenAiApiKey = '';
 let resolvedOpenAiBaseUrl = '';
 let resolvedDefaultEnvName = '';
 let missingProviderErrorMessage = '';
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-provider-registry-'));
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-provider-registry-',
+    chdir: false,
+  });
   process.env.OPENAI_API_KEY = 'manifest-openai-key';
 
   writeFileSync(
-    join(tempRootPath, 'extensions.json'),
+    join(workspace.tempRootPath, 'extensions.json'),
     JSON.stringify({
       providers: [
         {
@@ -36,13 +40,13 @@ beforeAll((): void => {
 
   const resolvedOpenAi = resolveSelectedProviderRuntimeConfig({
     provider: 'openai',
-    manifestPath: join(tempRootPath, 'extensions.json'),
+    manifestPath: join(workspace.tempRootPath, 'extensions.json'),
   });
   resolvedOpenAiApiKey = resolvedOpenAi.apiKey ?? '';
   resolvedOpenAiBaseUrl = resolvedOpenAi.baseUrl ?? '';
 
   writeFileSync(
-    join(tempRootPath, 'extensions-empty.json'),
+    join(workspace.tempRootPath, 'extensions-empty.json'),
     JSON.stringify({
       tools: [],
       hooks: [],
@@ -52,14 +56,14 @@ beforeAll((): void => {
 
   const resolvedFromDefaults = resolveSelectedProviderRuntimeConfig({
     provider: 'anthropic',
-    manifestPath: join(tempRootPath, 'extensions-empty.json'),
+    manifestPath: join(workspace.tempRootPath, 'extensions-empty.json'),
   });
   resolvedDefaultEnvName = resolvedFromDefaults.apiKeyEnv ?? '';
 
   try {
     resolveSelectedProviderRuntimeConfig({
       provider: 'grok',
-      manifestPath: join(tempRootPath, 'extensions.json'),
+      manifestPath: join(workspace.tempRootPath, 'extensions.json'),
     });
   } catch (error) {
     missingProviderErrorMessage = (error as Error).message;
@@ -67,7 +71,7 @@ beforeAll((): void => {
 });
 
 afterAll((): void => {
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
   delete process.env.OPENAI_API_KEY;
 });
 

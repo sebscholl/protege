@@ -1,5 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -8,10 +7,11 @@ import {
   loadToolRegistry,
   normalizeEnabledToolEntries,
 } from '@engine/harness/tools/registry';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let toolNames: string[] = [];
 let missingManifestToolCount = -1;
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let overriddenWebSearchProvider = '';
 let invalidManifestError = '';
 
@@ -19,14 +19,18 @@ beforeAll(async (): Promise<void> => {
   const registry = await loadToolRegistry();
   toolNames = Object.keys(registry).sort();
 
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-tool-registry-'));
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-tool-registry-',
+    chdir: false,
+  });
   const missingManifestRegistry = await loadToolRegistry({
-    manifestPath: join(tempRootPath, 'extensions.json'),
+    manifestPath: join(workspace.tempRootPath, 'extensions.json'),
   });
   missingManifestToolCount = Object.keys(missingManifestRegistry).length;
 
   process.env.TAVILY_API_KEY = 'registry-test-key';
-  const overrideManifestPath = join(tempRootPath, 'extensions.override.json');
+  const overrideManifestPath = join(workspace.tempRootPath, 'extensions.override.json');
   writeFileSync(overrideManifestPath, JSON.stringify({
     tools: [
       {
@@ -80,7 +84,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
   delete process.env.TAVILY_API_KEY;
 });
 
