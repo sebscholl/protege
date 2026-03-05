@@ -2,6 +2,12 @@ import type { ProtegeDatabase } from '@engine/shared/database';
 
 import { createHash, randomUUID } from 'node:crypto';
 
+import {
+  insertLocalSyntheticSeedMessage,
+  insertLocalSyntheticUserMessage,
+  readLastThreadMessageId as readLastThreadMessageIdFromRepository,
+  readThreadSubject as readThreadSubjectFromRepository,
+} from '@engine/chat/repository';
 import { ensureThread } from '@engine/harness/storage';
 
 /**
@@ -54,37 +60,14 @@ export function createLocalChatThreadSeed(
     rootMessageId: messageId,
     nowIso: receivedAt,
   });
-  args.db.prepare(`
-    INSERT INTO messages (
-      id,
-      thread_id,
-      direction,
-      message_id,
-      in_reply_to,
-      sender,
-      recipients,
-      subject,
-      text_body,
-      html_body,
-      received_at,
-      raw_mime_path,
-      metadata_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    randomUUID(),
+  insertLocalSyntheticSeedMessage({
+    db: args.db,
     threadId,
-    'synthetic',
     messageId,
-    null,
-    'user@localhost',
-    JSON.stringify([args.personaMailboxIdentity]),
+    personaMailboxIdentity: args.personaMailboxIdentity,
     subject,
-    '',
-    null,
     receivedAt,
-    '__chat_local_seed__',
-    JSON.stringify({ chat_local_thread: true, chat_local_seed: true }),
-  );
+  });
 
   return {
     threadId,
@@ -126,37 +109,16 @@ export function storeLocalChatUserMessage(
     rootMessageId: previousMessageId ?? messageId,
     nowIso: receivedAt,
   });
-  args.db.prepare(`
-    INSERT INTO messages (
-      id,
-      thread_id,
-      direction,
-      message_id,
-      in_reply_to,
-      sender,
-      recipients,
-      subject,
-      text_body,
-      html_body,
-      received_at,
-      raw_mime_path,
-      metadata_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    randomUUID(),
-    args.threadId,
-    'synthetic',
+  insertLocalSyntheticUserMessage({
+    db: args.db,
+    threadId: args.threadId,
     messageId,
-    previousMessageId ?? null,
-    'user@localhost',
-    JSON.stringify([args.personaMailboxIdentity]),
+    inReplyTo: previousMessageId ?? undefined,
+    personaMailboxIdentity: args.personaMailboxIdentity,
     subject,
-    args.text,
-    null,
+    text: args.text,
     receivedAt,
-    '__chat_local_message__',
-    JSON.stringify({ chat_local_thread: true, chat_local_user_message: true }),
-  );
+  });
 
   return {
     threadId: args.threadId,
@@ -210,16 +172,10 @@ export function readLastThreadMessageId(
     threadId: string;
   },
 ): string | undefined {
-  const row = args.db.prepare(`
-    SELECT message_id
-    FROM messages
-    WHERE thread_id = ?
-    ORDER BY received_at DESC
-    LIMIT 1
-  `).get(args.threadId) as {
-    message_id?: string;
-  } | undefined;
-  return row?.message_id;
+  return readLastThreadMessageIdFromRepository({
+    db: args.db,
+    threadId: args.threadId,
+  });
 }
 
 /**
@@ -231,15 +187,8 @@ export function readThreadSubject(
     threadId: string;
   },
 ): string {
-  const row = args.db.prepare(`
-    SELECT subject
-    FROM messages
-    WHERE thread_id = ?
-    ORDER BY received_at ASC
-    LIMIT 1
-  `).get(args.threadId) as {
-    subject?: string;
-  } | undefined;
-
-  return row?.subject ?? 'Local Chat';
+  return readThreadSubjectFromRepository({
+    db: args.db,
+    threadId: args.threadId,
+  });
 }

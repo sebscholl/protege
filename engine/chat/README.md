@@ -9,6 +9,7 @@ It should include:
 1. Persona-scoped chat query and controller logic.
 2. TUI state orchestration for inbox/thread views.
 3. Chat-specific rendering and interaction policies.
+4. One dedicated repository layer for chat SQL access (`repository.ts`) consumed by read/write services.
 
 It should not include:
 
