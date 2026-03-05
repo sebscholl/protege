@@ -5,21 +5,19 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let previousCwd = '';
 let tempRootPath = '';
 let mergedProviderApiKeyEnv = '';
 let personaDisplayName = '';
 let personaEmailAddress = '';
 let payloadFileExists = false;
 let payloadFileContent = '';
-let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
 beforeAll((): void => {
   workspace = createTestWorkspaceFromFixture({
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-workspace-helper-',
   });
-  previousCwd = workspace.previousCwd;
   tempRootPath = workspace.tempRootPath;
 
   workspace.patchExtensionsManifest({
@@ -69,8 +67,7 @@ beforeAll((): void => {
 });
 
 afterAll((): void => {
-  workspace?.cleanup();
-  process.chdir(previousCwd);
+  workspace.cleanup();
 });
 
 describe('test workspace helper', () => {

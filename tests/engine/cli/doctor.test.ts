@@ -5,11 +5,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runCli } from '@engine/cli/index';
 import { createPersona } from '@engine/shared/personas';
+import { scaffoldProviderConfig } from '@tests/helpers/provider';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { captureStdout } from '@tests/helpers/stdout';
 
 let tempRootPath = '';
-let previousCwd = '';
 let healthyStatus = '';
 let healthyChecksCount = 0;
 let unhealthyStatus = '';
@@ -17,7 +17,8 @@ let unhealthyExitCode = -1;
 let doctorText = '';
 let relayIdentityCheckStatus = '';
 let healthyFailedCheckIds: string[] = [];
-let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
 beforeAll(async (): Promise<void> => {
   workspace = createTestWorkspaceFromFixture({
@@ -25,7 +26,6 @@ beforeAll(async (): Promise<void> => {
     tempPrefix: 'protege-cli-doctor-',
   });
   tempRootPath = workspace.tempRootPath;
-  previousCwd = workspace.previousCwd;
 
   workspace.patchConfigFiles({
     'gateway.json': {
@@ -53,25 +53,18 @@ beforeAll(async (): Promise<void> => {
     },
   });
   workspace.patchExtensionsManifest({
-    providers: [
-      {
-        name: 'openai',
-        config: {
-          api_key_env: 'OPENAI_API_KEY',
-        },
-      },
-    ],
     tools: ['send-email'],
     hooks: [],
   });
-  workspace.writeFile({
-    relativePath: 'extensions/providers/openai/config.json',
-    payload: {
-      api_key_env: 'OPENAI_API_KEY',
+  providerScaffold = scaffoldProviderConfig({
+    workspace,
+    providerName: 'openai',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    apiKeyValue: 'test-key',
+    providerConfig: {
       base_url: 'https://api.openai.com/v1',
     },
   });
-  process.env.OPENAI_API_KEY = 'test-key';
   createPersona({
     emailDomain: 'mail.protege.bot',
   });
@@ -135,9 +128,8 @@ beforeAll(async (): Promise<void> => {
 
 afterAll((): void => {
   process.exitCode = 0;
-  workspace?.cleanup();
-  process.chdir(previousCwd);
-  delete process.env.OPENAI_API_KEY;
+  providerScaffold.restoreEnv();
+  workspace.cleanup();
 });
 
 describe('doctor cli command', () => {

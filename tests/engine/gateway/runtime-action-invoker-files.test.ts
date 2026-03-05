@@ -7,7 +7,6 @@ import { createGatewayRuntimeActionInvoker } from '@engine/gateway/index';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
-let previousCwd = '';
 let readContent = '';
 let writeContent = '';
 let editedContent = '';
@@ -15,7 +14,7 @@ let editAppliedCount = -1;
 let editTextNotFoundError = '';
 let outsideReadContent = '';
 let outsideFilePath = '';
-let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
 beforeAll(async (): Promise<void> => {
   workspace = createTestWorkspaceFromFixture({
@@ -23,7 +22,6 @@ beforeAll(async (): Promise<void> => {
     tempPrefix: 'protege-runtime-file-actions-',
   });
   tempRootPath = workspace.tempRootPath;
-  previousCwd = workspace.previousCwd;
   workspace.writeFile({
     relativePath: 'tmp/read-target.txt',
     payload: 'alpha',
@@ -110,8 +108,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  workspace?.cleanup();
-  process.chdir(previousCwd);
+  workspace.cleanup();
 });
 
 describe('gateway runtime action invoker file actions', () => {

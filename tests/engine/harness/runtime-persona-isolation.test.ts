@@ -1,6 +1,6 @@
 import type { InboundNormalizedMessage } from '@engine/gateway/types';
 
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import Database from 'better-sqlite3';
@@ -10,18 +10,19 @@ import {
   persistInboundMessageForRuntime,
   runHarnessForPersistedInboundMessage,
 } from '@engine/harness/runtime';
+import { scaffoldProviderConfig } from '@tests/helpers/provider';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { mswIntercept } from '@tests/network/index';
 
 let tempRootPath = '';
-let previousCwd = '';
 let personaADatabasePath = '';
 let personaBDatabasePath = '';
 let personaAMessageCount = 0;
 let personaBMessageCount = 0;
 let personaAHasForeignThread = false;
 let personaBHasForeignThread = false;
-let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
 const personaAMessage: InboundNormalizedMessage = {
   personaId: 'persona-a',
@@ -63,10 +64,15 @@ beforeAll(async (): Promise<void> => {
     tempPrefix: 'protege-runtime-persona-isolation-',
   });
   tempRootPath = workspace.tempRootPath;
-  previousCwd = workspace.previousCwd;
-  process.env.OPENAI_API_KEY = 'test-key';
-
-  mkdirSync(join(tempRootPath, 'extensions', 'providers', 'openai'), { recursive: true });
+  providerScaffold = scaffoldProviderConfig({
+    workspace,
+    providerName: 'openai',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    apiKeyValue: 'test-key',
+    providerConfig: {
+      base_url: 'https://api.openai.com/v1',
+    },
+  });
   workspace.patchPersona({
     personaId: 'persona-a',
     personaPatch: {
@@ -91,17 +97,9 @@ beforeAll(async (): Promise<void> => {
       responsibility: ['current-input'],
     },
   });
-  workspace.writeFile({
-    relativePath: 'extensions/providers/openai/config.json',
-    payload: {
-      api_key_env: 'OPENAI_API_KEY',
-      base_url: 'https://api.openai.com/v1',
-    },
-  });
   workspace.patchExtensionsManifest({
     tools: [],
     hooks: [],
-    providers: ['openai'],
     resolvers: ['current-input'],
   });
 
@@ -144,9 +142,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  workspace?.cleanup();
-  process.chdir(previousCwd);
-  delete process.env.OPENAI_API_KEY;
+  providerScaffold.restoreEnv();
+  workspace.cleanup();
 });
 
 describe('harness runtime persona isolation under concurrent runs', () => {

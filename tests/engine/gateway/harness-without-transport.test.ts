@@ -5,15 +5,16 @@ import Database from 'better-sqlite3';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { handleInboundForRuntime } from '@engine/gateway/index';
+import { scaffoldProviderConfig } from '@tests/helpers/provider';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { mswIntercept } from '@tests/network/index';
 
 let tempRootPath = '';
-let previousCwd = '';
 let temporalDbPath = '';
 let outboundCount = 0;
 let databaseCreated = false;
-let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
 beforeAll(async (): Promise<void> => {
   workspace = createTestWorkspaceFromFixture({
@@ -21,8 +22,15 @@ beforeAll(async (): Promise<void> => {
     tempPrefix: 'protege-gateway-no-transport-',
   });
   tempRootPath = workspace.tempRootPath;
-  previousCwd = workspace.previousCwd;
-  process.env.OPENAI_API_KEY = 'test-key';
+  providerScaffold = scaffoldProviderConfig({
+    workspace,
+    providerName: 'openai',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    apiKeyValue: 'test-key',
+    providerConfig: {
+      base_url: 'https://api.openai.com/v1',
+    },
+  });
 
   workspace.patchPersona({
     personaId: 'persona-test',
@@ -40,17 +48,9 @@ beforeAll(async (): Promise<void> => {
       responsibility: ['current-input'],
     },
   });
-  workspace.writeFile({
-    relativePath: 'extensions/providers/openai/config.json',
-    payload: {
-      api_key_env: 'OPENAI_API_KEY',
-      base_url: 'https://api.openai.com/v1',
-    },
-  });
   workspace.patchExtensionsManifest({
     tools: [],
     hooks: [],
-    providers: ['openai'],
     resolvers: ['current-input'],
   });
   mswIntercept({ fixtureKey: 'openai/chat-completions/200' });
@@ -93,9 +93,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  workspace?.cleanup();
-  process.chdir(previousCwd);
-  delete process.env.OPENAI_API_KEY;
+  providerScaffold.restoreEnv();
+  workspace.cleanup();
 });
 
 describe('gateway harness execution without outbound transport', () => {

@@ -10,11 +10,10 @@ import { persistInboundMessageForRuntime } from '@engine/harness/runtime';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
-let previousCwd = '';
 let temporalDbPath = '';
 let inboundCount = 0;
 let databaseCreated = false;
-let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
 const message: InboundNormalizedMessage = {
   personaId: 'persona-persist',
@@ -39,7 +38,6 @@ beforeAll((): void => {
     tempPrefix: 'protege-harness-runtime-persist-',
   });
   tempRootPath = workspace.tempRootPath;
-  previousCwd = workspace.previousCwd;
   workspace.patchPersona({
     personaId: message.personaId as string,
     personaPatch: {
@@ -65,8 +63,7 @@ beforeAll((): void => {
 });
 
 afterAll((): void => {
-  workspace?.cleanup();
-  process.chdir(previousCwd);
+  workspace.cleanup();
 });
 
 describe('harness inbound persistence phase', () => {

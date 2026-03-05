@@ -4,15 +4,16 @@ import { http, HttpResponse } from 'msw';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runHarnessForInboundMessage, runHarnessForPersistedInboundMessage } from '@engine/harness/runtime';
+import { scaffoldProviderConfig } from '@tests/helpers/provider';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { loadNetworkFixture } from '@tests/network';
 import { networkServer } from '@tests/network/server';
 
 let tempRootPath = '';
-let previousCwd = '';
 let emailProfileSystemMessage = '';
 let responsibilityProfileSystemMessage = '';
-let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
 /**
  * Returns one inbound email-shaped test message for thread profile assertions.
@@ -91,8 +92,15 @@ beforeAll(async (): Promise<void> => {
     tempPrefix: 'protege-context-profile-e2e-',
   });
   tempRootPath = workspace.tempRootPath;
-  previousCwd = workspace.previousCwd;
-  process.env.OPENAI_API_KEY = 'test-openai-key';
+  providerScaffold = scaffoldProviderConfig({
+    workspace,
+    providerName: 'openai',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    apiKeyValue: 'test-openai-key',
+    providerConfig: {
+      base_url: 'https://api.openai.com/v1',
+    },
+  });
 
   workspace.patchPersona({
     personaId: 'persona-context-profile',
@@ -113,15 +121,7 @@ beforeAll(async (): Promise<void> => {
   workspace.patchExtensionsManifest({
     tools: [],
     hooks: [],
-    providers: ['openai'],
     resolvers: ['current-input', 'profile-marker'],
-  });
-  workspace.writeFile({
-    relativePath: 'extensions/providers/openai/config.json',
-    payload: {
-      api_key_env: 'OPENAI_API_KEY',
-      base_url: 'https://api.openai.com/v1',
-    },
   });
   workspace.writeFile({
     relativePath: 'extensions/resolvers/profile-marker/index.js',
@@ -167,9 +167,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  workspace?.cleanup();
-  process.chdir(previousCwd);
-  delete process.env.OPENAI_API_KEY;
+  providerScaffold.restoreEnv();
+  workspace.cleanup();
 });
 
 describe('context profile integration', () => {

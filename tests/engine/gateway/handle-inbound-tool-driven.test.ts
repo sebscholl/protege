@@ -6,18 +6,19 @@ import { http, HttpResponse } from 'msw';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { handleInboundForRuntime } from '@engine/gateway/index';
+import { scaffoldProviderConfig } from '@tests/helpers/provider';
 import { toJsonRecord } from '@tests/helpers/json';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { loadNetworkFixture } from '@tests/network/index';
 import { networkServer } from '@tests/network/server';
 
 let tempRootPath = '';
-let previousCwd = '';
 let noToolRunFailed = false;
 let noToolOutboundMessageCount = 0;
 let toolRunErrorMessage = '';
 let noToolTemporalDbPath = '';
-let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
 beforeAll(async (): Promise<void> => {
   workspace = createTestWorkspaceFromFixture({
@@ -26,8 +27,14 @@ beforeAll(async (): Promise<void> => {
     symlinkExtensionsFromRepo: true,
   });
   tempRootPath = workspace.tempRootPath;
-  previousCwd = workspace.previousCwd;
-  process.env.OPENAI_API_KEY = 'test-key';
+  providerScaffold = scaffoldProviderConfig({
+    workspace,
+    providerName: 'openai',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    apiKeyValue: 'test-key',
+    patchExtensionsManifest: false,
+    writeProviderConfig: false,
+  });
 
   workspace.patchPersona({
     personaId: 'persona-tool-driven',
@@ -156,9 +163,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  workspace?.cleanup();
-  process.chdir(previousCwd);
-  delete process.env.OPENAI_API_KEY;
+  providerScaffold.restoreEnv();
+  workspace.cleanup();
 });
 
 describe('gateway inbound handling is tool-driven for outbound delivery', () => {

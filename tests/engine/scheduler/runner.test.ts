@@ -2,8 +2,6 @@ import type { InboundNormalizedMessage } from '@engine/gateway/types';
 import type { ProtegeDatabase } from '@engine/shared/database';
 import type { PersonaRoots } from '@engine/shared/personas';
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -12,6 +10,7 @@ import { initializeDatabase } from '@engine/shared/database';
 import { createPersona } from '@engine/shared/personas';
 import { listResponsibilityRunsByPersona, upsertResponsibility, enqueueResponsibilityRun } from '@engine/scheduler/storage';
 import { runNextQueuedResponsibility } from '@engine/scheduler/runner';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
 let db: ProtegeDatabase | undefined;
@@ -27,33 +26,39 @@ let overlapFirstRunStatus = '';
 let overlapSecondRunStatus = '';
 let loggerInfoEvents: string[] = [];
 let loggerErrorEvents: string[] = [];
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let repoRootPath = '';
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-scheduler-runner-'));
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-scheduler-runner-',
+  });
+  repoRootPath = workspace.previousCwd;
+  tempRootPath = workspace.tempRootPath;
   roots = {
     personasDirPath: join(tempRootPath, 'personas'),
     memoryDirPath: join(tempRootPath, 'memory'),
   };
-  mkdirSync(roots.personasDirPath, { recursive: true });
-  mkdirSync(roots.memoryDirPath, { recursive: true });
   const persona = createPersona({
     roots,
   });
-  const responsibilitiesDirPath = join(roots.personasDirPath, persona.personaId, 'responsibilities');
-  mkdirSync(responsibilitiesDirPath, { recursive: true });
-  const promptPath = join(responsibilitiesDirPath, 'resp-success.md');
-  writeFileSync(promptPath, [
+  const promptPath = join(roots.personasDirPath, persona.personaId, 'responsibilities', 'resp-success.md');
+  workspace.writeFile({
+    relativePath: join('personas', persona.personaId, 'responsibilities', 'resp-success.md'),
+    payload: [
     '---',
     'name: Success Task',
     'schedule: */2 * * * *',
     'enabled: true',
     '---',
     'Tell a short joke.',
-  ].join('\n'));
+  ].join('\n'),
+  });
 
   db = initializeDatabase({
     databasePath: join(tempRootPath, 'temporal.db'),
-    migrationsDirPath: join(process.cwd(), 'engine', 'shared', 'migrations'),
+    migrationsDirPath: join(repoRootPath, 'engine', 'shared', 'migrations'),
   });
   upsertResponsibility({
     db: db as ProtegeDatabase,
@@ -240,7 +245,7 @@ beforeAll(async (): Promise<void> => {
 
 afterAll((): void => {
   db?.close();
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('scheduler runner', () => {

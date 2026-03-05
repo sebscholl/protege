@@ -19,12 +19,12 @@ import {
   markRunSucceeded,
 } from '@engine/scheduler/storage';
 import { toJsonRecord } from '@tests/helpers/json';
+import { scaffoldProviderConfig } from '@tests/helpers/provider';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { loadNetworkFixture } from '@tests/network/index';
 import { networkServer } from '@tests/network/server';
 
 let tempRootPath = '';
-let previousCwd = '';
 let personaId = '';
 let schedulerRunSucceeded = false;
 let schedulerRunSkippedOverlapPersisted = false;
@@ -34,7 +34,8 @@ let schedulerAlertOutboundObserved = false;
 let schedulerRelayFrameTypes: string[] = [];
 let schedulerConcurrentResponsibilitiesObserved = false;
 let schedulerLongRunningOverlapSkipObserved = false;
-let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
 /**
  * Creates one deterministic fake scheduler task handle for cron callbacks in e2e setup.
@@ -52,8 +53,14 @@ beforeAll(async (): Promise<void> => {
     symlinkExtensionsFromRepo: true,
   });
   tempRootPath = workspace.tempRootPath;
-  previousCwd = workspace.previousCwd;
-  process.env.OPENAI_API_KEY = 'test-key';
+  providerScaffold = scaffoldProviderConfig({
+    workspace,
+    providerName: 'openai',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    apiKeyValue: 'test-key',
+    patchExtensionsManifest: false,
+    writeProviderConfig: false,
+  });
 
   const persona = createPersona({});
   personaId = persona.personaId;
@@ -380,9 +387,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  workspace?.cleanup();
-  process.chdir(previousCwd);
-  delete process.env.OPENAI_API_KEY;
+  providerScaffold.restoreEnv();
+  workspace.cleanup();
 });
 
 describe('scheduler reliability e2e', () => {

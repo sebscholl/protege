@@ -12,17 +12,18 @@ import {
 import { persistInboundMessageForRuntime } from '@engine/harness/runtime';
 import { createPersona } from '@engine/shared/personas';
 import { toJsonRecord } from '@tests/helpers/json';
+import { scaffoldProviderConfig } from '@tests/helpers/provider';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { loadNetworkFixture } from '@tests/network/index';
 import { networkServer } from '@tests/network/server';
 
 let tempRootPath = '';
-let previousCwd = '';
 let missingPersonaRejected = false;
 let missingPersonaTemporalDbCreated = true;
 let relayToolFailureRaised = false;
 let relayToolFailureLogFound = false;
-let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
 beforeAll(async (): Promise<void> => {
   workspace = createTestWorkspaceFromFixture({
@@ -31,8 +32,14 @@ beforeAll(async (): Promise<void> => {
     symlinkExtensionsFromRepo: true,
   });
   tempRootPath = workspace.tempRootPath;
-  previousCwd = workspace.previousCwd;
-  process.env.OPENAI_API_KEY = 'test-key';
+  providerScaffold = scaffoldProviderConfig({
+    workspace,
+    providerName: 'openai',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    apiKeyValue: 'test-key',
+    patchExtensionsManifest: false,
+    writeProviderConfig: false,
+  });
 
   const knownPersona = createPersona({});
   workspace.patchConfigFiles({
@@ -167,9 +174,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  workspace?.cleanup();
-  process.chdir(previousCwd);
-  delete process.env.OPENAI_API_KEY;
+  providerScaffold.restoreEnv();
+  workspace.cleanup();
 });
 
 describe('relay failure paths e2e', () => {

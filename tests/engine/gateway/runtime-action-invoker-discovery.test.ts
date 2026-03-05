@@ -1,25 +1,21 @@
-import { chdir, cwd } from 'node:process';
-
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createGatewayRuntimeActionInvoker } from '@engine/gateway/index';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
-let previousCwd = '';
 let globPaths: string[] = [];
 let globTruncated = false;
 let globTotalMatches = -1;
 let searchMatchesCount = 0;
 let firstMatchPath = '';
-let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
 beforeAll(async (): Promise<void> => {
   workspace = createTestWorkspaceFromFixture({
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-runtime-discovery-actions-',
   });
-  previousCwd = workspace.previousCwd;
   tempRootPath = workspace.tempRootPath;
   workspace.writeFile({
     relativePath: 'src/alpha.ts',
@@ -86,8 +82,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  workspace?.cleanup();
-  chdir(previousCwd);
+  workspace.cleanup();
 });
 
 describe('gateway runtime action invoker discovery actions', () => {

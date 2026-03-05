@@ -10,14 +10,15 @@ import {
   persistInboundMessageForRuntime,
   runHarnessForPersistedInboundMessage,
 } from '@engine/harness/runtime';
+import { scaffoldProviderConfig } from '@tests/helpers/provider';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { networkServer } from '@tests/network/server';
 
 let tempRootPath = '';
-let previousCwd = '';
 let providerSawPriorToolTrace = false;
 let persistedToolEventCount = 0;
-let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
 const inboundTurnOne: InboundNormalizedMessage = {
   personaId: 'persona-e2e-tool-trace',
@@ -59,21 +60,20 @@ beforeAll(async (): Promise<void> => {
     tempPrefix: 'protege-e2e-thread-tool-trace-',
   });
   tempRootPath = workspace.tempRootPath;
-  previousCwd = workspace.previousCwd;
-  process.env.OPENAI_API_KEY = 'test-key';
+  providerScaffold = scaffoldProviderConfig({
+    workspace,
+    providerName: 'openai',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    apiKeyValue: 'test-key',
+    providerConfig: {
+      base_url: 'https://api.openai.com/v1',
+    },
+  });
 
   workspace.patchExtensionsManifest({
     tools: ['send-email'],
     hooks: [],
-    providers: ['openai'],
     resolvers: ['thread-history', 'current-input'],
-  });
-  workspace.writeFile({
-    relativePath: 'extensions/providers/openai/config.json',
-    payload: {
-      api_key_env: 'OPENAI_API_KEY',
-      base_url: 'https://api.openai.com/v1',
-    },
   });
   workspace.patchPersona({
     personaId: inboundTurnOne.personaId as string,
@@ -197,9 +197,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  workspace?.cleanup();
-  process.chdir(previousCwd);
-  delete process.env.OPENAI_API_KEY;
+  providerScaffold.restoreEnv();
+  workspace.cleanup();
 });
 
 describe('e2e thread tool trace continuity', () => {

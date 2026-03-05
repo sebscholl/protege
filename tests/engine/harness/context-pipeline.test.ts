@@ -9,12 +9,11 @@ import { initializeDatabase } from '@engine/shared/database';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
-let previousCwd = '';
 let renderedSystemText = '';
 let renderedInputText = '';
 let renderedActiveMemory = '';
 let renderedTemplatedFileText = '';
-let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
 beforeAll(async (): Promise<void> => {
   workspace = createTestWorkspaceFromFixture({
@@ -22,7 +21,6 @@ beforeAll(async (): Promise<void> => {
     tempPrefix: 'protege-context-pipeline-',
   });
   tempRootPath = workspace.tempRootPath;
-  previousCwd = workspace.previousCwd;
   workspace.writeFile({
     relativePath: 'memory/persona-demo/active.md',
     payload: 'Active memory from template',
@@ -76,7 +74,7 @@ beforeAll(async (): Promise<void> => {
 
   const db = initializeDatabase({
     databasePath: join(tempRootPath, 'memory', 'persona-demo', 'temporal.db'),
-    migrationsDirPath: join(previousCwd, 'engine', 'shared', 'migrations'),
+    migrationsDirPath: join(workspace.previousCwd, 'engine', 'shared', 'migrations'),
   });
   const input: HarnessInput = {
     source: 'email',
@@ -107,8 +105,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  workspace?.cleanup();
-  process.chdir(previousCwd);
+  workspace.cleanup();
 });
 
 describe('harness context pipeline', () => {

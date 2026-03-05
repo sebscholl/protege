@@ -2,8 +2,6 @@ import type { GatewayLogger } from '@engine/gateway/types';
 import type { ProtegeDatabase } from '@engine/shared/database';
 import type { PersonaRoots } from '@engine/shared/personas';
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -12,6 +10,7 @@ import { initializeDatabase } from '@engine/shared/database';
 import { createPersona } from '@engine/shared/personas';
 import { runNextQueuedResponsibility } from '@engine/scheduler/runner';
 import { enqueueResponsibilityRun, listResponsibilityRunsByPersona, upsertResponsibility } from '@engine/scheduler/storage';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
 let roots: PersonaRoots | undefined;
@@ -20,6 +19,8 @@ let personaId = '';
 let unknownFailureCategory = '';
 let alertDispatchCount = 0;
 let failedEventCount = 0;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let repoRootPath = '';
 
 /**
  * Creates one in-memory logger that tracks failed-run event emission.
@@ -40,32 +41,36 @@ function createFailureEventLogger(): GatewayLogger {
 }
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-scheduler-runner-failure-taxonomy-'));
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-scheduler-runner-failure-taxonomy-',
+  });
+  repoRootPath = workspace.previousCwd;
+  tempRootPath = workspace.tempRootPath;
   roots = {
     personasDirPath: join(tempRootPath, 'personas'),
     memoryDirPath: join(tempRootPath, 'memory'),
   };
-  mkdirSync(roots.personasDirPath, { recursive: true });
-  mkdirSync(roots.memoryDirPath, { recursive: true });
   const persona = createPersona({
     roots,
   });
   personaId = persona.personaId;
-  const responsibilitiesDirPath = join(roots.personasDirPath, personaId, 'responsibilities');
-  mkdirSync(responsibilitiesDirPath, { recursive: true });
-  const promptPath = join(responsibilitiesDirPath, 'unknown-failure.md');
-  writeFileSync(promptPath, [
+  const promptPath = join(roots.personasDirPath, personaId, 'responsibilities', 'unknown-failure.md');
+  workspace.writeFile({
+    relativePath: join('personas', personaId, 'responsibilities', 'unknown-failure.md'),
+    payload: [
     '---',
     'name: Unknown Failure Task',
     'schedule: */5 * * * *',
     'enabled: true',
     '---',
     'Fail with a non-Error throw.',
-  ].join('\n'));
+  ].join('\n'),
+  });
 
   db = initializeDatabase({
     databasePath: join(tempRootPath, 'temporal.db'),
-    migrationsDirPath: join(process.cwd(), 'engine', 'shared', 'migrations'),
+    migrationsDirPath: join(repoRootPath, 'engine', 'shared', 'migrations'),
   });
 
   upsertResponsibility({
@@ -108,7 +113,7 @@ beforeAll(async (): Promise<void> => {
 
 afterAll((): void => {
   db?.close();
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('scheduler runner failure taxonomy', () => {

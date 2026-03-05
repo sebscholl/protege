@@ -54,7 +54,7 @@ let visibleInboxRowCount = 0;
 let parsedStatusHintCommandsCount = 0;
 let renderedThreadContent = '';
 let chatErrorStackPreviewLength = 0;
-let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
 const inboundMessage: InboundNormalizedMessage = {
   personaId: 'persona-test',
@@ -289,7 +289,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  workspace?.cleanup();
+  workspace.cleanup();
   chdir(originalCwd);
   db?.close();
 });

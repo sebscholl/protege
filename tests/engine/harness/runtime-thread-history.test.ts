@@ -10,14 +10,15 @@ import {
   persistInboundMessageForRuntime,
   runHarnessForPersistedInboundMessage,
 } from '@engine/harness/runtime';
+import { scaffoldProviderConfig } from '@tests/helpers/provider';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { networkServer } from '@tests/network/server';
 
 let tempRootPath = '';
-let previousCwd = '';
 let temporalDbPath = '';
 let capturedSecondRequestMessages: Array<Record<string, unknown>> = [];
-let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
 const firstInboundMessage: InboundNormalizedMessage = {
   personaId: 'persona-thread-history',
@@ -59,8 +60,15 @@ beforeAll(async (): Promise<void> => {
     tempPrefix: 'protege-harness-thread-history-',
   });
   tempRootPath = workspace.tempRootPath;
-  previousCwd = workspace.previousCwd;
-  process.env.OPENAI_API_KEY = 'test-key';
+  providerScaffold = scaffoldProviderConfig({
+    workspace,
+    providerName: 'openai',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    apiKeyValue: 'test-key',
+    providerConfig: {
+      base_url: 'https://api.openai.com/v1',
+    },
+  });
 
   workspace.patchPersona({
     personaId: firstInboundMessage.personaId as string,
@@ -77,17 +85,9 @@ beforeAll(async (): Promise<void> => {
       responsibility: ['current-input'],
     },
   });
-  workspace.writeFile({
-    relativePath: 'extensions/providers/openai/config.json',
-    payload: {
-      api_key_env: 'OPENAI_API_KEY',
-      base_url: 'https://api.openai.com/v1',
-    },
-  });
   workspace.patchExtensionsManifest({
     tools: [],
     hooks: [],
-    providers: ['openai'],
     resolvers: ['thread-history', 'current-input'],
   });
 
@@ -142,9 +142,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  workspace?.cleanup();
-  process.chdir(previousCwd);
-  delete process.env.OPENAI_API_KEY;
+  providerScaffold.restoreEnv();
+  workspace.cleanup();
 });
 
 describe('harness runtime thread history', () => {
