@@ -1,12 +1,12 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { readGatewayRuntimeConfig } from '@engine/gateway/index';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let validConfigMode = '';
 let validConfigRelayEnabled = false;
 let validConfigAttachmentMaxBytes = -1;
@@ -17,10 +17,13 @@ let relayWithLocalhostMailDomainThrows = false;
 let invalidAttachmentLimitThrows = false;
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-gateway-config-'));
-  mkdirSync(join(tempRootPath, 'config'), { recursive: true });
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-gateway-config-',
+    chdir: false,
+  });
 
-  const validConfigPath = join(tempRootPath, 'config', 'gateway-valid.json');
+  const validConfigPath = join(workspace.tempRootPath, 'config', 'gateway-valid.json');
   writeFileSync(validConfigPath, JSON.stringify({
     mode: 'dev',
     host: '127.0.0.1',
@@ -46,7 +49,7 @@ beforeAll((): void => {
   validConfigRelayEnabled = validConfig.relay?.enabled === true;
   validConfigAttachmentMaxBytes = validConfig.attachmentLimits?.maxAttachmentBytes ?? -1;
 
-  const missingMailDomainPath = join(tempRootPath, 'config', 'gateway-missing-mail-domain.json');
+  const missingMailDomainPath = join(workspace.tempRootPath, 'config', 'gateway-missing-mail-domain.json');
   writeFileSync(missingMailDomainPath, JSON.stringify({
     mode: 'dev',
     host: '127.0.0.1',
@@ -60,7 +63,7 @@ beforeAll((): void => {
     missingMailDomainThrows = true;
   }
 
-  const invalidRelayUrlPath = join(tempRootPath, 'config', 'gateway-invalid-relay-url.json');
+  const invalidRelayUrlPath = join(workspace.tempRootPath, 'config', 'gateway-invalid-relay-url.json');
   writeFileSync(invalidRelayUrlPath, JSON.stringify({
     mode: 'dev',
     host: '127.0.0.1',
@@ -82,7 +85,7 @@ beforeAll((): void => {
     invalidRelayUrlThrows = true;
   }
 
-  const invalidRelayDelayPath = join(tempRootPath, 'config', 'gateway-invalid-relay-delay.json');
+  const invalidRelayDelayPath = join(workspace.tempRootPath, 'config', 'gateway-invalid-relay-delay.json');
   writeFileSync(invalidRelayDelayPath, JSON.stringify({
     mode: 'dev',
     host: '127.0.0.1',
@@ -104,7 +107,7 @@ beforeAll((): void => {
     invalidRelayDelayThrows = true;
   }
 
-  const relayWithLocalhostMailDomainPath = join(tempRootPath, 'config', 'gateway-relay-localhost-mail-domain.json');
+  const relayWithLocalhostMailDomainPath = join(workspace.tempRootPath, 'config', 'gateway-relay-localhost-mail-domain.json');
   writeFileSync(relayWithLocalhostMailDomainPath, JSON.stringify({
     mode: 'dev',
     host: '127.0.0.1',
@@ -126,7 +129,7 @@ beforeAll((): void => {
     relayWithLocalhostMailDomainThrows = true;
   }
 
-  const invalidAttachmentLimitPath = join(tempRootPath, 'config', 'gateway-invalid-attachment-limit.json');
+  const invalidAttachmentLimitPath = join(workspace.tempRootPath, 'config', 'gateway-invalid-attachment-limit.json');
   writeFileSync(invalidAttachmentLimitPath, JSON.stringify({
     mode: 'dev',
     host: '127.0.0.1',
@@ -146,7 +149,7 @@ beforeAll((): void => {
 });
 
 afterAll((): void => {
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('gateway runtime config validation', () => {
