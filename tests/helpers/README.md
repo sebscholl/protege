@@ -11,6 +11,7 @@ Current helper groups:
 - `config.ts`: shared `config/*` file scaffolding helper for test workspaces.
 - `email-fixtures.ts`: SMTP fixture streams and session doubles.
 - `gateway-inbound.ts`: inbound gateway config/logger builders.
+- `inbound-message.ts`: inbound normalized message factory for runtime tests.
 - `json.ts`: JSON-safe record casting for fixture-backed response payloads.
 - `provider.ts`: provider scaffold helper for manifest/config/env test setup.
 - `relay-crypto.ts`: shared relay key encoding helpers for tests.

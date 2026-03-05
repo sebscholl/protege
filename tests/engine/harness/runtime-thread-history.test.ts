@@ -4,12 +4,11 @@ import { join } from 'node:path';
 import { http, HttpResponse } from 'msw';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { InboundNormalizedMessage } from '@engine/gateway/types';
-
 import {
   persistInboundMessageForRuntime,
   runHarnessForPersistedInboundMessage,
 } from '@engine/harness/runtime';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
 import { scaffoldProviderConfig } from '@tests/helpers/provider';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { networkServer } from '@tests/network/server';
@@ -20,39 +19,26 @@ let capturedSecondRequestMessages: Array<Record<string, unknown>> = [];
 let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
-const firstInboundMessage: InboundNormalizedMessage = {
+const firstInboundMessage = createInboundMessage({
   personaId: 'persona-thread-history',
   messageId: '<thread-1@example.com>',
   threadId: 'thread-history-1',
-  from: [{ address: 'sender@example.com' }],
-  to: [{ address: 'agent@example.com' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'agent@example.com' }],
   subject: 'Thread history first turn',
   text: 'This is my first message.',
-  references: [],
   receivedAt: '2026-02-14T00:00:00.000Z',
   rawMimePath: '/tmp/inbound-1.eml',
-  attachments: [],
-};
+});
 
-const secondInboundMessage: InboundNormalizedMessage = {
+const secondInboundMessage = createInboundMessage({
   personaId: 'persona-thread-history',
   messageId: '<thread-2@example.com>',
   threadId: 'thread-history-1',
-  from: [{ address: 'sender@example.com' }],
-  to: [{ address: 'agent@example.com' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'agent@example.com' }],
   subject: 'Thread history second turn',
   text: 'Can you answer with context from before?',
   references: ['<thread-1@example.com>'],
   receivedAt: '2026-02-14T00:01:00.000Z',
   rawMimePath: '/tmp/inbound-2.eml',
-  attachments: [],
-};
+});
 
 beforeAll(async (): Promise<void> => {
   workspace = createTestWorkspaceFromFixture({

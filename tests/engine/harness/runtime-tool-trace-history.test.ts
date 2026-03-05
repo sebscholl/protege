@@ -1,5 +1,3 @@
-import type { InboundNormalizedMessage } from '@engine/gateway/types';
-
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -11,6 +9,7 @@ import {
   persistInboundMessageForRuntime,
   runHarnessForPersistedInboundMessage,
 } from '@engine/harness/runtime';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
 import { scaffoldProviderConfig } from '@tests/helpers/provider';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { networkServer } from '@tests/network/server';
@@ -22,39 +21,26 @@ let threadToolEventCount = 0;
 let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
-const firstInboundMessage: InboundNormalizedMessage = {
+const firstInboundMessage = createInboundMessage({
   personaId: 'persona-tool-trace-history',
   messageId: '<tool-trace-1@example.com>',
   threadId: 'tool-trace-history-thread',
-  from: [{ address: 'sender@example.com' }],
-  to: [{ address: 'agent@example.com' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'agent@example.com' }],
   subject: 'Tool trace first turn',
   text: 'Please respond and use a tool.',
-  references: [],
   receivedAt: '2026-03-04T10:00:00.000Z',
   rawMimePath: '/tmp/tool-trace-1.eml',
-  attachments: [],
-};
+});
 
-const secondInboundMessage: InboundNormalizedMessage = {
+const secondInboundMessage = createInboundMessage({
   personaId: 'persona-tool-trace-history',
   messageId: '<tool-trace-2@example.com>',
   threadId: 'tool-trace-history-thread',
-  from: [{ address: 'sender@example.com' }],
-  to: [{ address: 'agent@example.com' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'agent@example.com' }],
   subject: 'Tool trace second turn',
   text: 'What happened before?',
   references: ['<tool-trace-1@example.com>'],
   receivedAt: '2026-03-04T10:01:00.000Z',
   rawMimePath: '/tmp/tool-trace-2.eml',
-  attachments: [],
-};
+});
 
 beforeAll(async (): Promise<void> => {
   workspace = createTestWorkspaceFromFixture({

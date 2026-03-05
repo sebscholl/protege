@@ -1,5 +1,3 @@
-import type { InboundNormalizedMessage } from '@engine/gateway/types';
-
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -7,6 +5,7 @@ import Database from 'better-sqlite3';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { persistInboundMessageForRuntime } from '@engine/harness/runtime';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
@@ -15,22 +14,13 @@ let inboundCount = 0;
 let databaseCreated = false;
 let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
-const message: InboundNormalizedMessage = {
+const message = createInboundMessage({
   personaId: 'persona-persist',
   messageId: '<persist-1@example.com>',
   threadId: 'thread-persist',
-  from: [{ address: 'sender@example.com' }],
-  to: [{ address: 'agent@example.com' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'agent@example.com' }],
   subject: 'Persist only',
   text: 'Store and ack.',
-  references: [],
-  receivedAt: '2026-02-14T00:00:00.000Z',
-  rawMimePath: '/tmp/inbound.eml',
-  attachments: [],
-};
+});
 
 beforeAll((): void => {
   workspace = createTestWorkspaceFromFixture({

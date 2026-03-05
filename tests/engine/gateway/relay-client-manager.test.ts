@@ -1,7 +1,5 @@
 import type { PersonaRoots } from '@engine/shared/personas';
 
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -16,9 +14,8 @@ import {
   createRelaySmtpEndFrame,
   createRelaySmtpStartFrame,
 } from '@relay/src/tunnel';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
-let previousCwd = '';
 let roots: PersonaRoots;
 let relayDisabledClientCount = 0;
 let relayEnabledClientCount = 0;
@@ -28,14 +25,16 @@ let relayedMimeCount = 0;
 let relayedRecipientAddress = '';
 let relayedMailFrom = '';
 let relayedPayload = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-relay-client-manager-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-relay-client-manager-',
+  });
   roots = {
-    personasDirPath: join(tempRootPath, 'personas'),
-    memoryDirPath: join(tempRootPath, 'memory'),
+    personasDirPath: join(workspace.tempRootPath, 'personas'),
+    memoryDirPath: join(workspace.tempRootPath, 'memory'),
   };
 
   const personaA = createPersona({
@@ -139,8 +138,7 @@ beforeAll((): void => {
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('gateway relay client manager', () => {

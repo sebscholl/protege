@@ -1,7 +1,3 @@
-import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -11,21 +7,39 @@ import {
   sendGatewayFailureAlert,
 } from '@engine/gateway/index';
 import { createPersona, readPersonaMetadata } from '@engine/shared/personas';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let relayClientMapIsPreserved = false;
 let localhostAddressValid = false;
 let relayDomainReconciled = false;
 let gatewayAlertSent = false;
 let gatewayAlertSkippedWithoutAdminContact = false;
-let tempRootPath = '';
-let previousCwd = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+
+function createGatewayAlertInboundMessage(
+  args: {
+    personaId: string;
+    recipientAddress: string;
+  },
+): ReturnType<typeof createInboundMessage> {
+  return createInboundMessage({
+    personaId: args.personaId,
+    messageId: '<inbound@example.com>',
+    threadId: 'thread-1',
+    subject: 'subject',
+    text: 'body',
+    to: [args.recipientAddress],
+    envelopeRcptTo: [args.recipientAddress],
+    receivedAt: new Date().toISOString(),
+  });
+}
 
 beforeAll(async (): Promise<void> => {
-  previousCwd = process.cwd();
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-gateway-index-'));
-  process.chdir(tempRootPath);
-  mkdirSync(join(tempRootPath, 'personas'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-gateway-index-',
+  });
 
   const relayClientsByPersonaId = new Map<string, {
     stop: () => void;
@@ -96,23 +110,10 @@ beforeAll(async (): Promise<void> => {
       info: (): void => undefined,
       error: (): void => undefined,
     },
-    message: {
+    message: createGatewayAlertInboundMessage({
       personaId: persona.personaId,
-      messageId: '<inbound@example.com>',
-      threadId: 'thread-1',
-      from: [{ address: 'sender@example.com' }],
-      to: [{ address: persona.emailAddress }],
-      cc: [],
-      bcc: [],
-      envelopeRcptTo: [{ address: persona.emailAddress }],
-      subject: 'subject',
-      text: 'body',
-      html: undefined,
-      references: [],
-      receivedAt: new Date().toISOString(),
-      rawMimePath: '/tmp/inbound.eml',
-      attachments: [],
-    },
+      recipientAddress: persona.emailAddress,
+    }),
     errorMessage: 'tool failed',
     adminContactEmail: 'ops@example.com',
     invokeRuntimeAction: async (): Promise<Record<string, unknown>> => {
@@ -130,23 +131,10 @@ beforeAll(async (): Promise<void> => {
       info: (): void => undefined,
       error: (): void => undefined,
     },
-    message: {
+    message: createGatewayAlertInboundMessage({
       personaId: persona.personaId,
-      messageId: '<inbound@example.com>',
-      threadId: 'thread-1',
-      from: [{ address: 'sender@example.com' }],
-      to: [{ address: persona.emailAddress }],
-      cc: [],
-      bcc: [],
-      envelopeRcptTo: [{ address: persona.emailAddress }],
-      subject: 'subject',
-      text: 'body',
-      html: undefined,
-      references: [],
-      receivedAt: new Date().toISOString(),
-      rawMimePath: '/tmp/inbound.eml',
-      attachments: [],
-    },
+      recipientAddress: persona.emailAddress,
+    }),
     errorMessage: 'tool failed',
     invokeRuntimeAction: async (): Promise<Record<string, unknown>> => {
       alertInvokeCount += 1;
@@ -181,6 +169,5 @@ describe('gateway inbound config relay wiring', () => {
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });

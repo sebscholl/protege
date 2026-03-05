@@ -1,5 +1,3 @@
-import type { InboundNormalizedMessage } from '@engine/gateway/types';
-
 import { join } from 'node:path';
 
 import Database from 'better-sqlite3';
@@ -10,6 +8,7 @@ import {
   persistInboundMessageForRuntime,
   runHarnessForPersistedInboundMessage,
 } from '@engine/harness/runtime';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
 import { scaffoldProviderConfig } from '@tests/helpers/provider';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { networkServer } from '@tests/network/server';
@@ -20,39 +19,26 @@ let persistedToolEventCount = 0;
 let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
-const inboundTurnOne: InboundNormalizedMessage = {
+const inboundTurnOne = createInboundMessage({
   personaId: 'persona-e2e-tool-trace',
   messageId: '<tool-trace-e2e-1@example.com>',
   threadId: 'thread-tool-trace-e2e-1',
-  from: [{ address: 'sender@example.com' }],
-  to: [{ address: 'agent@example.com' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'agent@example.com' }],
   subject: 'E2E tool trace turn one',
   text: 'Run one with tool.',
-  references: [],
   receivedAt: '2026-03-04T12:00:00.000Z',
   rawMimePath: '/tmp/e2e-tool-trace-1.eml',
-  attachments: [],
-};
+});
 
-const inboundTurnTwo: InboundNormalizedMessage = {
+const inboundTurnTwo = createInboundMessage({
   personaId: 'persona-e2e-tool-trace',
   messageId: '<tool-trace-e2e-2@example.com>',
   threadId: 'thread-tool-trace-e2e-1',
-  from: [{ address: 'sender@example.com' }],
-  to: [{ address: 'agent@example.com' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'agent@example.com' }],
   subject: 'E2E tool trace turn two',
   text: 'Run two should see prior tool context.',
   references: ['<tool-trace-e2e-1@example.com>'],
   receivedAt: '2026-03-04T12:01:00.000Z',
   rawMimePath: '/tmp/e2e-tool-trace-2.eml',
-  attachments: [],
-};
+});
 
 beforeAll(async (): Promise<void> => {
   workspace = createTestWorkspaceFromFixture({

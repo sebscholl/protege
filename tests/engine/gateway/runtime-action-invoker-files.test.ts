@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createGatewayRuntimeActionInvoker } from '@engine/gateway/index';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
@@ -15,6 +16,16 @@ let editTextNotFoundError = '';
 let outsideReadContent = '';
 let outsideFilePath = '';
 let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+
+function createFileActionsInboundMessage(): ReturnType<typeof createInboundMessage> {
+  return createInboundMessage({
+    personaId: 'persona-test',
+    messageId: '<inbound@example.com>',
+    threadId: 'thread-1',
+    subject: 'Hello',
+    text: 'Body',
+  });
+}
 
 beforeAll(async (): Promise<void> => {
   workspace = createTestWorkspaceFromFixture({
@@ -34,22 +45,7 @@ beforeAll(async (): Promise<void> => {
   writeFileSync(outsideFilePath, 'outside-content', 'utf8');
 
   const invoke = createGatewayRuntimeActionInvoker({
-    message: {
-      personaId: 'persona-test',
-      messageId: '<inbound@example.com>',
-      threadId: 'thread-1',
-      from: [{ address: 'sender@example.com' }],
-      to: [{ address: 'agent@example.com' }],
-      cc: [],
-      bcc: [],
-      envelopeRcptTo: [{ address: 'agent@example.com' }],
-      subject: 'Hello',
-      text: 'Body',
-      references: [],
-      receivedAt: '2026-02-14T00:00:00.000Z',
-      rawMimePath: '/tmp/inbound.eml',
-      attachments: [],
-    },
+    message: createFileActionsInboundMessage(),
     logger: {
       info: (): void => undefined,
       error: (): void => undefined,

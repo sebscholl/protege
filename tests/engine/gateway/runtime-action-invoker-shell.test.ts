@@ -4,6 +4,7 @@ import {
   createGatewayRuntimeActionInvoker,
   runShellExecRuntimeAction,
 } from '@engine/gateway/index';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
 
 let unknownActionError = '';
 let shellExecExitCode = -1;
@@ -12,6 +13,16 @@ let shellExecShell = '';
 let shellExecCwd = '';
 let invalidWorkdirError = '';
 let shellExecFromInvokerExitCode = -1;
+
+function createShellInvokerInboundMessage(): ReturnType<typeof createInboundMessage> {
+  return createInboundMessage({
+    personaId: 'persona-test',
+    messageId: '<inbound@example.com>',
+    threadId: 'thread-1',
+    subject: 'Hello',
+    text: 'Body',
+  });
+}
 
 beforeAll(async (): Promise<void> => {
   const runResult = await runShellExecRuntimeAction({
@@ -63,22 +74,7 @@ beforeAll(async (): Promise<void> => {
   }
 
   const invoker = createGatewayRuntimeActionInvoker({
-    message: {
-      personaId: 'persona-test',
-      messageId: '<inbound@example.com>',
-      threadId: 'thread-1',
-      from: [{ address: 'sender@example.com' }],
-      to: [{ address: 'agent@example.com' }],
-      cc: [],
-      bcc: [],
-      envelopeRcptTo: [{ address: 'agent@example.com' }],
-      subject: 'Hello',
-      text: 'Body',
-      references: [],
-      receivedAt: '2026-02-14T00:00:00.000Z',
-      rawMimePath: '/tmp/inbound.eml',
-      attachments: [],
-    },
+    message: createShellInvokerInboundMessage(),
     logger: {
       info: (): void => undefined,
       error: (): void => undefined,

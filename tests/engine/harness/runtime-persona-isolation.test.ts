@@ -1,5 +1,3 @@
-import type { InboundNormalizedMessage } from '@engine/gateway/types';
-
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -10,6 +8,7 @@ import {
   persistInboundMessageForRuntime,
   runHarnessForPersistedInboundMessage,
 } from '@engine/harness/runtime';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
 import { scaffoldProviderConfig } from '@tests/helpers/provider';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { mswIntercept } from '@tests/network/index';
@@ -24,39 +23,29 @@ let personaBHasForeignThread = false;
 let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
-const personaAMessage: InboundNormalizedMessage = {
+const personaAMessage = createInboundMessage({
   personaId: 'persona-a',
   messageId: '<persona-a-inbound@example.com>',
   threadId: 'thread-a',
-  from: [{ address: 'sender-a@example.com' }],
-  to: [{ address: 'persona-a@example.com' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'persona-a@example.com' }],
   subject: 'Persona A',
   text: 'Run for persona A.',
-  references: [],
-  receivedAt: '2026-02-14T00:00:00.000Z',
+  from: ['sender-a@example.com'],
+  to: ['persona-a@example.com'],
+  envelopeRcptTo: ['persona-a@example.com'],
   rawMimePath: '/tmp/persona-a.eml',
-  attachments: [],
-};
+});
 
-const personaBMessage: InboundNormalizedMessage = {
+const personaBMessage = createInboundMessage({
   personaId: 'persona-b',
   messageId: '<persona-b-inbound@example.com>',
   threadId: 'thread-b',
-  from: [{ address: 'sender-b@example.com' }],
-  to: [{ address: 'persona-b@example.com' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'persona-b@example.com' }],
   subject: 'Persona B',
   text: 'Run for persona B.',
-  references: [],
-  receivedAt: '2026-02-14T00:00:00.000Z',
+  from: ['sender-b@example.com'],
+  to: ['persona-b@example.com'],
+  envelopeRcptTo: ['persona-b@example.com'],
   rawMimePath: '/tmp/persona-b.eml',
-  attachments: [],
-};
+});
 
 beforeAll(async (): Promise<void> => {
   workspace = createTestWorkspaceFromFixture({

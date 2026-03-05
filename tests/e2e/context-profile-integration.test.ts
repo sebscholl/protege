@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runHarnessForInboundMessage, runHarnessForPersistedInboundMessage } from '@engine/harness/runtime';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
 import { scaffoldProviderConfig } from '@tests/helpers/provider';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { loadNetworkFixture } from '@tests/network';
@@ -19,43 +20,30 @@ let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
  * Returns one inbound email-shaped test message for thread profile assertions.
  */
 function createEmailInboundMessage(): InboundNormalizedMessage {
-  return {
+  return createInboundMessage({
     personaId: 'persona-context-profile',
     messageId: '<thread-profile-1@example.com>',
     threadId: 'thread-profile-1',
-    from: [{ address: 'sender@example.com' }],
-    to: [{ address: 'agent@example.com' }],
-    cc: [],
-    bcc: [],
-    envelopeRcptTo: [{ address: 'agent@example.com' }],
     subject: 'Thread profile test',
     text: 'Email profile input',
-    references: [],
     receivedAt: '2026-03-05T00:00:00.000Z',
     rawMimePath: '/tmp/thread-profile.eml',
-    attachments: [],
-  };
+  });
 }
 
 /**
  * Returns one synthetic responsibility inbound message for responsibility profile assertions.
  */
 function createResponsibilityInboundMessage(): InboundNormalizedMessage {
-  return {
+  return createInboundMessage({
     personaId: 'persona-context-profile',
     messageId: '<responsibility-profile-1@example.com>',
     threadId: 'responsibility-profile-1',
-    from: [{ address: 'responsibility@localhost' }],
-    to: [{ address: 'agent@example.com' }],
-    cc: [],
-    bcc: [],
-    envelopeRcptTo: [{ address: 'agent@example.com' }],
+    from: ['responsibility@localhost'],
     subject: 'Responsibility profile test',
     text: 'Responsibility profile input',
-    references: [],
     receivedAt: '2026-03-05T00:01:00.000Z',
     rawMimePath: '__responsibility__',
-    attachments: [],
     metadata: {
       source: 'responsibility',
       responsibility: {
@@ -67,7 +55,7 @@ function createResponsibilityInboundMessage(): InboundNormalizedMessage {
         enabled: true,
       },
     },
-  };
+  });
 }
 
 /**

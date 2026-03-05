@@ -1,24 +1,21 @@
 import type { PersonaMetadata, PersonaRoots } from '@engine/shared/personas';
 
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { resolvePersonaIdFromSession } from '@engine/gateway/index';
 import { createPersona, resolveDefaultPersonaRoots } from '@engine/shared/personas';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
 let createdPersona: PersonaMetadata;
 let resolvedId = '';
 let unresolvedId: string | undefined;
-let previousCwd = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-gateway-persona-routing-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-gateway-persona-routing-',
+  });
 
   const roots: PersonaRoots = resolveDefaultPersonaRoots();
   createdPersona = createPersona({ roots });
@@ -32,8 +29,7 @@ beforeAll((): void => {
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('gateway persona recipient routing', () => {

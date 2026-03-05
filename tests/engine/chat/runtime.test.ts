@@ -22,6 +22,7 @@ import {
   resolveThreadScrollDelta,
   toChatErrorStackPreview,
 } from '@engine/chat/runtime';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
 import { createPersona } from '@engine/shared/personas';
 import { initializeDatabase } from '@engine/shared/database';
 import { getDefaultChatKeymap, getDefaultChatUiTheme } from '@engine/shared/runtime-config';
@@ -56,22 +57,18 @@ let renderedThreadContent = '';
 let chatErrorStackPreviewLength = 0;
 let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
-const inboundMessage: InboundNormalizedMessage = {
+const inboundMessage: InboundNormalizedMessage = createInboundMessage({
   personaId: 'persona-test',
   messageId: '<message-1@localhost>',
   threadId: 'thread-1',
-  from: [{ address: 'user@localhost' }],
-  to: [{ address: 'persona@localhost' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'persona@localhost' }],
   subject: 'Local Chat',
   text: 'hello',
-  references: [],
+  from: ['user@localhost'],
+  to: ['persona@localhost'],
+  envelopeRcptTo: ['persona@localhost'],
   receivedAt: '2026-02-19T10:00:00.000Z',
   rawMimePath: '__chat__',
-  attachments: [],
-};
+});
 
 beforeAll(async (): Promise<void> => {
   workspace = createTestWorkspaceFromFixture({
