@@ -1,12 +1,12 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let parsedLogsDirPath = '';
 let parsedConsoleFormat = '';
 let parsedGlobalAdminContactEmail = '';
@@ -41,9 +41,13 @@ let duplicateBindingError = '';
 let unsupportedBindingError = '';
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-runtime-config-'));
-  const validConfigPath = join(tempRootPath, 'valid-system.json');
-  const validThemePath = join(tempRootPath, 'valid-theme.json');
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-runtime-config-',
+    chdir: false,
+  });
+  const validConfigPath = join(workspace.tempRootPath, 'valid-system.json');
+  const validThemePath = join(workspace.tempRootPath, 'valid-theme.json');
   writeFileSync(validThemePath, JSON.stringify({
     pretty_logs: {
       enabled: true,
@@ -126,11 +130,11 @@ beforeAll((): void => {
   parsedChatUiStatusPrefixTag = parsed.chatUiTheme.status.prefixTag[0] ?? '';
   parsedChatUiThreadHeaderTag = parsed.chatUiTheme.thread.messageHeaderTag[0] ?? '';
 
-  const defaultConfigPath = join(tempRootPath, 'default-system.json');
+  const defaultConfigPath = join(workspace.tempRootPath, 'default-system.json');
   writeFileSync(defaultConfigPath, JSON.stringify({
     logs_dir_path: 'tmp/logs',
     console_log_format: 'json',
-    theme_config_path: join(tempRootPath, 'missing-theme.json'),
+    theme_config_path: join(workspace.tempRootPath, 'missing-theme.json'),
   }));
   const defaultParsed = readGlobalRuntimeConfig({ configPath: defaultConfigPath });
   defaultChatDisplayMode = defaultParsed.chat.defaultDisplayMode;
@@ -143,7 +147,7 @@ beforeAll((): void => {
   defaultChatUiStatusDividerTag = defaultParsed.chatUiTheme.status.dividerTag[0] ?? '';
   defaultChatUiThreadDotTag = defaultParsed.chatUiTheme.thread.messageDotTag[0] ?? '';
 
-  const invalidModePath = join(tempRootPath, 'invalid-mode-system.json');
+  const invalidModePath = join(workspace.tempRootPath, 'invalid-mode-system.json');
   writeFileSync(invalidModePath, JSON.stringify({
     chat: {
       default_display_mode: 'compact',
@@ -177,7 +181,7 @@ beforeAll((): void => {
     invalidModeError = error instanceof Error ? error.message : String(error);
   }
 
-  const missingActionPath = join(tempRootPath, 'missing-action-system.json');
+  const missingActionPath = join(workspace.tempRootPath, 'missing-action-system.json');
   writeFileSync(missingActionPath, JSON.stringify({
     chat: {
       keymap: {
@@ -197,7 +201,7 @@ beforeAll((): void => {
     missingActionError = error instanceof Error ? error.message : String(error);
   }
 
-  const duplicateBindingPath = join(tempRootPath, 'duplicate-binding-system.json');
+  const duplicateBindingPath = join(workspace.tempRootPath, 'duplicate-binding-system.json');
   writeFileSync(duplicateBindingPath, JSON.stringify({
     chat: {
       keymap: {
@@ -230,7 +234,7 @@ beforeAll((): void => {
     duplicateBindingError = error instanceof Error ? error.message : String(error);
   }
 
-  const unsupportedBindingPath = join(tempRootPath, 'unsupported-binding-system.json');
+  const unsupportedBindingPath = join(workspace.tempRootPath, 'unsupported-binding-system.json');
   writeFileSync(unsupportedBindingPath, JSON.stringify({
     chat: {
       keymap: {
@@ -265,7 +269,7 @@ beforeAll((): void => {
 });
 
 afterAll((): void => {
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('global runtime config', () => {

@@ -1,5 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -9,8 +8,9 @@ import {
   matchAddressRule,
   readSecurityRuntimeConfig,
 } from '@engine/shared/security-config';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let missingConfigDisabled = false;
 let parsedPolicyEnabled = false;
 let parsedDefaultDecision = '';
@@ -20,13 +20,17 @@ let denyOverridesAllow = false;
 let wildcardAllowMatch = false;
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-security-config-'));
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-security-config-',
+    chdir: false,
+  });
 
   missingConfigDisabled = readSecurityRuntimeConfig({
-    configPath: join(tempRootPath, 'missing.json'),
+    configPath: join(workspace.tempRootPath, 'missing.json'),
   }).gatewayAccess.enabled === false;
 
-  const configPath = join(tempRootPath, 'security.json');
+  const configPath = join(workspace.tempRootPath, 'security.json');
   writeFileSync(configPath, JSON.stringify({
     gateway_access: {
       enabled: true,
@@ -54,7 +58,7 @@ beforeAll((): void => {
 });
 
 afterAll((): void => {
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('security config parsing and rule evaluation', () => {

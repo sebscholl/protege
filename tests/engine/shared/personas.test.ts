@@ -1,7 +1,6 @@
 import type { PersonaMetadata, PersonaRoots } from '@engine/shared/personas';
 
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -16,8 +15,9 @@ import {
   resolvePersonaConfigDirPath,
   resolvePersonaMemoryPaths,
 } from '@engine/shared/personas';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let roots: PersonaRoots;
 let createdPersona: PersonaMetadata;
 let listedPersonasCount = 0;
@@ -28,10 +28,14 @@ let extractedLocalPart = '';
 let derivedPersonaIdLength = 0;
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-personas-'));
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-personas-',
+    chdir: false,
+  });
   roots = {
-    personasDirPath: join(tempRootPath, 'personas'),
-    memoryDirPath: join(tempRootPath, 'memory'),
+    personasDirPath: join(workspace.tempRootPath, 'personas'),
+    memoryDirPath: join(workspace.tempRootPath, 'memory'),
   };
 
   createdPersona = createPersona({ roots, label: 'Test Persona' });
@@ -63,7 +67,7 @@ beforeAll((): void => {
 
 afterAll((): void => {
   deletePersona({ personaId: createdPersona.personaId, roots });
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('shared persona model', () => {
