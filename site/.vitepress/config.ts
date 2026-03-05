@@ -1,0 +1,70 @@
+import { defineConfig } from 'vitepress';
+import { withMermaid } from 'vitepress-plugin-mermaid';
+
+export default withMermaid(defineConfig({
+  title: 'Protege',
+  description: 'Email-native AI agent framework',
+  srcDir: '.',
+  mermaid: {},
+  themeConfig: {
+    search: {
+      provider: 'local',
+    },
+    nav: [
+      { text: 'Introduction', link: '/' },
+      { text: 'Getting Started', link: '/getting-started/' },
+      { text: 'Developer Experience', link: '/developer-experience/' },
+      { text: 'Internal Architecture', link: '/internal-architecture/' },
+      { text: 'CLI Reference', link: '/reference/cli' },
+    ],
+    sidebar: [
+      {
+        text: 'Introduction',
+        items: [
+          { text: 'Protege Framework', link: '/' },
+        ],
+      },
+      {
+        text: 'Getting Started',
+        items: [
+          { text: 'Quick Start', link: '/getting-started/' },
+          { text: 'Relay vs Transport', link: '/getting-started/relay-vs-transport' },
+        ],
+      },
+      {
+        text: 'Developer Experience',
+        items: [
+          { text: 'Overview', link: '/developer-experience/' },
+          { text: 'Extensions Overview', link: '/developer-experience/extensions/' },
+          { text: 'Tools', link: '/developer-experience/extensions/tools' },
+          { text: 'Providers', link: '/developer-experience/extensions/providers' },
+          { text: 'Hooks', link: '/developer-experience/extensions/hooks' },
+          { text: 'Resolvers', link: '/developer-experience/extensions/resolvers' },
+          { text: 'Personas and Memory', link: '/developer-experience/personas-memory' },
+          { text: '.env and Secrets', link: '/developer-experience/environment' },
+          { text: 'Config Files', link: '/developer-experience/configuration' },
+        ],
+      },
+      {
+        text: 'Internal Architecture',
+        items: [
+          { text: 'Overview', link: '/internal-architecture/' },
+          { text: 'LOGI Model', link: '/internal-architecture/logi' },
+          { text: 'Gateway', link: '/internal-architecture/gateway' },
+          { text: 'Inference Harness', link: '/internal-architecture/harness' },
+          { text: 'Scheduler', link: '/internal-architecture/scheduler' },
+          { text: 'Relay Service', link: '/internal-architecture/relay' },
+        ],
+      },
+      {
+        text: 'Reference',
+        items: [
+          { text: 'CLI Commands', link: '/reference/cli' },
+        ],
+      },
+    ],
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com' },
+    ],
+  },
+}));
