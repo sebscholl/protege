@@ -1,9 +1,7 @@
 import type { ProtegeDatabase } from '@engine/shared/database';
 import type { InboundNormalizedMessage } from '@engine/gateway/types';
 
-import { mkdtempSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -11,8 +9,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { listChatThreadSummaries, readChatThreadDetail } from '@engine/chat/queries';
 import { ensureThread, storeInboundMessage, storeOutboundMessage } from '@engine/harness/storage';
 import { initializeDatabase } from '@engine/shared/database';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let db: ProtegeDatabase | undefined;
 let summariesThreadIds: string[] = [];
 let summariesReadOnlyStates: boolean[] = [];
@@ -100,9 +99,13 @@ function insertLocalSyntheticThread(
 }
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-chat-queries-'));
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-chat-queries-',
+    chdir: false,
+  });
   db = initializeDatabase({
-    databasePath: join(tempRootPath, 'temporal.db'),
+    databasePath: join(workspace.tempRootPath, 'temporal.db'),
     migrationsDirPath: join(process.cwd(), 'engine', 'shared', 'migrations'),
   });
 
@@ -173,7 +176,7 @@ beforeAll((): void => {
 
 afterAll((): void => {
   db?.close();
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('chat query thread summaries', () => {

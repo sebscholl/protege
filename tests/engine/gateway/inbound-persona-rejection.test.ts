@@ -1,8 +1,7 @@
 import type { GatewayInboundError } from '@engine/gateway/inbound';
 import type { SMTPServerDataStream } from 'smtp-server';
 
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 
@@ -11,8 +10,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { handleInboundData } from '@engine/gateway/inbound';
 import { createFixtureSession, createFixtureStream } from '@tests/helpers/email-fixtures';
 import { createInboundTestConfig } from '@tests/helpers/gateway-inbound';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let fallbackLogsDirPath = '';
 let fallbackAttachmentsDirPath = '';
 let capturedError: GatewayInboundError | undefined;
@@ -21,9 +21,13 @@ let attachmentsDirExists = false;
 let streamDrainedOnReject = false;
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-inbound-persona-rejection-'));
-  fallbackLogsDirPath = join(tempRootPath, 'fallback-logs');
-  fallbackAttachmentsDirPath = join(tempRootPath, 'fallback-attachments');
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-inbound-persona-rejection-',
+    chdir: false,
+  });
+  fallbackLogsDirPath = join(workspace.tempRootPath, 'fallback-logs');
+  fallbackAttachmentsDirPath = join(workspace.tempRootPath, 'fallback-attachments');
 
   try {
     await handleInboundData({
@@ -78,7 +82,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('gateway inbound persona rejection', () => {

@@ -1,45 +1,58 @@
-import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import Database from 'better-sqlite3';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { handleInboundForRuntime } from '@engine/gateway/index';
+import { scaffoldProviderConfig } from '@tests/helpers/provider';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { mswIntercept } from '@tests/network/index';
 
 let tempRootPath = '';
-let previousCwd = '';
 let temporalDbPath = '';
 let outboundCount = 0;
 let databaseCreated = false;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-gateway-no-transport-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
-  process.env.OPENAI_API_KEY = 'test-key';
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-gateway-no-transport-',
+  });
+  tempRootPath = workspace.tempRootPath;
+  providerScaffold = scaffoldProviderConfig({
+    workspace,
+    providerName: 'openai',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    apiKeyValue: 'test-key',
+    providerConfig: {
+      base_url: 'https://api.openai.com/v1',
+    },
+  });
 
-  mkdirSync(join(tempRootPath, 'config'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'extensions', 'providers', 'openai'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'personas', 'persona-test'), { recursive: true });
-  writeFileSync(join(tempRootPath, 'personas', 'persona-test', 'persona.json'), JSON.stringify({
+  workspace.patchPersona({
     personaId: 'persona-test',
-    publicKeyBase32: 'fixture',
-    emailLocalPart: 'fixture',
-    emailAddress: 'fixture@localhost',
-    createdAt: '2026-02-14T00:00:00.000Z',
-  }));
-  writeFileSync(join(tempRootPath, 'config', 'inference.json'), JSON.stringify({
-    provider: 'openai',
-    model: 'gpt-4.1',
-    recursion_depth: 3,
-  }));
-  writeFileSync(join(tempRootPath, 'config', 'system-prompt.md'), 'You are Protege.');
-  writeFileSync(join(tempRootPath, 'extensions', 'providers', 'openai', 'config.json'), JSON.stringify({
-    api_key_env: 'OPENAI_API_KEY',
-    base_url: 'https://api.openai.com/v1',
-  }));
+    personaPatch: {
+      personaId: 'persona-test',
+      publicKeyBase32: 'fixture',
+      emailLocalPart: 'fixture',
+      emailAddress: 'fixture@localhost',
+      createdAt: '2026-02-14T00:00:00.000Z',
+    },
+  });
+  workspace.patchConfigFiles({
+    'context.json': {
+      thread: ['current-input'],
+      responsibility: ['current-input'],
+    },
+  });
+  workspace.patchExtensionsManifest({
+    tools: [],
+    hooks: [],
+    resolvers: ['current-input'],
+  });
   mswIntercept({ fixtureKey: 'openai/chat-completions/200' });
 
   await handleInboundForRuntime({
@@ -80,9 +93,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
-  delete process.env.OPENAI_API_KEY;
+  providerScaffold.restoreEnv();
+  workspace.cleanup();
 });
 
 describe('gateway harness execution without outbound transport', () => {

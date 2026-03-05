@@ -1,8 +1,7 @@
 import type { ProtegeDatabase } from '@engine/shared/database';
 import type { PersonaRoots } from '@engine/shared/personas';
 
-import { mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -11,6 +10,7 @@ import { initializeDatabase } from '@engine/shared/database';
 import { createPersona } from '@engine/shared/personas';
 import { listResponsibilitiesByPersona } from '@engine/scheduler/storage';
 import { parseFrontmatterMarkdown, syncPersonaResponsibilities } from '@engine/scheduler/sync';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
 let roots: PersonaRoots | undefined;
@@ -22,38 +22,47 @@ let firstSyncUpserted = 0;
 let firstSyncDisabled = 0;
 let secondSyncDisabled = 0;
 let enabledCountAfterRemoval = 0;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let repoRootPath = '';
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-scheduler-sync-'));
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-scheduler-sync-',
+  });
+  repoRootPath = workspace.previousCwd;
+  tempRootPath = workspace.tempRootPath;
   roots = {
     personasDirPath: join(tempRootPath, 'personas'),
     memoryDirPath: join(tempRootPath, 'memory'),
   };
-  mkdirSync(roots.personasDirPath, { recursive: true });
-  mkdirSync(roots.memoryDirPath, { recursive: true });
   const persona = createPersona({
     roots,
     label: 'Scheduler Persona',
   });
   personaId = persona.personaId;
-  const responsibilitiesDirPath = join(roots.personasDirPath, personaId, 'responsibilities');
-  mkdirSync(responsibilitiesDirPath, { recursive: true });
-  writeFileSync(join(responsibilitiesDirPath, 'daily-brief.md'), [
+  workspace.writeFile({
+    relativePath: join('personas', personaId, 'responsibilities', 'daily-brief.md'),
+    payload: [
     '---',
     'name: Daily Brief',
     'schedule: 0 9 * * *',
     'enabled: true',
     '---',
     'Generate a morning brief for me.',
-  ].join('\n'));
-  writeFileSync(join(responsibilitiesDirPath, 'disabled-task.md'), [
+  ].join('\n'),
+  });
+  workspace.writeFile({
+    relativePath: join('personas', personaId, 'responsibilities', 'disabled-task.md'),
+    payload: [
     '---',
     'name: Disabled Task',
     'schedule: 0 22 * * *',
     'enabled: false',
     '---',
     'This one is intentionally disabled.',
-  ].join('\n'));
+  ].join('\n'),
+  });
 
   const parsed = parseFrontmatterMarkdown({
     markdown: [
@@ -70,7 +79,7 @@ beforeAll((): void => {
 
   db = initializeDatabase({
     databasePath: join(tempRootPath, 'temporal.db'),
-    migrationsDirPath: join(process.cwd(), 'engine', 'shared', 'migrations'),
+    migrationsDirPath: join(repoRootPath, 'engine', 'shared', 'migrations'),
   });
   const firstSync = syncPersonaResponsibilities({
     db: db as ProtegeDatabase,
@@ -81,7 +90,7 @@ beforeAll((): void => {
   firstSyncUpserted = firstSync.upsertedCount;
   firstSyncDisabled = firstSync.disabledCount;
 
-  unlinkSync(join(responsibilitiesDirPath, 'daily-brief.md'));
+  unlinkSync(join(tempRootPath, 'personas', personaId, 'responsibilities', 'daily-brief.md'));
   const secondSync = syncPersonaResponsibilities({
     db: db as ProtegeDatabase,
     personaId,
@@ -97,7 +106,7 @@ beforeAll((): void => {
 
 afterAll((): void => {
   db?.close();
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('scheduler sync', () => {

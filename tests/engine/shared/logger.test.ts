@@ -1,13 +1,13 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createUnifiedLogger } from '@engine/shared/logger';
 import { getDefaultPrettyLogTheme } from '@engine/shared/runtime-config';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let consoleLine = '';
 let fileLine = '';
 let silentConsoleOutput = '';
@@ -18,7 +18,11 @@ let emittedEvent = '';
 let emittedCorrelationId = '';
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-unified-logger-'));
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-unified-logger-',
+    chdir: false,
+  });
 
   const originalWrite = process.stdout.write.bind(process.stdout);
   let captured = '';
@@ -28,7 +32,7 @@ beforeAll((): void => {
   }) as typeof process.stdout.write;
 
   const logger = createUnifiedLogger({
-    logsDirPath: tempRootPath,
+    logsDirPath: workspace.tempRootPath,
     scope: 'gateway',
     consoleLogFormat: 'pretty',
     prettyLogTheme: getDefaultPrettyLogTheme(),
@@ -52,7 +56,7 @@ beforeAll((): void => {
   consoleLine = captured.trim();
   prettyConsoleHasMultilineContext = consoleLine.includes('\n\t');
   prettyConsoleHasAnsiStyle = consoleLine.includes('\u001b[');
-  fileLine = readFileSync(join(tempRootPath, 'protege.log'), 'utf8').trim();
+  fileLine = readFileSync(join(workspace.tempRootPath, 'protege.log'), 'utf8').trim();
 
   const originalSilentWrite = process.stdout.write.bind(process.stdout);
   let silentCaptured = '';
@@ -62,7 +66,7 @@ beforeAll((): void => {
   }) as typeof process.stdout.write;
 
   const silentLogger = createUnifiedLogger({
-    logsDirPath: tempRootPath,
+    logsDirPath: workspace.tempRootPath,
     scope: 'chat',
     consoleLogFormat: 'pretty',
     emitToConsole: false,
@@ -75,12 +79,12 @@ beforeAll((): void => {
   });
   process.stdout.write = originalSilentWrite;
   silentConsoleOutput = silentCaptured.trim();
-  const lines = readFileSync(join(tempRootPath, 'protege.log'), 'utf8').trim().split('\n');
+  const lines = readFileSync(join(workspace.tempRootPath, 'protege.log'), 'utf8').trim().split('\n');
   silentFileLine = lines[lines.length - 1] ?? '';
 });
 
 afterAll((): void => {
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('unified logger formatting', () => {

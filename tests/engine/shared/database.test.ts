@@ -1,21 +1,25 @@
 import type { ProtegeDatabase } from '@engine/shared/database';
 
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { initializeDatabase } from '@engine/shared/database';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let databasePath = '';
 let db: ProtegeDatabase | undefined;
 let tableNames: string[] = [];
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-db-bootstrap-'));
-  databasePath = join(tempRootPath, 'temporal.db');
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-db-bootstrap-',
+    chdir: false,
+  });
+  databasePath = join(workspace.tempRootPath, 'temporal.db');
   db = initializeDatabase({
     databasePath,
     migrationsDirPath: join(process.cwd(), 'engine', 'shared', 'migrations'),
@@ -28,7 +32,7 @@ beforeAll((): void => {
 
 afterAll((): void => {
   db?.close();
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('shared database bootstrap', () => {

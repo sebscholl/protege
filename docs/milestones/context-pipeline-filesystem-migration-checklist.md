@@ -1,6 +1,6 @@
 # Milestone Checklist: Harness Context Pipeline and Filesystem Migration
 
-Status: In Progress  
+Status: Complete  
 Scope: Reorganize harness modules and implement resolver-driven context pipeline with extension registration.
 
 ## Decision Anchor
@@ -10,7 +10,7 @@ Scope: Reorganize harness modules and implement resolver-driven context pipeline
 ## Exit Criteria
 
 1. Harness context loading flows through one pipeline runner.
-2. Pipeline is configured by `config/context.json` (`file:` + `resolver:` only).
+2. Pipeline is configured by `config/context.json` resolver-call steps only (`<name>` and `<name>(arg1, ...)`).
 3. Resolver implementations are loaded from `extensions/resolvers/*` via manifest.
 4. Gateway/chat/scheduler harness paths use the same invocation-based context call.
 5. Existing behavior remains parity-safe with tests.
@@ -37,8 +37,8 @@ Scope: Reorganize harness modules and implement resolver-driven context pipeline
 - [x] Add `config/context.json` default scaffold.
 - [x] Add parser/validator for ordered pipeline steps.
 - [x] Validate supported step forms:
-  1. `file:<path>`
-  2. `resolver:<name>`
+  1. `<resolver-name>`
+  2. `<resolver-name>(arg1, arg2, ...)`
 
 ## CP4: Invocation Contract
 
@@ -51,14 +51,14 @@ Scope: Reorganize harness modules and implement resolver-driven context pipeline
 ## CP5: Pipeline Runner
 
 - [x] Implement one pipeline runner that executes configured steps in order.
-- [x] Implement file-step loader with placeholder expansion.
+- [x] Implement resolver call parsing with placeholder expansion in positional args.
 - [x] Implement resolver-step execution via resolver registry.
 - [x] Add centralized budget enforcement and trimming hooks.
 
 ## CP6: Entry Point Integration
 
 - [x] Replace direct context assembly in harness runtime with pipeline call.
-- [ ] Integrate through one path for:
+- [x] Integrate through one path for:
   1. gateway inbound runs
   2. chat runs
   3. scheduler responsibility runs
@@ -70,8 +70,8 @@ Scope: Reorganize harness modules and implement resolver-driven context pipeline
 - [x] Unit tests for context step parsing/validation.
 - [x] Unit tests for resolver invocation contract.
 - [x] Unit tests for pipeline execution ordering.
-- [ ] Integration tests for thread vs responsibility profile behavior.
-- [x] Regression tests ensuring legacy harness/gateway behavior parity.
+- [x] Integration tests for thread vs responsibility profile behavior.
+- [x] Regression tests ensuring harness/gateway behavior parity.
 - [x] E2E continuity tests retain tool-trace context behavior.
 
 ## CP8: Docs and Status

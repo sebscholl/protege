@@ -8,6 +8,7 @@ import {
   resolveReplyFromAddress,
   resolveReplySubject,
 } from '@engine/gateway/index';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
 
 let unknownActionError = '';
 let missingRecipientError = '';
@@ -35,6 +36,27 @@ let invokingAttachmentName = '';
 let completedAttachmentCount = -1;
 let completedAttachmentName = '';
 
+/**
+ * Creates one deterministic inbound message fixture used across action invoker tests.
+ */
+function createInvokerInboundMessage(
+  args: {
+    cc?: string[];
+    subject?: string;
+  } = {},
+) {
+  return createInboundMessage({
+    personaId: 'persona-test',
+    messageId: '<inbound@example.com>',
+    threadId: 'thread-1',
+    subject: args.subject ?? 'Hello',
+    text: 'Body',
+    cc: args.cc ?? [],
+    envelopeRcptTo: ['persona@example.com'],
+    rawMimePath: '/tmp/inbound.eml',
+  });
+}
+
 beforeAll(async (): Promise<void> => {
   const streamTransport = createTransport({
     streamTransport: true,
@@ -42,22 +64,7 @@ beforeAll(async (): Promise<void> => {
     newline: 'unix',
   });
   const invoke = createGatewayRuntimeActionInvoker({
-    message: {
-      personaId: 'persona-test',
-      messageId: '<inbound@example.com>',
-      threadId: 'thread-1',
-      from: [{ address: 'sender@example.com' }],
-      to: [{ address: 'agent@example.com' }],
-      cc: [],
-      bcc: [],
-      envelopeRcptTo: [{ address: 'agent@example.com' }],
-      subject: 'Hello',
-      text: 'Body',
-      references: [],
-      receivedAt: '2026-02-14T00:00:00.000Z',
-      rawMimePath: '/tmp/inbound.eml',
-      attachments: [],
-    },
+    message: createInvokerInboundMessage(),
     logger: {
       info: (): void => undefined,
       error: (): void => undefined,
@@ -139,63 +146,25 @@ beforeAll(async (): Promise<void> => {
     personaSenderAddress: 'persona@example.com',
   });
   replySubject = resolveReplySubject({
-    message: {
-      personaId: 'persona-test',
-      messageId: '<inbound@example.com>',
-      threadId: 'thread-1',
-      from: [{ address: 'sender@example.com' }],
-      to: [{ address: 'agent@example.com' }],
-      cc: [],
-      bcc: [],
-      envelopeRcptTo: [{ address: 'persona@example.com' }],
+    message: createInvokerInboundMessage({
       subject: 'Manual Test',
-      text: 'Body',
-      references: [],
-      receivedAt: '2026-02-14T00:00:00.000Z',
-      rawMimePath: '/tmp/inbound.eml',
-      attachments: [],
-    },
+    }),
     inReplyTo: '<inbound@example.com>',
     payloadSubject: 'Custom Subject',
   });
   newThreadReplySubject = resolveReplySubject({
-    message: {
-      personaId: 'persona-test',
-      messageId: '<inbound@example.com>',
-      threadId: 'thread-1',
-      from: [{ address: 'sender@example.com' }],
-      to: [{ address: 'agent@example.com' }],
-      cc: [],
-      bcc: [],
-      envelopeRcptTo: [{ address: 'persona@example.com' }],
+    message: createInvokerInboundMessage({
       subject: 'Manual Test',
-      text: 'Body',
-      references: [],
-      receivedAt: '2026-02-14T00:00:00.000Z',
-      rawMimePath: '/tmp/inbound.eml',
-      attachments: [],
-    },
+    }),
     inReplyTo: '<new-thread-anchor@example.com>',
     payloadSubject: 'Custom Subject',
   });
 
   const noImplicitReplyAllRequest = buildEmailSendRequestFromAction({
-    message: {
-      personaId: 'persona-test',
-      messageId: '<inbound@example.com>',
-      threadId: 'thread-1',
-      from: [{ address: 'sender@example.com' }],
-      to: [{ address: 'agent@example.com' }],
-      cc: [{ address: 'patricia@example.com' }],
-      bcc: [],
-      envelopeRcptTo: [{ address: 'persona@example.com' }],
+    message: createInvokerInboundMessage({
+      cc: ['patricia@example.com'],
       subject: 'Manual Test',
-      text: 'Body',
-      references: [],
-      receivedAt: '2026-02-14T00:00:00.000Z',
-      rawMimePath: '/tmp/inbound.eml',
-      attachments: [],
-    },
+    }),
     payload: {
       to: ['sender@example.com'],
       subject: 'Manual Test',
@@ -206,22 +175,10 @@ beforeAll(async (): Promise<void> => {
   implicitReplyAllCcCount = noImplicitReplyAllRequest.cc?.length ?? 0;
 
   const explicitCcRequest = buildEmailSendRequestFromAction({
-    message: {
-      personaId: 'persona-test',
-      messageId: '<inbound@example.com>',
-      threadId: 'thread-1',
-      from: [{ address: 'sender@example.com' }],
-      to: [{ address: 'agent@example.com' }],
-      cc: [{ address: 'patricia@example.com' }],
-      bcc: [],
-      envelopeRcptTo: [{ address: 'persona@example.com' }],
+    message: createInvokerInboundMessage({
+      cc: ['patricia@example.com'],
       subject: 'Manual Test',
-      text: 'Body',
-      references: [],
-      receivedAt: '2026-02-14T00:00:00.000Z',
-      rawMimePath: '/tmp/inbound.eml',
-      attachments: [],
-    },
+    }),
     payload: {
       to: ['sender@example.com'],
       cc: ['patricia@example.com'],
@@ -233,22 +190,9 @@ beforeAll(async (): Promise<void> => {
   explicitCcCount = explicitCcRequest.cc?.length ?? 0;
 
   const lockedFromRequest = buildEmailSendRequestFromAction({
-    message: {
-      personaId: 'persona-test',
-      messageId: '<inbound@example.com>',
-      threadId: 'thread-1',
-      from: [{ address: 'sender@example.com' }],
-      to: [{ address: 'agent@example.com' }],
-      cc: [],
-      bcc: [],
-      envelopeRcptTo: [{ address: 'persona@example.com' }],
+    message: createInvokerInboundMessage({
       subject: 'Manual Test',
-      text: 'Body',
-      references: [],
-      receivedAt: '2026-02-14T00:00:00.000Z',
-      rawMimePath: '/tmp/inbound.eml',
-      attachments: [],
-    },
+    }),
     payload: {
       to: ['sender@example.com'],
       from: 'spoofed@example.com',

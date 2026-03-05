@@ -1,12 +1,11 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { readRelayRuntimeConfig } from '@relay/src/config';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let defaultHost = '';
 let defaultSmtpEnabled = false;
 let validConfigPort = 0;
@@ -14,39 +13,48 @@ let invalidHostThrows = false;
 let invalidSmtpThrows = false;
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-relay-config-'));
-  mkdirSync(join(tempRootPath, 'relay'), { recursive: true });
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-relay-config-',
+    chdir: false,
+  });
 
   const defaultConfig = readRelayRuntimeConfig({
-    configPath: join(tempRootPath, 'relay', 'missing.json'),
+    configPath: join(workspace.tempRootPath, 'relay', 'missing.json'),
   });
   defaultHost = defaultConfig.host;
   defaultSmtpEnabled = defaultConfig.smtp.enabled;
 
-  const validConfigPath = join(tempRootPath, 'relay', 'config-valid.json');
-  writeFileSync(validConfigPath, JSON.stringify({
-    host: '127.0.0.1',
-    port: 8080,
-    smtp: {
-      enabled: true,
+  const validConfigPath = join(workspace.tempRootPath, 'relay', 'config-valid.json');
+  workspace.writeFile({
+    relativePath: join('relay', 'config-valid.json'),
+    payload: {
       host: '127.0.0.1',
-      port: 2526,
+      port: 8080,
+      smtp: {
+        enabled: true,
+        host: '127.0.0.1',
+        port: 2526,
+      },
     },
-  }));
+  });
   validConfigPort = readRelayRuntimeConfig({
     configPath: validConfigPath,
   }).port;
 
-  const invalidHostConfigPath = join(tempRootPath, 'relay', 'config-invalid-host.json');
-  writeFileSync(invalidHostConfigPath, JSON.stringify({
-    host: '',
-    port: 8080,
-    smtp: {
-      enabled: true,
-      host: '127.0.0.1',
-      port: 2526,
+  const invalidHostConfigPath = join(workspace.tempRootPath, 'relay', 'config-invalid-host.json');
+  workspace.writeFile({
+    relativePath: join('relay', 'config-invalid-host.json'),
+    payload: {
+      host: '',
+      port: 8080,
+      smtp: {
+        enabled: true,
+        host: '127.0.0.1',
+        port: 2526,
+      },
     },
-  }));
+  });
   try {
     readRelayRuntimeConfig({
       configPath: invalidHostConfigPath,
@@ -55,16 +63,19 @@ beforeAll((): void => {
     invalidHostThrows = true;
   }
 
-  const invalidSmtpConfigPath = join(tempRootPath, 'relay', 'config-invalid-smtp.json');
-  writeFileSync(invalidSmtpConfigPath, JSON.stringify({
-    host: '127.0.0.1',
-    port: 8080,
-    smtp: {
-      enabled: 'yes',
+  const invalidSmtpConfigPath = join(workspace.tempRootPath, 'relay', 'config-invalid-smtp.json');
+  workspace.writeFile({
+    relativePath: join('relay', 'config-invalid-smtp.json'),
+    payload: {
       host: '127.0.0.1',
-      port: 2526,
+      port: 8080,
+      smtp: {
+        enabled: 'yes',
+        host: '127.0.0.1',
+        port: 2526,
+      },
     },
-  }));
+  });
   try {
     readRelayRuntimeConfig({
       configPath: invalidSmtpConfigPath,
@@ -75,7 +86,7 @@ beforeAll((): void => {
 });
 
 afterAll((): void => {
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('relay runtime config validation', () => {

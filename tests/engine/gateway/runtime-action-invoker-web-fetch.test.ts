@@ -4,6 +4,7 @@ import {
   createGatewayRuntimeActionInvoker,
   runWebFetchRuntimeAction,
 } from '@engine/gateway/index';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
 import { mswIntercept } from '@tests/network/index';
 
 let htmlStatus = -1;
@@ -17,6 +18,16 @@ let statusError = '';
 let unsupportedContentError = '';
 let timeoutError = '';
 let invokerStatus = -1;
+
+function createWebFetchInboundMessage(): ReturnType<typeof createInboundMessage> {
+  return createInboundMessage({
+    personaId: 'persona-test',
+    messageId: '<inbound@example.com>',
+    threadId: 'thread-1',
+    subject: 'Hello',
+    text: 'Body',
+  });
+}
 
 beforeAll(async (): Promise<void> => {
   mswIntercept({ fixtureKey: 'web/fetch/200-html' });
@@ -119,22 +130,7 @@ beforeAll(async (): Promise<void> => {
   }
 
   const invoke = createGatewayRuntimeActionInvoker({
-    message: {
-      personaId: 'persona-test',
-      messageId: '<inbound@example.com>',
-      threadId: 'thread-1',
-      from: [{ address: 'sender@example.com' }],
-      to: [{ address: 'agent@example.com' }],
-      cc: [],
-      bcc: [],
-      envelopeRcptTo: [{ address: 'agent@example.com' }],
-      subject: 'Hello',
-      text: 'Body',
-      references: [],
-      receivedAt: '2026-02-14T00:00:00.000Z',
-      rawMimePath: '/tmp/inbound.eml',
-      attachments: [],
-    },
+    message: createWebFetchInboundMessage(),
     logger: {
       info: (): void => undefined,
       error: (): void => undefined,

@@ -1,5 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -9,6 +8,7 @@ import {
   stopGatewayCommand,
 } from '@engine/cli/index';
 import { captureStdout } from '@tests/helpers/stdout';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 const PID_PATH = join(process.cwd(), 'tmp', 'gateway.pid');
 
@@ -69,8 +69,7 @@ let relayBootstrapActionHelpOutput = '';
 let versionOutput = '';
 let shortVersionOutput = '';
 let packageVersion = '';
-let envTempRootPath = '';
-let previousCwd = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let loadedEnvValue = '';
 let preservedEnvValue = '';
 let envLocalOverrideValue = '';
@@ -138,14 +137,15 @@ describe('top-level cli flags', () => {
 });
 
 beforeAll(async (): Promise<void> => {
-  envTempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-env-'));
-  previousCwd = process.cwd();
-  process.chdir(envTempRootPath);
-  writeFileSync(join(envTempRootPath, '.env'), [
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-cli-env-',
+  });
+  writeFileSync(join(workspace.tempRootPath, '.env'), [
     'PROTEGE_ENV_LOAD_TEST=loaded-from-dotenv',
     'PROTEGE_ENV_LOCAL_OVERRIDE_TEST=from-dotenv',
   ].join('\n'), 'utf8');
-  writeFileSync(join(envTempRootPath, '.env.local'), [
+  writeFileSync(join(workspace.tempRootPath, '.env.local'), [
     'PROTEGE_ENV_LOCAL_OVERRIDE_TEST=from-dotenv-local',
     'PROTEGE_ENV_OVERRIDE_TEST=from-dotenv-local',
   ].join('\n'), 'utf8');
@@ -160,8 +160,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(envTempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
   delete process.env.PROTEGE_ENV_LOAD_TEST;
   delete process.env.PROTEGE_ENV_LOCAL_OVERRIDE_TEST;
   delete process.env.PROTEGE_ENV_OVERRIDE_TEST;

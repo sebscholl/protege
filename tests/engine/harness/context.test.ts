@@ -1,8 +1,7 @@
 import type { InboundNormalizedMessage } from '@engine/gateway/types';
 import type { ProtegeDatabase } from '@engine/shared/database';
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -16,8 +15,9 @@ import {
 import type { HarnessContextHistoryEntry, HarnessInput } from '@engine/harness/types';
 import { storeInboundMessage, storeThreadToolEvent } from '@engine/harness/storage';
 import { initializeDatabase } from '@engine/shared/database';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let db: ProtegeDatabase | undefined;
 let activeMemoryPath = '';
 let harnessContextHistoryCount = 0;
@@ -62,12 +62,16 @@ const inboundB: InboundNormalizedMessage = {
 };
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-harness-context-'));
-  activeMemoryPath = join(tempRootPath, 'active.md');
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-harness-context-',
+    chdir: false,
+  });
+  activeMemoryPath = join(workspace.tempRootPath, 'active.md');
   writeFileSync(activeMemoryPath, '# Active\nremember immediate objective');
 
   db = initializeDatabase({
-    databasePath: join(tempRootPath, 'temporal.db'),
+    databasePath: join(workspace.tempRootPath, 'temporal.db'),
     migrationsDirPath: join(process.cwd(), 'engine', 'shared', 'migrations'),
   });
 
@@ -160,7 +164,7 @@ beforeAll((): void => {
 
 afterAll((): void => {
   db?.close();
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('harness context builder', () => {

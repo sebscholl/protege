@@ -1,0 +1,4 @@
+{
+  "logs_dir_path": "tmp/logs",
+  "console_log_format": "json"
+}

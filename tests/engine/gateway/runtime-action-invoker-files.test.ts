@@ -1,46 +1,51 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createGatewayRuntimeActionInvoker } from '@engine/gateway/index';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
-let previousCwd = '';
 let readContent = '';
 let writeContent = '';
 let editedContent = '';
 let editAppliedCount = -1;
 let editTextNotFoundError = '';
 let outsideReadContent = '';
+let outsideFilePath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+
+function createFileActionsInboundMessage(): ReturnType<typeof createInboundMessage> {
+  return createInboundMessage({
+    personaId: 'persona-test',
+    messageId: '<inbound@example.com>',
+    threadId: 'thread-1',
+    subject: 'Hello',
+    text: 'Body',
+  });
+}
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-runtime-file-actions-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
-  mkdirSync(join(tempRootPath, 'tmp'), { recursive: true });
-  writeFileSync(join(tempRootPath, 'tmp', 'read-target.txt'), 'alpha', 'utf8');
-  writeFileSync(join(tempRootPath, 'tmp', 'edit-target.txt'), 'alpha beta alpha', 'utf8');
-  writeFileSync(join(tmpdir(), 'protege-outside-runtime-read.txt'), 'outside-content', 'utf8');
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-runtime-file-actions-',
+  });
+  tempRootPath = workspace.tempRootPath;
+  workspace.writeFile({
+    relativePath: 'tmp/read-target.txt',
+    payload: 'alpha',
+  });
+  workspace.writeFile({
+    relativePath: 'tmp/edit-target.txt',
+    payload: 'alpha beta alpha',
+  });
+  outsideFilePath = join('/tmp', 'protege-outside-runtime-read.txt');
+  writeFileSync(outsideFilePath, 'outside-content', 'utf8');
 
   const invoke = createGatewayRuntimeActionInvoker({
-    message: {
-      personaId: 'persona-test',
-      messageId: '<inbound@example.com>',
-      threadId: 'thread-1',
-      from: [{ address: 'sender@example.com' }],
-      to: [{ address: 'agent@example.com' }],
-      cc: [],
-      bcc: [],
-      envelopeRcptTo: [{ address: 'agent@example.com' }],
-      subject: 'Hello',
-      text: 'Body',
-      references: [],
-      receivedAt: '2026-02-14T00:00:00.000Z',
-      rawMimePath: '/tmp/inbound.eml',
-      attachments: [],
-    },
+    message: createFileActionsInboundMessage(),
     logger: {
       info: (): void => undefined,
       error: (): void => undefined,
@@ -92,15 +97,14 @@ beforeAll(async (): Promise<void> => {
   const outsideReadResult = await invoke({
     action: 'file.read',
     payload: {
-      path: join(tmpdir(), 'protege-outside-runtime-read.txt'),
+      path: outsideFilePath,
     },
   });
   outsideReadContent = String(outsideReadResult.content ?? '');
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('gateway runtime action invoker file actions', () => {

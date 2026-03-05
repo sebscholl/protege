@@ -1,8 +1,6 @@
 import type { GatewayLogger } from '@engine/gateway/types';
 import type { ProtegeDatabase } from '@engine/shared/database';
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -11,6 +9,7 @@ import { createPersona } from '@engine/shared/personas';
 import { createSchedulerPersonaState, buildSchedulerFailureAlertInboundMessage, runSchedulerCycle, stopSchedulerPersonaStates } from '@engine/scheduler/runtime';
 import { claimNextQueuedRun, enqueueResponsibilityRun, listResponsibilityRunsByPersona } from '@engine/scheduler/storage';
 import { syncPersonaResponsibilities } from '@engine/scheduler/sync';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let schedulerCycleContinuesAfterPersonaFailure = false;
 let schedulerStopClosesPersonaResources = false;
@@ -22,6 +21,7 @@ let personaBRuns = 0;
 let schedulerThrottleLogEmitted = false;
 let startupRecoveredInterruptedRun = false;
 let startupRecoveryLogHasRecoveredCount = false;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
 /**
  * Creates one no-op gateway logger for scheduler runtime tests.
@@ -111,13 +111,15 @@ beforeAll(async (): Promise<void> => {
   });
   schedulerStopClosesPersonaResources = closedCount === 2 && stoppedCount === 2;
 
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-scheduler-runtime-'));
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-scheduler-runtime-',
+  });
+  tempRootPath = workspace.tempRootPath;
   const roots = {
     personasDirPath: join(tempRootPath, 'personas'),
     memoryDirPath: join(tempRootPath, 'memory'),
   };
-  mkdirSync(roots.personasDirPath, { recursive: true });
-  mkdirSync(roots.memoryDirPath, { recursive: true });
   const persona = createPersona({
     roots,
     emailDomain: 'mail.protege.bot',
@@ -216,16 +218,17 @@ beforeAll(async (): Promise<void> => {
   });
   schedulerThrottleLogEmitted = throttleLogs.includes('scheduler.cycle.throttled');
 
-  const recoveryResponsibilitiesDirPath = join(roots.personasDirPath, persona.personaId, 'responsibilities');
-  mkdirSync(recoveryResponsibilitiesDirPath, { recursive: true });
-  writeFileSync(join(recoveryResponsibilitiesDirPath, 'runtime-recovery.md'), [
+  workspace.writeFile({
+    relativePath: join('personas', persona.personaId, 'responsibilities', 'runtime-recovery.md'),
+    payload: [
     '---',
     'name: Runtime Recovery',
     'schedule: * * * * *',
     'enabled: true',
     '---',
     'Recovery test prompt.',
-  ].join('\n'));
+  ].join('\n'),
+  });
   const initialState = createSchedulerPersonaState({
     personaId: persona.personaId,
     roots,
@@ -294,9 +297,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  if (tempRootPath.length > 0) {
-    rmSync(tempRootPath, { recursive: true, force: true });
-  }
+  workspace.cleanup();
 });
 
 describe('scheduler runtime cycle', () => {

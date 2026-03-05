@@ -1,10 +1,10 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createHookDispatcher, isHookSubscribedToEvent, loadHookRegistry } from '@engine/harness/hooks/registry';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
 let loadedHookNames: string[] = [];
@@ -15,41 +15,66 @@ let matchedAuditSubscription = false;
 let matchedWildcardSubscription = false;
 let dispatchedLogContent = '';
 let brokenHookErrorMessage = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
-beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-hook-registry-'));
-  const hooksDirPath = join(tempRootPath, 'extensions', 'hooks');
-  mkdirSync(hooksDirPath, { recursive: true });
-  const manifestPath = join(tempRootPath, 'extensions', 'extensions.json');
-  const eventLogPath = join(tempRootPath, 'events.log');
-
-  const auditHookDirPath = join(hooksDirPath, 'audit-file');
-  mkdirSync(auditHookDirPath, { recursive: true });
-  writeFileSync(join(auditHookDirPath, 'config.json'), JSON.stringify({
-    output: {
-      mode: 'compact',
-      batch: 1,
-    },
-  }), 'utf8');
-  writeFileSync(join(auditHookDirPath, 'index.js'), [
+/**
+ * Builds one hook module source that appends event payloads to the event log file.
+ */
+function buildAuditHookSource(
+  args: {
+    eventLogPath: string;
+  },
+): string {
+  return [
     "import { appendFileSync } from 'node:fs';",
     "export async function onEvent(event, payload, config) {",
-    `  appendFileSync(${JSON.stringify(eventLogPath)}, JSON.stringify({ hook: 'audit-file', event, payload, config }) + '\\n', 'utf8');`,
+    `  appendFileSync(${JSON.stringify(args.eventLogPath)}, JSON.stringify({ hook: 'audit-file', event, payload, config }) + '\\n', 'utf8');`,
     '}',
     '',
-  ].join('\n'), 'utf8');
+  ].join('\n');
+}
 
-  const wildcardHookDirPath = join(hooksDirPath, 'wildcard-hook');
-  mkdirSync(wildcardHookDirPath, { recursive: true });
-  writeFileSync(join(wildcardHookDirPath, 'index.js'), [
+/**
+ * Builds one no-op hook module source for wildcard subscription coverage.
+ */
+function buildWildcardHookSource(): string {
+  return [
     "export async function onEvent() {",
     '  return;',
     '}',
     '',
-  ].join('\n'), 'utf8');
+  ].join('\n');
+}
 
-  writeFileSync(manifestPath, JSON.stringify({
-    tools: [],
+beforeAll(async (): Promise<void> => {
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-hook-registry-',
+  });
+  tempRootPath = workspace.tempRootPath;
+  const manifestPath = join(tempRootPath, 'extensions', 'extensions.json');
+  const eventLogPath = join(tempRootPath, 'events.log');
+
+  workspace.writeFile({
+    relativePath: 'extensions/hooks/audit-file/config.json',
+    payload: {
+      output: {
+        mode: 'compact',
+        batch: 1,
+      },
+    },
+  });
+  workspace.writeFile({
+    relativePath: 'extensions/hooks/audit-file/index.js',
+    payload: buildAuditHookSource({
+      eventLogPath,
+    }),
+  });
+  workspace.writeFile({
+    relativePath: 'extensions/hooks/wildcard-hook/index.js',
+    payload: buildWildcardHookSource(),
+  });
+  workspace.patchExtensionsManifest({
     hooks: [
       {
         name: 'audit-file',
@@ -62,7 +87,7 @@ beforeAll(async (): Promise<void> => {
       },
       'wildcard-hook',
     ],
-  }), 'utf8');
+  });
 
   const hooks = await loadHookRegistry({
     manifestPath,
@@ -93,13 +118,13 @@ beforeAll(async (): Promise<void> => {
   await new Promise((resolve) => setTimeout(resolve, 20));
   dispatchedLogContent = readFileSync(eventLogPath, 'utf8').trim();
 
-  const brokenHookDirPath = join(hooksDirPath, 'broken-hook');
-  mkdirSync(brokenHookDirPath, { recursive: true });
-  writeFileSync(join(brokenHookDirPath, 'index.js'), 'export const value = 1;\n', 'utf8');
-  writeFileSync(manifestPath, JSON.stringify({
-    tools: [],
+  workspace.writeFile({
+    relativePath: 'extensions/hooks/broken-hook/index.js',
+    payload: 'export const value = 1;\n',
+  });
+  workspace.patchExtensionsManifest({
     hooks: ['broken-hook'],
-  }), 'utf8');
+  });
   try {
     await loadHookRegistry({
       manifestPath,
@@ -110,7 +135,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('harness hook registry', () => {

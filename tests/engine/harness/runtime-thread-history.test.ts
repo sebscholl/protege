@@ -1,99 +1,81 @@
-import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { http, HttpResponse } from 'msw';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { InboundNormalizedMessage } from '@engine/gateway/types';
-
 import {
   persistInboundMessageForRuntime,
   runHarnessForPersistedInboundMessage,
 } from '@engine/harness/runtime';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
+import { scaffoldProviderConfig } from '@tests/helpers/provider';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { networkServer } from '@tests/network/server';
 
 let tempRootPath = '';
-let previousCwd = '';
 let temporalDbPath = '';
 let capturedSecondRequestMessages: Array<Record<string, unknown>> = [];
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
-const firstInboundMessage: InboundNormalizedMessage = {
+const firstInboundMessage = createInboundMessage({
   personaId: 'persona-thread-history',
   messageId: '<thread-1@example.com>',
   threadId: 'thread-history-1',
-  from: [{ address: 'sender@example.com' }],
-  to: [{ address: 'agent@example.com' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'agent@example.com' }],
   subject: 'Thread history first turn',
   text: 'This is my first message.',
-  references: [],
   receivedAt: '2026-02-14T00:00:00.000Z',
   rawMimePath: '/tmp/inbound-1.eml',
-  attachments: [],
-};
+});
 
-const secondInboundMessage: InboundNormalizedMessage = {
+const secondInboundMessage = createInboundMessage({
   personaId: 'persona-thread-history',
   messageId: '<thread-2@example.com>',
   threadId: 'thread-history-1',
-  from: [{ address: 'sender@example.com' }],
-  to: [{ address: 'agent@example.com' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'agent@example.com' }],
   subject: 'Thread history second turn',
   text: 'Can you answer with context from before?',
   references: ['<thread-1@example.com>'],
   receivedAt: '2026-02-14T00:01:00.000Z',
   rawMimePath: '/tmp/inbound-2.eml',
-  attachments: [],
-};
+});
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-harness-thread-history-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
-  process.env.OPENAI_API_KEY = 'test-key';
-
-  mkdirSync(join(tempRootPath, 'config'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'extensions', 'providers', 'openai'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'personas', firstInboundMessage.personaId as string), {
-    recursive: true,
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-harness-thread-history-',
+  });
+  tempRootPath = workspace.tempRootPath;
+  providerScaffold = scaffoldProviderConfig({
+    workspace,
+    providerName: 'openai',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    apiKeyValue: 'test-key',
+    providerConfig: {
+      base_url: 'https://api.openai.com/v1',
+    },
   });
 
-  writeFileSync(
-    join(tempRootPath, 'personas', firstInboundMessage.personaId as string, 'persona.json'),
-    JSON.stringify({
+  workspace.patchPersona({
+    personaId: firstInboundMessage.personaId as string,
+    personaPatch: {
       personaId: firstInboundMessage.personaId,
       publicKeyBase32: 'fixture',
       emailLocalPart: 'fixture',
       createdAt: '2026-02-14T00:00:00.000Z',
-    }),
-  );
-  writeFileSync(
-    join(tempRootPath, 'config', 'inference.json'),
-    JSON.stringify({
-      provider: 'openai',
-      model: 'gpt-4.1',
-      recursion_depth: 3,
-    }),
-  );
-  writeFileSync(join(tempRootPath, 'config', 'system-prompt.md'), 'You are Protege.');
-  writeFileSync(
-    join(tempRootPath, 'extensions', 'providers', 'openai', 'config.json'),
-    JSON.stringify({
-      api_key_env: 'OPENAI_API_KEY',
-      base_url: 'https://api.openai.com/v1',
-    }),
-  );
-  writeFileSync(
-    join(tempRootPath, 'extensions', 'extensions.json'),
-    JSON.stringify({ tools: [], hooks: [] }),
-  );
+    },
+  });
+  workspace.patchConfigFiles({
+    'context.json': {
+      thread: ['thread-history', 'current-input'],
+      responsibility: ['current-input'],
+    },
+  });
+  workspace.patchExtensionsManifest({
+    tools: [],
+    hooks: [],
+    resolvers: ['thread-history', 'current-input'],
+  });
 
   const requestMessagesByCall: Array<Array<Record<string, unknown>>> = [];
   networkServer.use(http.post(
@@ -146,9 +128,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
-  delete process.env.OPENAI_API_KEY;
+  providerScaffold.restoreEnv();
+  workspace.cleanup();
 });
 
 describe('harness runtime thread history', () => {

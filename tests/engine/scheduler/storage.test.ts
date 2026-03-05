@@ -1,7 +1,5 @@
 import type { ProtegeDatabase } from '@engine/shared/database';
 
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -22,8 +20,9 @@ import {
   markRunSucceeded,
   upsertResponsibility,
 } from '@engine/scheduler/storage';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let db: ProtegeDatabase | undefined;
 let allResponsibilityCount = 0;
 let enabledResponsibilityCount = 0;
@@ -41,9 +40,13 @@ let recoveredRunStatus = '';
 let recoveredFailureCategory = '';
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-scheduler-storage-'));
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-scheduler-storage-',
+    chdir: false,
+  });
   db = initializeDatabase({
-    databasePath: join(tempRootPath, 'temporal.db'),
+    databasePath: join(workspace.tempRootPath, 'temporal.db'),
     migrationsDirPath: join(process.cwd(), 'engine', 'shared', 'migrations'),
   });
   upsertResponsibility({
@@ -213,7 +216,7 @@ beforeAll((): void => {
 
 afterAll((): void => {
   db?.close();
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('scheduler storage', () => {

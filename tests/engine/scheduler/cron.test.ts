@@ -1,8 +1,6 @@
 import type { ProtegeDatabase } from '@engine/shared/database';
 import type { SchedulerCronTask } from '@engine/scheduler/cron';
 
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -10,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startPersonaSchedulerCron } from '@engine/scheduler/cron';
 import { initializeDatabase } from '@engine/shared/database';
 import { listResponsibilityRunsByPersona, upsertResponsibility } from '@engine/scheduler/storage';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
 let db: ProtegeDatabase | undefined;
@@ -18,6 +17,8 @@ let enqueuedRunCount = 0;
 let stoppedTaskCount = 0;
 let overlapPrevented = false;
 let skippedOverlapRunCount = 0;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let repoRootPath = '';
 
 /**
  * Creates one deterministic fake scheduler task handle.
@@ -35,10 +36,15 @@ function createFakeTask(
 }
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-scheduler-cron-'));
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-scheduler-cron-',
+  });
+  repoRootPath = workspace.previousCwd;
+  tempRootPath = workspace.tempRootPath;
   db = initializeDatabase({
     databasePath: join(tempRootPath, 'temporal.db'),
-    migrationsDirPath: join(process.cwd(), 'engine', 'shared', 'migrations'),
+    migrationsDirPath: join(repoRootPath, 'engine', 'shared', 'migrations'),
   });
   upsertResponsibility({
     db: db as ProtegeDatabase,
@@ -104,7 +110,7 @@ beforeAll((): void => {
 
 afterAll((): void => {
   db?.close();
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('scheduler cron trigger', () => {

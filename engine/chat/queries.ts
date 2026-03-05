@@ -1,5 +1,13 @@
 import type { ProtegeDatabase } from '@engine/shared/database';
 
+import {
+  listThreadActivityRows,
+  listThreadMessageRows,
+  readFirstThreadMessageMetadataRow,
+  readLastThreadMessagePreviewRow,
+  readThreadRootSubjectByRootMessage,
+} from '@engine/chat/repository';
+
 /**
  * Represents one inbox-row summary record for chat thread listing.
  */
@@ -52,21 +60,14 @@ export function listChatThreadSummaries(
     limit?: number;
   },
 ): ChatThreadSummary[] {
-  const rows = args.db.prepare(`
-    SELECT thread_id, MAX(received_at) AS last_received_at, COUNT(*) AS message_count
-    FROM messages
-    GROUP BY thread_id
-    ORDER BY last_received_at DESC
-    LIMIT ?
-  `).all(args.limit ?? 100) as Array<{
-    thread_id?: string;
-    last_received_at?: string;
-    message_count?: number;
-  }>;
+  const rows = listThreadActivityRows({
+    db: args.db,
+    limit: args.limit ?? 100,
+  });
 
   return rows.map((row) => {
-    const threadId = row.thread_id ?? '';
-    const messageCount = typeof row.message_count === 'number' ? row.message_count : 0;
+    const threadId = row.threadId;
+    const messageCount = row.messageCount;
     const lastMessage = readLastThreadMessage({
       db: args.db,
       threadId,
@@ -87,7 +88,7 @@ export function listChatThreadSummaries(
       threadId,
       subject: rootSubject ?? lastMessage?.subject ?? '',
       lastSender: lastMessage?.sender ?? '',
-      lastReceivedAt: row.last_received_at ?? '',
+      lastReceivedAt: row.lastReceivedAt,
       preview: buildChatPreview({
         value: lastMessage?.text_body ?? '',
       }),
@@ -107,24 +108,10 @@ export function readChatThreadDetail(
     personaMailboxIdentity: string;
   },
 ): ChatThreadDetail {
-  const rows = args.db.prepare(`
-    SELECT
-      id,
-      thread_id,
-      direction,
-      message_id,
-      in_reply_to,
-      sender,
-      recipients,
-      subject,
-      text_body,
-      html_body,
-      received_at,
-      metadata_json
-    FROM messages
-    WHERE thread_id = ?
-    ORDER BY received_at ASC
-  `).all(args.threadId) as Array<Record<string, string | null>>;
+  const rows = listThreadMessageRows({
+    db: args.db,
+    threadId: args.threadId,
+  });
 
   const messages = rows.map((row) => parseChatThreadMessageRow({ row }));
   const firstMessage = rows.length > 0 ? rows[0] : undefined;
@@ -258,13 +245,10 @@ export function readFirstThreadMessage(
     threadId: string;
   },
 ): Record<string, unknown> | undefined {
-  return args.db.prepare(`
-    SELECT direction, sender, recipients, metadata_json
-    FROM messages
-    WHERE thread_id = ?
-    ORDER BY received_at ASC
-    LIMIT 1
-  `).get(args.threadId) as Record<string, unknown> | undefined;
+  return readFirstThreadMessageMetadataRow({
+    db: args.db,
+    threadId: args.threadId,
+  });
 }
 
 /**
@@ -276,18 +260,10 @@ export function readThreadRootSubject(
     threadId: string;
   },
 ): string | undefined {
-  const row = args.db.prepare(`
-    SELECT m.subject
-    FROM threads t
-    JOIN messages m
-      ON m.thread_id = t.id
-     AND m.message_id = t.root_message_id
-    WHERE t.id = ?
-    LIMIT 1
-  `).get(args.threadId) as {
-    subject?: string;
-  } | undefined;
-  return row?.subject;
+  return readThreadRootSubjectByRootMessage({
+    db: args.db,
+    threadId: args.threadId,
+  });
 }
 
 /**
@@ -299,13 +275,10 @@ export function readLastThreadMessage(
     threadId: string;
   },
 ): Record<string, string | undefined> | undefined {
-  return args.db.prepare(`
-    SELECT subject, sender, text_body
-    FROM messages
-    WHERE thread_id = ?
-    ORDER BY received_at DESC
-    LIMIT 1
-  `).get(args.threadId) as Record<string, string | undefined> | undefined;
+  return readLastThreadMessagePreviewRow({
+    db: args.db,
+    threadId: args.threadId,
+  });
 }
 
 /**

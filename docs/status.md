@@ -1,6 +1,6 @@
 # Project Status
 
-Last Updated: 2026-02-28
+Last Updated: 2026-03-05
 
 This file tracks implementation progress against `docs/protege-development-sequencing-v2.md` and `docs/protege-implementation-plan-v3.md`.
 
@@ -242,7 +242,7 @@ Planning updates:
    - `config/context.json` scaffold added with ordered `thread` and `responsibility` profiles
    - resolver manifest support added to `extensions/extensions.json` with normalization + registry loading
    - shipped resolver modules added under `extensions/resolvers/*` (`system-prompt`, `persona-prompt`, `active-memory`, `thread-memory-state`, `invocation-metadata`, `knowledge-guidance`, `thread-history`, `current-input`)
-   - harness runtime now builds context through resolver pipeline when `config/context.json` exists, with legacy context-builder fallback when absent
+   - harness runtime now builds context through resolver pipeline; legacy fallback path removed
    - harness topology cleanup landed with compatibility shims:
      - `engine/harness/context/history.ts` (+ `engine/harness/context.ts` shim)
      - `engine/harness/tools/registry.ts` (+ `engine/harness/tool-registry.ts` shim)
@@ -260,11 +260,14 @@ Planning updates:
    - persistence and causal ordering policy frozen via ADR-0035
    - implementation checklist created in `docs/milestones/tool-trace-persistence-plan.md`
 42. Context API planning refined:
-   - context pipeline config is now explicitly `file:` + `resolver:` only in planning docs
+   - context pipeline config is now explicitly resolver-call syntax (`<name>` and `<name>(arg1, ...)`)
    - shipped and custom dynamic loaders are unified under the same resolver contract
 43. Context pipeline migration initiated:
    - ADR-0036 accepted for resolver-extension boundary and harness module topology
    - migration checklist added in `docs/milestones/context-pipeline-filesystem-migration-checklist.md`
+44. Context pipeline migration completion:
+   - runtime entry points (gateway/chat/scheduler) now all route through one harness context pipeline path
+   - integration coverage added for thread vs responsibility profile selection (`tests/e2e/context-profile-integration.test.ts`)
 
 ## ADR Coverage
 

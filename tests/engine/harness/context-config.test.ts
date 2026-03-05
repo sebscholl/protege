@@ -1,12 +1,12 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { readContextPipelineConfig } from '@engine/harness/context/config';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let threadStepCount = -1;
 let responsibilityResolverStep = '';
 let parsedResolverArgs = '';
@@ -15,8 +15,12 @@ let invalidStepError = '';
 let invalidProfileError = '';
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-context-config-'));
-  const validConfigPath = join(tempRootPath, 'context.json');
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-context-config-',
+    chdir: false,
+  });
+  const validConfigPath = join(workspace.tempRootPath, 'context.json');
   writeFileSync(
     validConfigPath,
     JSON.stringify({
@@ -32,7 +36,7 @@ beforeAll((): void => {
   responsibilityResolverStep = `${validConfig.responsibility[0]?.kind}:${validConfig.responsibility[0]?.resolverName}`;
   parsedResolverArgs = (validConfig.responsibility[0]?.resolverArgs ?? []).join('|');
 
-  const quotedArgsConfigPath = join(tempRootPath, 'quoted-args.json');
+  const quotedArgsConfigPath = join(workspace.tempRootPath, 'quoted-args.json');
   writeFileSync(
     quotedArgsConfigPath,
     JSON.stringify({
@@ -45,7 +49,7 @@ beforeAll((): void => {
   });
   parsedQuotedResolverArgs = (quotedConfig.thread[0]?.resolverArgs ?? []).join('|');
 
-  const invalidStepConfigPath = join(tempRootPath, 'invalid-step.json');
+  const invalidStepConfigPath = join(workspace.tempRootPath, 'invalid-step.json');
   writeFileSync(
     invalidStepConfigPath,
     JSON.stringify({
@@ -61,7 +65,7 @@ beforeAll((): void => {
     invalidStepError = (error as Error).message;
   }
 
-  const invalidProfileConfigPath = join(tempRootPath, 'invalid-profile.json');
+  const invalidProfileConfigPath = join(workspace.tempRootPath, 'invalid-profile.json');
   writeFileSync(
     invalidProfileConfigPath,
     JSON.stringify({
@@ -79,7 +83,7 @@ beforeAll((): void => {
 });
 
 afterAll((): void => {
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('harness context config', () => {

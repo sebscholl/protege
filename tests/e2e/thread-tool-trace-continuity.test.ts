@@ -1,7 +1,3 @@
-import type { InboundNormalizedMessage } from '@engine/gateway/types';
-
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import Database from 'better-sqlite3';
@@ -12,96 +8,84 @@ import {
   persistInboundMessageForRuntime,
   runHarnessForPersistedInboundMessage,
 } from '@engine/harness/runtime';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
+import { scaffoldProviderConfig } from '@tests/helpers/provider';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { networkServer } from '@tests/network/server';
 
 let tempRootPath = '';
-let previousCwd = '';
 let providerSawPriorToolTrace = false;
 let persistedToolEventCount = 0;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
-const inboundTurnOne: InboundNormalizedMessage = {
+const inboundTurnOne = createInboundMessage({
   personaId: 'persona-e2e-tool-trace',
   messageId: '<tool-trace-e2e-1@example.com>',
   threadId: 'thread-tool-trace-e2e-1',
-  from: [{ address: 'sender@example.com' }],
-  to: [{ address: 'agent@example.com' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'agent@example.com' }],
   subject: 'E2E tool trace turn one',
   text: 'Run one with tool.',
-  references: [],
   receivedAt: '2026-03-04T12:00:00.000Z',
   rawMimePath: '/tmp/e2e-tool-trace-1.eml',
-  attachments: [],
-};
+});
 
-const inboundTurnTwo: InboundNormalizedMessage = {
+const inboundTurnTwo = createInboundMessage({
   personaId: 'persona-e2e-tool-trace',
   messageId: '<tool-trace-e2e-2@example.com>',
   threadId: 'thread-tool-trace-e2e-1',
-  from: [{ address: 'sender@example.com' }],
-  to: [{ address: 'agent@example.com' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'agent@example.com' }],
   subject: 'E2E tool trace turn two',
   text: 'Run two should see prior tool context.',
   references: ['<tool-trace-e2e-1@example.com>'],
   receivedAt: '2026-03-04T12:01:00.000Z',
   rawMimePath: '/tmp/e2e-tool-trace-2.eml',
-  attachments: [],
-};
+});
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-e2e-thread-tool-trace-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
-  process.env.OPENAI_API_KEY = 'test-key';
-
-  mkdirSync(join(tempRootPath, 'config'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'extensions', 'providers', 'openai'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'personas', inboundTurnOne.personaId as string), {
-    recursive: true,
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-e2e-thread-tool-trace-',
   });
-  writeFileSync(
-    join(tempRootPath, 'extensions', 'extensions.json'),
-    JSON.stringify({ tools: ['send-email'], hooks: [] }),
-  );
-  writeFileSync(
-    join(tempRootPath, 'extensions', 'providers', 'openai', 'config.json'),
-    JSON.stringify({
-      api_key_env: 'OPENAI_API_KEY',
+  tempRootPath = workspace.tempRootPath;
+  providerScaffold = scaffoldProviderConfig({
+    workspace,
+    providerName: 'openai',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    apiKeyValue: 'test-key',
+    providerConfig: {
       base_url: 'https://api.openai.com/v1',
-    }),
-  );
+    },
+  });
 
-  writeFileSync(
-    join(tempRootPath, 'personas', inboundTurnOne.personaId as string, 'persona.json'),
-    JSON.stringify({
+  workspace.patchExtensionsManifest({
+    tools: ['send-email'],
+    hooks: [],
+    resolvers: ['thread-history', 'current-input'],
+  });
+  workspace.patchPersona({
+    personaId: inboundTurnOne.personaId as string,
+    personaPatch: {
       personaId: inboundTurnOne.personaId,
       publicKeyBase32: 'fixture-e2e',
       emailLocalPart: 'fixture-e2e',
       createdAt: '2026-03-04T12:00:00.000Z',
-    }),
-  );
-  writeFileSync(
-    join(tempRootPath, 'config', 'inference.json'),
-    JSON.stringify({
+    },
+  });
+  workspace.patchConfigFiles({
+    'system-prompt.md': 'You are Protege.',
+    'inference.json': {
       provider: 'openai',
       model: 'gpt-4.1',
       recursion_depth: 3,
-    }),
-  );
-  writeFileSync(join(tempRootPath, 'config', 'system-prompt.md'), 'You are Protege.');
-  writeFileSync(
-    join(tempRootPath, 'config', 'system.json'),
-    JSON.stringify({
+    },
+    'context.json': {
+      thread: ['thread-history', 'current-input'],
+      responsibility: ['current-input'],
+    },
+    'system.json': {
       logs_dir_path: join(tempRootPath, 'tmp', 'logs'),
       console_log_format: 'json',
-    }),
-  );
+    },
+  });
 
   let callCount = 0;
   networkServer.use(http.post(
@@ -199,9 +183,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
-  delete process.env.OPENAI_API_KEY;
+  providerScaffold.restoreEnv();
+  workspace.cleanup();
 });
 
 describe('e2e thread tool trace continuity', () => {

@@ -4,6 +4,7 @@ import {
   createGatewayRuntimeActionInvoker,
   runWebSearchRuntimeAction,
 } from '@engine/gateway/index';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
 import { mswIntercept } from '@tests/network/index';
 
 let tavilyProvider = '';
@@ -14,6 +15,16 @@ let perplexityFirstTitle = '';
 let unsupportedProviderError = '';
 let tavilyUnauthorizedError = '';
 let invokerProvider = '';
+
+function createWebSearchInboundMessage(): ReturnType<typeof createInboundMessage> {
+  return createInboundMessage({
+    personaId: 'persona-test',
+    messageId: '<inbound@example.com>',
+    threadId: 'thread-1',
+    subject: 'Hello',
+    text: 'Body',
+  });
+}
 
 beforeAll(async (): Promise<void> => {
   mswIntercept({ fixtureKey: 'tavily/search/200' });
@@ -70,22 +81,7 @@ beforeAll(async (): Promise<void> => {
   }
 
   const invoke = createGatewayRuntimeActionInvoker({
-    message: {
-      personaId: 'persona-test',
-      messageId: '<inbound@example.com>',
-      threadId: 'thread-1',
-      from: [{ address: 'sender@example.com' }],
-      to: [{ address: 'agent@example.com' }],
-      cc: [],
-      bcc: [],
-      envelopeRcptTo: [{ address: 'agent@example.com' }],
-      subject: 'Hello',
-      text: 'Body',
-      references: [],
-      receivedAt: '2026-02-14T00:00:00.000Z',
-      rawMimePath: '/tmp/inbound.eml',
-      attachments: [],
-    },
+    message: createWebSearchInboundMessage(),
     logger: {
       info: (): void => undefined,
       error: (): void => undefined,

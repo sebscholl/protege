@@ -1,14 +1,13 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runCli } from '@engine/cli/index';
 import { listPersonas } from '@engine/shared/personas';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
-let previousCwd = '';
 let firstBootstrapPersonaId = '';
 let firstBootstrapCreatedPersona = false;
 let firstBootstrapRelayUrl = '';
@@ -20,11 +19,14 @@ let gatewayConfigRelayWsUrl = '';
 let gatewayConfigMailDomain = '';
 let gatewayConfigPreservedTransportHost = '';
 let bootstrapPersonaEmailDomain = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-relay-bootstrap-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-cli-relay-bootstrap-',
+  });
+  tempRootPath = workspace.tempRootPath;
 
   const stdoutWrite = process.stdout.write.bind(process.stdout);
   const outputs: string[] = [];
@@ -33,18 +35,19 @@ beforeAll(async (): Promise<void> => {
     return true;
   }) as typeof process.stdout.write;
 
-  mkdirSync(join(tempRootPath, 'config'), { recursive: true });
-  writeFileSync(join(tempRootPath, 'config', 'gateway.json'), JSON.stringify({
-    mode: 'dev',
-    host: '127.0.0.1',
-    port: 2525,
-    mailDomain: 'localhost',
-    transport: {
+  workspace.patchConfigFiles({
+    'gateway.json': {
+      mode: 'dev',
       host: '127.0.0.1',
-      port: 1025,
-      secure: false,
+      port: 2525,
+      mailDomain: 'localhost',
+      transport: {
+        host: '127.0.0.1',
+        port: 1025,
+        secure: false,
+      },
     },
-  }, null, 2));
+  });
 
   await runCli({
     argv: ['relay', 'bootstrap', '--relay-ws-url', 'ws://relay.test/ws', '--json'],
@@ -91,8 +94,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('relay bootstrap cli', () => {

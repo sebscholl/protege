@@ -30,8 +30,8 @@ Use one declarative config: `config/context.json`.
 
 Step syntax is intentionally minimal:
 
-1. `file:<path>` for static or templated file loads.
-2. `resolver:<name>` for dynamic context providers.
+1. `<resolver-name>`
+2. `<resolver-name>(arg1, arg2, ...)`
 
 All dynamic context providers use the same contract, whether shipped by core or custom extension code.
 
@@ -39,39 +39,36 @@ All dynamic context providers use the same contract, whether shipped by core or 
 
 ```json
 {
-  "version": 1,
-  "pipelines": {
-    "thread": [
-      "file:config/system-prompt.md",
-      "file:personas/{persona_id}/PERSONA.md",
-      "file:memory/{persona_id}/active.md",
-      "resolver:thread_memory",
-      "resolver:invocation_metadata",
-      "resolver:knowledge_guidance",
-      "resolver:thread_history",
-      "resolver:current_input"
-    ],
-    "responsibility": [
-      "file:config/system-prompt.md",
-      "file:personas/{persona_id}/PERSONA.md",
-      "file:memory/{persona_id}/active.md",
-      "resolver:responsibility_metadata",
-      "resolver:knowledge_guidance",
-      "resolver:current_input"
-    ]
-  }
+  "thread": [
+    "load-file(config/system-prompt.md)",
+    "load-file(personas/{persona_id}/PERSONA.md)",
+    "load-file(memory/{persona_id}/active.md)",
+    "thread-memory-state",
+    "invocation-metadata",
+    "knowledge-guidance",
+    "thread-history",
+    "current-input"
+  ],
+  "responsibility": [
+    "load-file(config/system-prompt.md)",
+    "load-file(personas/{persona_id}/PERSONA.md)",
+    "load-file(memory/{persona_id}/active.md)",
+    "invocation-metadata",
+    "knowledge-guidance",
+    "current-input"
+  ]
 }
 ```
 
 ### Path placeholders
 
-Supported placeholders for `file:` entries:
+Supported placeholders for resolver positional args (for example `load-file(...)`):
 
 1. `{persona_id}`
 2. `{thread_id}` (thread pipeline only)
 3. `{responsibility_id}` (responsibility pipeline only)
 
-Missing `file:` targets are skipped with structured warnings in v1.
+Missing `load-file(...)` targets are skipped with structured warnings in v1.
 
 ### Resolver contract (single model)
 

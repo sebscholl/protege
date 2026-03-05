@@ -1,5 +1,4 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -7,13 +6,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createHookDispatcher, loadHookRegistry } from '@engine/harness/hooks/registry';
 import { createUnifiedLogger } from '@engine/shared/logger';
 import { getDefaultPrettyLogTheme } from '@engine/shared/runtime-config';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
-let previousCwd = '';
 let observerLogText = '';
 let failureErrorText = '';
 let nonBlockingEmission = false;
 let hookDispatchCount = 0;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
 /**
  * Returns one deterministic hook module file body that appends observed events.
@@ -34,47 +34,61 @@ function buildObserverHookSource(
   ].join('\n');
 }
 
-beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-e2e-hooks-observer-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
-
-  const extensionsDirPath = join(tempRootPath, 'extensions');
-  const hooksDirPath = join(extensionsDirPath, 'hooks');
-  const logsDirPath = join(tempRootPath, 'tmp', 'logs');
-  const observerPath = join(tempRootPath, 'tmp', 'hook-observer.log');
-  mkdirSync(hooksDirPath, { recursive: true });
-  mkdirSync(logsDirPath, { recursive: true });
-
-  const observerHookDirPath = join(hooksDirPath, 'observer');
-  mkdirSync(observerHookDirPath, { recursive: true });
-  writeFileSync(join(observerHookDirPath, 'config.json'), JSON.stringify({
-    marker: 'observer-enabled',
-  }), 'utf8');
-  writeFileSync(join(observerHookDirPath, 'index.js'), buildObserverHookSource({
-    outputPath: observerPath,
-  }), 'utf8');
-
-  const failingHookDirPath = join(hooksDirPath, 'failing');
-  mkdirSync(failingHookDirPath, { recursive: true });
-  writeFileSync(join(failingHookDirPath, 'index.js'), [
+/**
+ * Returns one failing hook module source used for hook error isolation coverage.
+ */
+function buildFailingHookSource(): string {
+  return [
     "export async function onEvent() {",
     "  throw new Error('hook observer failure');",
     '}',
     '',
-  ].join('\n'), 'utf8');
+  ].join('\n');
+}
 
-  const slowHookDirPath = join(hooksDirPath, 'slow');
-  mkdirSync(slowHookDirPath, { recursive: true });
-  writeFileSync(join(slowHookDirPath, 'index.js'), [
+/**
+ * Returns one slow hook module source used for non-blocking dispatch coverage.
+ */
+function buildSlowHookSource(): string {
+  return [
     "export async function onEvent() {",
     "  await new Promise((resolve) => setTimeout(resolve, 90));",
     '}',
     '',
-  ].join('\n'), 'utf8');
+  ].join('\n');
+}
 
-  writeFileSync(join(extensionsDirPath, 'extensions.json'), JSON.stringify({
-    tools: [],
+beforeAll(async (): Promise<void> => {
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-e2e-hooks-observer-',
+  });
+  tempRootPath = workspace.tempRootPath;
+
+  const logsDirPath = join(tempRootPath, 'tmp', 'logs');
+  const observerPath = join(tempRootPath, 'tmp', 'hook-observer.log');
+  workspace.writeFile({
+    relativePath: 'extensions/hooks/observer/config.json',
+    payload: {
+      marker: 'observer-enabled',
+    },
+  });
+  workspace.writeFile({
+    relativePath: 'extensions/hooks/observer/index.js',
+    payload: buildObserverHookSource({
+      outputPath: observerPath,
+    }),
+  });
+  workspace.writeFile({
+    relativePath: 'extensions/hooks/failing/index.js',
+    payload: buildFailingHookSource(),
+  });
+  workspace.writeFile({
+    relativePath: 'extensions/hooks/slow/index.js',
+    payload: buildSlowHookSource(),
+  });
+
+  workspace.patchExtensionsManifest({
     hooks: [
       {
         name: 'observer',
@@ -89,10 +103,10 @@ beforeAll(async (): Promise<void> => {
         events: ['harness.inference.started'],
       },
     ],
-  }), 'utf8');
+  });
 
   const hooks = await loadHookRegistry({
-    manifestPath: join(extensionsDirPath, 'extensions.json'),
+    manifestPath: join(tempRootPath, 'extensions', 'extensions.json'),
   });
   const dispatcher = createHookDispatcher({
     hooks,
@@ -137,8 +151,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('e2e hooks observer', () => {
@@ -166,4 +179,3 @@ describe('e2e hooks observer', () => {
     expect(hookDispatchCount >= 2).toBe(true);
   });
 });
-

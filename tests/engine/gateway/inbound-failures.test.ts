@@ -1,7 +1,6 @@
 import type { SMTPServerDataStream } from 'smtp-server';
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 
@@ -14,8 +13,9 @@ import {
 } from '@engine/gateway/inbound';
 import { createFixtureSession, createFixtureStream } from '@tests/helpers/email-fixtures';
 import { createInboundTestConfig } from '@tests/helpers/gateway-inbound';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let logsDirPath = '';
 let blockedAttachmentsBasePath = '';
 let writeFailureError: GatewayInboundError | undefined;
@@ -35,9 +35,13 @@ function createErrorStream(): SMTPServerDataStream {
 }
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-gateway-inbound-failures-'));
-  logsDirPath = join(tempRootPath, 'logs');
-  blockedAttachmentsBasePath = join(tempRootPath, 'blocked-attachments-root');
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-gateway-inbound-failures-',
+    chdir: false,
+  });
+  logsDirPath = join(workspace.tempRootPath, 'logs');
+  blockedAttachmentsBasePath = join(workspace.tempRootPath, 'blocked-attachments-root');
   writeFileSync(blockedAttachmentsBasePath, 'file-not-directory');
 
   try {
@@ -72,7 +76,5 @@ describe('gateway inbound failure behavior', () => {
 });
 
 afterAll((): void => {
-  if (tempRootPath) {
-    rmSync(tempRootPath, { recursive: true, force: true });
-  }
+  workspace.cleanup();
 });

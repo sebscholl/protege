@@ -25,3 +25,6 @@ config/personas/**
 
 # Local config overrides (untracked secrets/machine settings)
 config/inference.local.json
+
+# VitePress runtime cache artifacts
+site/.vitepress/cache/

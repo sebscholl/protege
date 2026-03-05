@@ -1,7 +1,4 @@
-import type { InboundNormalizedMessage } from '@engine/gateway/types';
-
-import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import Database from 'better-sqlite3';
@@ -11,89 +8,89 @@ import {
   persistInboundMessageForRuntime,
   runHarnessForPersistedInboundMessage,
 } from '@engine/harness/runtime';
+import { createInboundMessage } from '@tests/helpers/inbound-message';
+import { scaffoldProviderConfig } from '@tests/helpers/provider';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { mswIntercept } from '@tests/network/index';
 
 let tempRootPath = '';
-let previousCwd = '';
 let personaADatabasePath = '';
 let personaBDatabasePath = '';
 let personaAMessageCount = 0;
 let personaBMessageCount = 0;
 let personaAHasForeignThread = false;
 let personaBHasForeignThread = false;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
-const personaAMessage: InboundNormalizedMessage = {
+const personaAMessage = createInboundMessage({
   personaId: 'persona-a',
   messageId: '<persona-a-inbound@example.com>',
   threadId: 'thread-a',
-  from: [{ address: 'sender-a@example.com' }],
-  to: [{ address: 'persona-a@example.com' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'persona-a@example.com' }],
   subject: 'Persona A',
   text: 'Run for persona A.',
-  references: [],
-  receivedAt: '2026-02-14T00:00:00.000Z',
+  from: ['sender-a@example.com'],
+  to: ['persona-a@example.com'],
+  envelopeRcptTo: ['persona-a@example.com'],
   rawMimePath: '/tmp/persona-a.eml',
-  attachments: [],
-};
+});
 
-const personaBMessage: InboundNormalizedMessage = {
+const personaBMessage = createInboundMessage({
   personaId: 'persona-b',
   messageId: '<persona-b-inbound@example.com>',
   threadId: 'thread-b',
-  from: [{ address: 'sender-b@example.com' }],
-  to: [{ address: 'persona-b@example.com' }],
-  cc: [],
-  bcc: [],
-  envelopeRcptTo: [{ address: 'persona-b@example.com' }],
   subject: 'Persona B',
   text: 'Run for persona B.',
-  references: [],
-  receivedAt: '2026-02-14T00:00:00.000Z',
+  from: ['sender-b@example.com'],
+  to: ['persona-b@example.com'],
+  envelopeRcptTo: ['persona-b@example.com'],
   rawMimePath: '/tmp/persona-b.eml',
-  attachments: [],
-};
+});
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-runtime-persona-isolation-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
-  process.env.OPENAI_API_KEY = 'test-key';
-
-  mkdirSync(join(tempRootPath, 'config'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'extensions', 'providers', 'openai'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'personas', 'persona-a'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'personas', 'persona-b'), { recursive: true });
-
-  writeFileSync(join(tempRootPath, 'personas', 'persona-a', 'persona.json'), JSON.stringify({
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-runtime-persona-isolation-',
+  });
+  tempRootPath = workspace.tempRootPath;
+  providerScaffold = scaffoldProviderConfig({
+    workspace,
+    providerName: 'openai',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    apiKeyValue: 'test-key',
+    providerConfig: {
+      base_url: 'https://api.openai.com/v1',
+    },
+  });
+  workspace.patchPersona({
     personaId: 'persona-a',
-    publicKeyBase32: 'fixture-a',
-    emailLocalPart: 'fixture-a',
-    createdAt: '2026-02-14T00:00:00.000Z',
-  }));
-  writeFileSync(join(tempRootPath, 'personas', 'persona-b', 'persona.json'), JSON.stringify({
+    personaPatch: {
+      personaId: 'persona-a',
+      publicKeyBase32: 'fixture-a',
+      emailLocalPart: 'fixture-a',
+      createdAt: '2026-02-14T00:00:00.000Z',
+    },
+  });
+  workspace.patchPersona({
     personaId: 'persona-b',
-    publicKeyBase32: 'fixture-b',
-    emailLocalPart: 'fixture-b',
-    createdAt: '2026-02-14T00:00:00.000Z',
-  }));
-  writeFileSync(join(tempRootPath, 'config', 'inference.json'), JSON.stringify({
-    provider: 'openai',
-    model: 'gpt-4.1',
-    recursion_depth: 3,
-  }));
-  writeFileSync(join(tempRootPath, 'config', 'system-prompt.md'), 'You are Protege.');
-  writeFileSync(join(tempRootPath, 'extensions', 'providers', 'openai', 'config.json'), JSON.stringify({
-    api_key_env: 'OPENAI_API_KEY',
-    base_url: 'https://api.openai.com/v1',
-  }));
-  writeFileSync(join(tempRootPath, 'extensions', 'extensions.json'), JSON.stringify({
+    personaPatch: {
+      personaId: 'persona-b',
+      publicKeyBase32: 'fixture-b',
+      emailLocalPart: 'fixture-b',
+      createdAt: '2026-02-14T00:00:00.000Z',
+    },
+  });
+  workspace.patchConfigFiles({
+    'context.json': {
+      thread: ['current-input'],
+      responsibility: ['current-input'],
+    },
+  });
+  workspace.patchExtensionsManifest({
     tools: [],
     hooks: [],
-  }));
+    resolvers: ['current-input'],
+  });
 
   mswIntercept({ fixtureKey: 'openai/chat-completions/200' });
 
@@ -134,9 +131,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
-  delete process.env.OPENAI_API_KEY;
+  providerScaffold.restoreEnv();
+  workspace.cleanup();
 });
 
 describe('harness runtime persona isolation under concurrent runs', () => {

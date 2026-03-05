@@ -1,41 +1,44 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runCli } from '@engine/cli/index';
 import { createPersona, resolvePersonaMemoryPaths } from '@engine/shared/personas';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { captureStdout } from '@tests/helpers/stdout';
 
 let tempRootPath = '';
-let previousCwd = '';
 let statusJson = {} as Record<string, unknown>;
 let statusText = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-status-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-cli-status-',
+  });
+  tempRootPath = workspace.tempRootPath;
 
-  mkdirSync(join(tempRootPath, 'config'), { recursive: true });
-  writeFileSync(join(tempRootPath, 'config', 'gateway.json'), JSON.stringify({
-    mode: 'dev',
-    host: '127.0.0.1',
-    port: 2525,
-    mailDomain: 'mail.protege.bot',
-    relay: {
-      enabled: true,
-      relayWsUrl: 'ws://relay.test/ws',
-      reconnectBaseDelayMs: 100,
-      reconnectMaxDelayMs: 1000,
-      heartbeatTimeoutMs: 5000,
+  workspace.patchConfigFiles({
+    'gateway.json': {
+      mode: 'dev',
+      host: '127.0.0.1',
+      port: 2525,
+      mailDomain: 'mail.protege.bot',
+      relay: {
+        enabled: true,
+        relayWsUrl: 'ws://relay.test/ws',
+        reconnectBaseDelayMs: 100,
+        reconnectMaxDelayMs: 1000,
+        heartbeatTimeoutMs: 5000,
+      },
     },
-  }, null, 2));
-  writeFileSync(join(tempRootPath, 'config', 'system.json'), JSON.stringify({
-    logs_dir_path: join(tempRootPath, 'tmp', 'logs'),
-    console_log_format: 'json',
-  }, null, 2));
+    'system.json': {
+      logs_dir_path: join(tempRootPath, 'tmp', 'logs'),
+      console_log_format: 'json',
+    },
+  });
 
   const persona = createPersona({
   });
@@ -57,8 +60,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('status cli command', () => {

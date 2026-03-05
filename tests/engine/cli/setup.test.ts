@@ -1,5 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -15,9 +14,9 @@ import {
 } from '@engine/cli/setup';
 import { listPersonas } from '@engine/shared/personas';
 import { captureStdout } from '@tests/helpers/stdout';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
-let previousCwd = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let setupResult = {} as {
   provider: string;
   outboundMode: string;
@@ -44,16 +43,17 @@ let rerunAdminContactEmail = '';
 let rerunNextCommand = '';
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-setup-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-cli-setup-',
+  });
 
   const output = await captureStdout({
     run: async (): Promise<void> => runCli({
       argv: [
         'setup',
         '--path',
-        join(tempRootPath, 'sample-project'),
+        join(workspace.tempRootPath, 'sample-project'),
         '--provider',
         'anthropic',
         '--inference-api-key',
@@ -75,7 +75,7 @@ beforeAll(async (): Promise<void> => {
 
   setupResult = JSON.parse(output.trim()) as typeof setupResult;
 
-  const projectPath = join(tempRootPath, 'sample-project');
+  const projectPath = join(workspace.tempRootPath, 'sample-project');
   const inferenceConfig = JSON.parse(readFileSync(join(projectPath, 'config', 'inference.json'), 'utf8')) as {
     provider: string;
   };
@@ -124,8 +124,12 @@ beforeAll(async (): Promise<void> => {
   anthropicEnvPresent = envText.includes('ANTHROPIC_API_KEY=anthropic-key-123');
   tavilyEnvPresent = envText.includes('TAVILY_API_KEY=tavily-key-123');
 
-  process.chdir(projectPath);
-  personaCount = listPersonas().length;
+  personaCount = listPersonas({
+    roots: {
+      personasDirPath: join(projectPath, 'personas'),
+      memoryDirPath: join(projectPath, 'memory'),
+    },
+  }).length;
 
   const rerunResult = await runSetupCommand({
     argv: [
@@ -145,8 +149,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('setup cli command', () => {
@@ -207,7 +210,7 @@ describe('setup cli command', () => {
   });
 
   it('writes .env file into target project path', () => {
-    expect(existsSync(join(tempRootPath, 'sample-project', '.env'))).toBe(true);
+    expect(existsSync(join(workspace.tempRootPath, 'sample-project', '.env'))).toBe(true);
   });
 
   it('preserves provider selection on non-interactive rerun without flags', () => {
@@ -242,7 +245,7 @@ let localGatewayTransportPort = -1;
 let localWebSearchEntryExists = true;
 
 beforeAll(async (): Promise<void> => {
-  const localProjectPath = join(tempRootPath, 'sample-local-project');
+  const localProjectPath = join(workspace.tempRootPath, 'sample-local-project');
   const output = await captureStdout({
     run: async (): Promise<void> => runCli({
       argv: [

@@ -1,5 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -8,8 +7,9 @@ import {
   normalizeEnabledHookEntries,
   readExtensionManifest,
 } from '@engine/harness/tools/registry';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let parsedHookEntryCount = -1;
 let normalizedHookNames: string[] = [];
 let normalizedHookEvents: string[][] = [];
@@ -19,8 +19,12 @@ let invalidHookEventsError = '';
 let invalidHookConfigError = '';
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-hooks-manifest-'));
-  const manifestPath = join(tempRootPath, 'extensions.json');
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-hooks-manifest-',
+    chdir: false,
+  });
+  const manifestPath = join(workspace.tempRootPath, 'extensions.json');
   writeFileSync(manifestPath, JSON.stringify({
     tools: [],
     hooks: [
@@ -89,7 +93,7 @@ beforeAll((): void => {
 });
 
 afterAll((): void => {
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('harness hooks manifest normalization', () => {

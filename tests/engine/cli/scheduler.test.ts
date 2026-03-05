@@ -1,25 +1,22 @@
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseSchedulerArgs, resolvePersonaForScheduler, syncSchedulerAcrossPersonas } from '@engine/cli/scheduler';
 import { createPersona } from '@engine/shared/personas';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
-let previousCwd = '';
 let parsedAction = '';
 let resolvedPrefixPersonaId = '';
 let resolvedExactPersonaId = '';
 let syncAllSummaryCount = 0;
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-scheduler-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
-  mkdirSync(join(tempRootPath, 'personas'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-cli-scheduler-',
+  });
+  tempRootPath = workspace.tempRootPath;
 
   const personaA = createPersona({});
   createPersona({});
@@ -36,8 +33,7 @@ beforeAll((): void => {
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('scheduler cli args', () => {

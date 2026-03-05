@@ -1,8 +1,6 @@
 import type { InboundNormalizedMessage } from '@engine/gateway/types';
 import type { ProtegeDatabase } from '@engine/shared/database';
 
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -16,8 +14,9 @@ import {
   storeThreadToolEvent,
 } from '@engine/harness/storage';
 import { initializeDatabase } from '@engine/shared/database';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let db: ProtegeDatabase | undefined;
 let storedMessageId = '';
 let threadMessagesCount = 0;
@@ -45,9 +44,13 @@ const inboundFixture: InboundNormalizedMessage = {
 };
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-harness-storage-'));
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-harness-storage-',
+    chdir: false,
+  });
   db = initializeDatabase({
-    databasePath: join(tempRootPath, 'temporal.db'),
+    databasePath: join(workspace.tempRootPath, 'temporal.db'),
     migrationsDirPath: join(process.cwd(), 'engine', 'shared', 'migrations'),
   });
 
@@ -134,7 +137,7 @@ beforeAll((): void => {
 
 afterAll((): void => {
   db?.close();
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('harness storage persistence', () => {

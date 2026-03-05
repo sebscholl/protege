@@ -1,7 +1,5 @@
 import type { InboundNormalizedMessage } from '@engine/gateway/types';
 
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -9,16 +7,21 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { handleInboundData } from '@engine/gateway/inbound';
 import { createFixtureSession, createFixtureStream } from '@tests/helpers/email-fixtures';
 import { createInboundTestConfig } from '@tests/helpers/gateway-inbound';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let logsDirPath = '';
 let attachmentsDirPath = '';
 let capturedMessage: InboundNormalizedMessage | undefined;
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-gateway-no-message-id-'));
-  logsDirPath = join(tempRootPath, 'logs');
-  attachmentsDirPath = join(tempRootPath, 'attachments');
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-gateway-no-message-id-',
+    chdir: false,
+  });
+  logsDirPath = join(workspace.tempRootPath, 'logs');
+  attachmentsDirPath = join(workspace.tempRootPath, 'attachments');
 
   await handleInboundData({
     stream: createFixtureStream({ fixtureFileName: 'email-without-message-id.eml' }),
@@ -34,9 +37,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  if (tempRootPath) {
-    rmSync(tempRootPath, { recursive: true, force: true });
-  }
+  workspace.cleanup();
 });
 
 describe('gateway inbound message-id fallback', () => {

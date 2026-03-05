@@ -1,15 +1,15 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runCli } from '@engine/cli/index';
 import { createPersona } from '@engine/shared/personas';
+import { scaffoldProviderConfig } from '@tests/helpers/provider';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { captureStdout } from '@tests/helpers/stdout';
 
 let tempRootPath = '';
-let previousCwd = '';
 let healthyStatus = '';
 let healthyChecksCount = 0;
 let unhealthyStatus = '';
@@ -17,56 +17,54 @@ let unhealthyExitCode = -1;
 let doctorText = '';
 let relayIdentityCheckStatus = '';
 let healthyFailedCheckIds: string[] = [];
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
+let providerScaffold!: ReturnType<typeof scaffoldProviderConfig>;
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-doctor-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-cli-doctor-',
+  });
+  tempRootPath = workspace.tempRootPath;
 
-  mkdirSync(join(tempRootPath, 'config'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'extensions', 'providers', 'openai'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
-
-  writeFileSync(join(tempRootPath, 'config', 'gateway.json'), JSON.stringify({
-    mode: 'dev',
-    host: '127.0.0.1',
-    port: 2525,
-    mailDomain: 'mail.protege.bot',
-    relay: {
-      enabled: true,
-      relayWsUrl: 'ws://relay.test/ws',
-      reconnectBaseDelayMs: 100,
-      reconnectMaxDelayMs: 1000,
-      heartbeatTimeoutMs: 5000,
-    },
-  }, null, 2));
-  writeFileSync(join(tempRootPath, 'config', 'inference.json'), JSON.stringify({
-    provider: 'openai',
-    model: 'gpt-4.1',
-    recursion_depth: 3,
-  }, null, 2));
-  writeFileSync(join(tempRootPath, 'extensions', 'extensions.json'), JSON.stringify({
-    providers: [
-      {
-        name: 'openai',
-        config: {
-          api_key_env: 'OPENAI_API_KEY',
-        },
+  workspace.patchConfigFiles({
+    'gateway.json': {
+      mode: 'dev',
+      host: '127.0.0.1',
+      port: 2525,
+      mailDomain: 'mail.protege.bot',
+      relay: {
+        enabled: true,
+        relayWsUrl: 'ws://relay.test/ws',
+        reconnectBaseDelayMs: 100,
+        reconnectMaxDelayMs: 1000,
+        heartbeatTimeoutMs: 5000,
       },
-    ],
+    },
+    'inference.json': {
+      provider: 'openai',
+      model: 'gpt-4.1',
+      recursion_depth: 3,
+    },
+    'system.json': {
+      logs_dir_path: join(tempRootPath, 'tmp', 'logs'),
+      console_log_format: 'json',
+      admin_contact_email: 'ops@example.com',
+    },
+  });
+  workspace.patchExtensionsManifest({
     tools: ['send-email'],
     hooks: [],
-  }, null, 2));
-  writeFileSync(join(tempRootPath, 'extensions', 'providers', 'openai', 'config.json'), JSON.stringify({
-    api_key_env: 'OPENAI_API_KEY',
-    base_url: 'https://api.openai.com/v1',
-  }, null, 2));
-  writeFileSync(join(tempRootPath, 'config', 'system.json'), JSON.stringify({
-    logs_dir_path: join(tempRootPath, 'tmp', 'logs'),
-    console_log_format: 'json',
-    admin_contact_email: 'ops@example.com',
-  }, null, 2));
-  process.env.OPENAI_API_KEY = 'test-key';
+  });
+  providerScaffold = scaffoldProviderConfig({
+    workspace,
+    providerName: 'openai',
+    apiKeyEnv: 'OPENAI_API_KEY',
+    apiKeyValue: 'test-key',
+    providerConfig: {
+      base_url: 'https://api.openai.com/v1',
+    },
+  });
   createPersona({
     emailDomain: 'mail.protege.bot',
   });
@@ -97,12 +95,14 @@ beforeAll(async (): Promise<void> => {
     }),
   });
 
-  writeFileSync(join(tempRootPath, 'config', 'inference.json'), JSON.stringify({
-    provider: 'openai',
-    model: 'gpt-4.1',
-    recursion_depth: 3,
-  }, null, 2));
-  writeFileSync(join(tempRootPath, 'extensions', 'extensions.json'), JSON.stringify({
+  workspace.patchConfigFiles({
+    'inference.json': {
+      provider: 'openai',
+      model: 'gpt-4.1',
+      recursion_depth: 3,
+    },
+  });
+  workspace.patchExtensionsManifest({
     providers: [
       {
         name: 'openai',
@@ -113,7 +113,7 @@ beforeAll(async (): Promise<void> => {
     ],
     tools: ['send-email'],
     hooks: [],
-  }, null, 2));
+  });
   process.exitCode = 0;
   const unhealthyJson = JSON.parse((await captureStdout({
     run: async (): Promise<void> => runCli({
@@ -128,9 +128,8 @@ beforeAll(async (): Promise<void> => {
 
 afterAll((): void => {
   process.exitCode = 0;
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
-  delete process.env.OPENAI_API_KEY;
+  providerScaffold.restoreEnv();
+  workspace.cleanup();
 });
 
 describe('doctor cli command', () => {

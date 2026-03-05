@@ -27,6 +27,7 @@
   ],
   "scripts": {
     "build": "tsup",
+    "docs:dev": "vitepress dev site --host 127.0.0.1 --port 4173",
     "prepack": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -69,6 +70,8 @@
     "tsx": "^4.21.0",
     "typescript": "^5.7.3",
     "vite": "^6.2.0",
+    "vitepress": "^1.6.4",
+    "vitepress-plugin-mermaid": "^2.0.17",
     "vitest": "^3.0.7"
   },
   "dependencies": {

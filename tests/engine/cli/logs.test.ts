@@ -1,32 +1,35 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runCli } from '@engine/cli/index';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { captureStdout } from '@tests/helpers/stdout';
 
 let tempRootPath = '';
-let previousCwd = '';
 let jsonOutputLines: string[] = [];
 let prettyOutputLines: string[] = [];
 let schedulerOutputLines: string[] = [];
 let chatOutputLines: string[] = [];
 let prettyOutputLinesSansAnsi: string[] = [];
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-cli-logs-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-cli-logs-',
+  });
+  tempRootPath = workspace.tempRootPath;
 
   const logsDirPath = join(tempRootPath, 'tmp', 'logs');
-  mkdirSync(join(tempRootPath, 'config'), { recursive: true });
   mkdirSync(logsDirPath, { recursive: true });
-  writeFileSync(join(tempRootPath, 'config', 'system.json'), JSON.stringify({
-    logs_dir_path: logsDirPath,
-    console_log_format: 'json',
-  }, null, 2));
+  workspace.patchConfigFiles({
+    'system.json': {
+      logs_dir_path: logsDirPath,
+      console_log_format: 'json',
+    },
+  });
   writeFileSync(join(logsDirPath, 'protege.log'), [
     JSON.stringify({
       level: 'info',
@@ -100,8 +103,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('logs cli command', () => {
