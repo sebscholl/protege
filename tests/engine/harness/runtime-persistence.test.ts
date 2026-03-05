@@ -1,19 +1,20 @@
 import type { InboundNormalizedMessage } from '@engine/gateway/types';
 
-import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import Database from 'better-sqlite3';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { persistInboundMessageForRuntime } from '@engine/harness/runtime';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
 let previousCwd = '';
 let temporalDbPath = '';
 let inboundCount = 0;
 let databaseCreated = false;
+let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
 
 const message: InboundNormalizedMessage = {
   personaId: 'persona-persist',
@@ -33,17 +34,21 @@ const message: InboundNormalizedMessage = {
 };
 
 beforeAll((): void => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-harness-runtime-persist-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
-  mkdirSync(join(tempRootPath, 'memory'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'personas', message.personaId as string), { recursive: true });
-  writeFileSync(join(tempRootPath, 'personas', message.personaId as string, 'persona.json'), JSON.stringify({
-    personaId: message.personaId,
-    publicKeyBase32: 'fixture',
-    emailLocalPart: 'fixture',
-    createdAt: '2026-02-14T00:00:00.000Z',
-  }));
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-harness-runtime-persist-',
+  });
+  tempRootPath = workspace.tempRootPath;
+  previousCwd = workspace.previousCwd;
+  workspace.patchPersona({
+    personaId: message.personaId as string,
+    personaPatch: {
+      personaId: message.personaId,
+      publicKeyBase32: 'fixture',
+      emailLocalPart: 'fixture',
+      createdAt: '2026-02-14T00:00:00.000Z',
+    },
+  });
 
   persistInboundMessageForRuntime({ message });
 
@@ -60,8 +65,8 @@ beforeAll((): void => {
 });
 
 afterAll((): void => {
+  workspace?.cleanup();
   process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
 });
 
 describe('harness inbound persistence phase', () => {

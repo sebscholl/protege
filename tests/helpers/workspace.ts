@@ -1,8 +1,13 @@
-import { cpSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { writeTestConfigFiles } from '@tests/helpers/config';
+
+/**
+ * Represents one supported test file payload type.
+ */
+export type TestFilePayload = string | Record<string, unknown>;
 
 /**
  * Represents one created test workspace lifecycle controller.
@@ -11,8 +16,91 @@ export type TestWorkspace = {
   tempRootPath: string;
   previousCwd: string;
   patchConfigFiles: (files: Record<string, string | Record<string, unknown>>) => void;
+  patchExtensionsManifest: (manifestPatch: Record<string, unknown>) => void;
+  patchPersona: (
+    args: {
+      personaId: string;
+      personaPatch: Record<string, unknown>;
+    },
+  ) => void;
+  writeFile: (
+    args: {
+      relativePath: string;
+      payload: TestFilePayload;
+    },
+  ) => void;
   cleanup: () => void;
 };
+
+/**
+ * Deep merges one object into another for test helper patch workflows.
+ */
+function deepMerge(
+  args: {
+    baseValue: unknown;
+    patchValue: unknown;
+  },
+): unknown {
+  if (
+    typeof args.baseValue !== 'object'
+    || args.baseValue === null
+    || Array.isArray(args.baseValue)
+    || typeof args.patchValue !== 'object'
+    || args.patchValue === null
+    || Array.isArray(args.patchValue)
+  ) {
+    return args.patchValue;
+  }
+
+  const mergedRecord: Record<string, unknown> = { ...(args.baseValue as Record<string, unknown>) };
+  for (const [key, value] of Object.entries(args.patchValue as Record<string, unknown>)) {
+    if (!(key in mergedRecord)) {
+      mergedRecord[key] = value;
+      continue;
+    }
+
+    mergedRecord[key] = deepMerge({
+      baseValue: mergedRecord[key],
+      patchValue: value,
+    });
+  }
+  return mergedRecord;
+}
+
+/**
+ * Reads one json file from disk and returns one empty object when missing.
+ */
+function readJsonFileOrDefault(
+  args: {
+    filePath: string;
+  },
+): Record<string, unknown> {
+  try {
+    return JSON.parse(readFileSync(args.filePath, 'utf8')) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Writes one payload file under the test workspace root.
+ */
+function writeWorkspaceFile(
+  args: {
+    tempRootPath: string;
+    relativePath: string;
+    payload: TestFilePayload;
+  },
+): void {
+  const targetPath = join(args.tempRootPath, args.relativePath);
+  mkdirSync(join(targetPath, '..'), { recursive: true });
+  if (typeof args.payload === 'string') {
+    writeFileSync(targetPath, args.payload);
+    return;
+  }
+
+  writeFileSync(targetPath, JSON.stringify(args.payload, null, 2));
+}
 
 /**
  * Creates one isolated temp workspace by copying a committed fixture app template.
@@ -46,6 +134,50 @@ export function createTestWorkspaceFromFixture(
       writeTestConfigFiles({
         tempRootPath,
         files,
+      });
+    },
+    patchExtensionsManifest: (
+      manifestPatch,
+    ): void => {
+      const manifestPath = join(tempRootPath, 'extensions', 'extensions.json');
+      const currentManifest = readJsonFileOrDefault({
+        filePath: manifestPath,
+      });
+      const mergedManifest = deepMerge({
+        baseValue: currentManifest,
+        patchValue: manifestPatch,
+      }) as Record<string, unknown>;
+      writeWorkspaceFile({
+        tempRootPath,
+        relativePath: 'extensions/extensions.json',
+        payload: mergedManifest,
+      });
+    },
+    patchPersona: (
+      args,
+    ): void => {
+      const relativePath = join('personas', args.personaId, 'persona.json');
+      const personaPath = join(tempRootPath, relativePath);
+      const currentPersona = readJsonFileOrDefault({
+        filePath: personaPath,
+      });
+      const mergedPersona = deepMerge({
+        baseValue: currentPersona,
+        patchValue: args.personaPatch,
+      }) as Record<string, unknown>;
+      writeWorkspaceFile({
+        tempRootPath,
+        relativePath,
+        payload: mergedPersona,
+      });
+    },
+    writeFile: (
+      args,
+    ): void => {
+      writeWorkspaceFile({
+        tempRootPath,
+        relativePath: args.relativePath,
+        payload: args.payload,
       });
     },
     cleanup: (): void => {

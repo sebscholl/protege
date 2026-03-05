@@ -20,16 +20,15 @@ let gatewayConfigRelayWsUrl = '';
 let gatewayConfigMailDomain = '';
 let gatewayConfigPreservedTransportHost = '';
 let bootstrapPersonaEmailDomain = '';
-let cleanupWorkspace = (): void => undefined;
+let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
 
 beforeAll(async (): Promise<void> => {
-  const workspace = createTestWorkspaceFromFixture({
+  workspace = createTestWorkspaceFromFixture({
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-cli-relay-bootstrap-',
   });
   tempRootPath = workspace.tempRootPath;
   previousCwd = workspace.previousCwd;
-  cleanupWorkspace = workspace.cleanup;
 
   const stdoutWrite = process.stdout.write.bind(process.stdout);
   const outputs: string[] = [];
@@ -97,7 +96,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  cleanupWorkspace();
+  workspace?.cleanup();
   process.chdir(previousCwd);
 });
 

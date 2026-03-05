@@ -14,16 +14,15 @@ let prettyOutputLines: string[] = [];
 let schedulerOutputLines: string[] = [];
 let chatOutputLines: string[] = [];
 let prettyOutputLinesSansAnsi: string[] = [];
-let cleanupWorkspace = (): void => undefined;
+let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
 
 beforeAll(async (): Promise<void> => {
-  const workspace = createTestWorkspaceFromFixture({
+  workspace = createTestWorkspaceFromFixture({
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-cli-logs-',
   });
   tempRootPath = workspace.tempRootPath;
   previousCwd = workspace.previousCwd;
-  cleanupWorkspace = workspace.cleanup;
 
   const logsDirPath = join(tempRootPath, 'tmp', 'logs');
   mkdirSync(logsDirPath, { recursive: true });
@@ -106,7 +105,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  cleanupWorkspace();
+  workspace?.cleanup();
   process.chdir(previousCwd);
 });
 

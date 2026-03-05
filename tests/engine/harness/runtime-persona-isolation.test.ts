@@ -1,6 +1,6 @@
 import type { InboundNormalizedMessage } from '@engine/gateway/types';
 
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import Database from 'better-sqlite3';
@@ -21,7 +21,7 @@ let personaAMessageCount = 0;
 let personaBMessageCount = 0;
 let personaAHasForeignThread = false;
 let personaBHasForeignThread = false;
-let cleanupWorkspace = (): void => undefined;
+let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
 
 const personaAMessage: InboundNormalizedMessage = {
   personaId: 'persona-a',
@@ -58,47 +58,52 @@ const personaBMessage: InboundNormalizedMessage = {
 };
 
 beforeAll(async (): Promise<void> => {
-  const workspace = createTestWorkspaceFromFixture({
+  workspace = createTestWorkspaceFromFixture({
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-runtime-persona-isolation-',
   });
   tempRootPath = workspace.tempRootPath;
   previousCwd = workspace.previousCwd;
-  cleanupWorkspace = workspace.cleanup;
   process.env.OPENAI_API_KEY = 'test-key';
 
   mkdirSync(join(tempRootPath, 'extensions', 'providers', 'openai'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'personas', 'persona-a'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'personas', 'persona-b'), { recursive: true });
-
-  writeFileSync(join(tempRootPath, 'personas', 'persona-a', 'persona.json'), JSON.stringify({
+  workspace.patchPersona({
     personaId: 'persona-a',
-    publicKeyBase32: 'fixture-a',
-    emailLocalPart: 'fixture-a',
-    createdAt: '2026-02-14T00:00:00.000Z',
-  }));
-  writeFileSync(join(tempRootPath, 'personas', 'persona-b', 'persona.json'), JSON.stringify({
+    personaPatch: {
+      personaId: 'persona-a',
+      publicKeyBase32: 'fixture-a',
+      emailLocalPart: 'fixture-a',
+      createdAt: '2026-02-14T00:00:00.000Z',
+    },
+  });
+  workspace.patchPersona({
     personaId: 'persona-b',
-    publicKeyBase32: 'fixture-b',
-    emailLocalPart: 'fixture-b',
-    createdAt: '2026-02-14T00:00:00.000Z',
-  }));
+    personaPatch: {
+      personaId: 'persona-b',
+      publicKeyBase32: 'fixture-b',
+      emailLocalPart: 'fixture-b',
+      createdAt: '2026-02-14T00:00:00.000Z',
+    },
+  });
   workspace.patchConfigFiles({
     'context.json': {
       thread: ['current-input'],
       responsibility: ['current-input'],
     },
   });
-  writeFileSync(join(tempRootPath, 'extensions', 'providers', 'openai', 'config.json'), JSON.stringify({
-    api_key_env: 'OPENAI_API_KEY',
-    base_url: 'https://api.openai.com/v1',
-  }));
-  writeFileSync(join(tempRootPath, 'extensions', 'extensions.json'), JSON.stringify({
+  workspace.writeFile({
+    relativePath: 'extensions/providers/openai/config.json',
+    payload: {
+      api_key_env: 'OPENAI_API_KEY',
+      base_url: 'https://api.openai.com/v1',
+    },
+  });
+  workspace.patchExtensionsManifest({
     tools: [],
     hooks: [],
     providers: ['openai'],
     resolvers: ['current-input'],
-  }));
+  });
 
   mswIntercept({ fixtureKey: 'openai/chat-completions/200' });
 
@@ -139,7 +144,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  cleanupWorkspace();
+  workspace?.cleanup();
   process.chdir(previousCwd);
   delete process.env.OPENAI_API_KEY;
 });

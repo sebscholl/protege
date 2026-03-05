@@ -1,8 +1,7 @@
 import type { InboundNormalizedMessage } from '@engine/gateway/types';
 import type { ProtegeDatabase } from '@engine/shared/database';
 
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { chdir, cwd } from 'node:process';
 import { join } from 'node:path';
 
@@ -26,6 +25,7 @@ import {
 import { createPersona } from '@engine/shared/personas';
 import { initializeDatabase } from '@engine/shared/database';
 import { getDefaultChatKeymap, getDefaultChatUiTheme } from '@engine/shared/runtime-config';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let originalCwd = '';
 let tempRootPath = '';
@@ -54,6 +54,7 @@ let visibleInboxRowCount = 0;
 let parsedStatusHintCommandsCount = 0;
 let renderedThreadContent = '';
 let chatErrorStackPreviewLength = 0;
+let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
 
 const inboundMessage: InboundNormalizedMessage = {
   personaId: 'persona-test',
@@ -73,11 +74,12 @@ const inboundMessage: InboundNormalizedMessage = {
 };
 
 beforeAll(async (): Promise<void> => {
-  originalCwd = cwd();
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-chat-runtime-'));
-  mkdirSync(join(tempRootPath, 'engine', 'shared', 'migrations'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'tmp'), { recursive: true });
-  chdir(tempRootPath);
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-chat-runtime-',
+  });
+  originalCwd = workspace.previousCwd;
+  tempRootPath = workspace.tempRootPath;
 
   const created = createPersona({});
   createdPersonaId = created.personaId;
@@ -136,7 +138,10 @@ beforeAll(async (): Promise<void> => {
     unsupportedActionError = (error as Error).message;
   }
 
-  writeFileSync(join(tempRootPath, 'tmp', 'chat-read.txt'), 'chat-read', 'utf8');
+  workspace.writeFile({
+    relativePath: 'tmp/chat-read.txt',
+    payload: 'chat-read',
+  });
   const fileReadResult = await invoke({
     action: 'file.read',
     payload: {
@@ -154,7 +159,10 @@ beforeAll(async (): Promise<void> => {
   });
   fileWriteContent = readFileSync(join(tempRootPath, 'tmp', 'chat-write.txt'), 'utf8');
 
-  writeFileSync(join(tempRootPath, 'tmp', 'chat-edit.txt'), 'before after before', 'utf8');
+  workspace.writeFile({
+    relativePath: 'tmp/chat-edit.txt',
+    payload: 'before after before',
+  });
   await invoke({
     action: 'file.edit',
     payload: {
@@ -281,9 +289,9 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
+  workspace?.cleanup();
   chdir(originalCwd);
   db?.close();
-  rmSync(tempRootPath, { recursive: true, force: true });
 });
 
 describe('chat runtime helper behavior', () => {

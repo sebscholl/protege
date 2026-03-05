@@ -1,8 +1,5 @@
 import type { InboundNormalizedMessage } from '@engine/gateway/types';
 
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import { http, HttpResponse } from 'msw';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -15,7 +12,7 @@ let tempRootPath = '';
 let previousCwd = '';
 let emailProfileSystemMessage = '';
 let responsibilityProfileSystemMessage = '';
-let cleanupWorkspace = (): void => undefined;
+let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
 
 /**
  * Returns one inbound email-shaped test message for thread profile assertions.
@@ -89,55 +86,46 @@ function readSystemMessageText(
 }
 
 beforeAll(async (): Promise<void> => {
-  const workspace = createTestWorkspaceFromFixture({
+  workspace = createTestWorkspaceFromFixture({
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-context-profile-e2e-',
   });
   tempRootPath = workspace.tempRootPath;
   previousCwd = workspace.previousCwd;
-  cleanupWorkspace = workspace.cleanup;
   process.env.OPENAI_API_KEY = 'test-openai-key';
 
-  mkdirSync(join(tempRootPath, 'extensions', 'providers', 'openai'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'extensions', 'resolvers', 'profile-marker'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'memory', 'persona-context-profile'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'personas', 'persona-context-profile'), { recursive: true });
-
-  writeFileSync(
-    join(tempRootPath, 'personas', 'persona-context-profile', 'persona.json'),
-    JSON.stringify({
+  workspace.patchPersona({
+    personaId: 'persona-context-profile',
+    personaPatch: {
       personaId: 'persona-context-profile',
       publicKeyBase32: 'fixture',
       emailLocalPart: 'fixture',
       emailAddress: 'agent@example.com',
       createdAt: '2026-03-05T00:00:00.000Z',
-    }),
-  );
+    },
+  });
   workspace.patchConfigFiles({
     'context.json': {
       thread: ['profile-marker(thread-profile)', 'current-input'],
       responsibility: ['profile-marker(responsibility-profile)', 'current-input'],
     },
   });
-  writeFileSync(
-    join(tempRootPath, 'extensions', 'extensions.json'),
-    JSON.stringify({
-      tools: [],
-      hooks: [],
-      providers: ['openai'],
-      resolvers: ['current-input', 'profile-marker'],
-    }),
-  );
-  writeFileSync(
-    join(tempRootPath, 'extensions', 'providers', 'openai', 'config.json'),
-    JSON.stringify({
+  workspace.patchExtensionsManifest({
+    tools: [],
+    hooks: [],
+    providers: ['openai'],
+    resolvers: ['current-input', 'profile-marker'],
+  });
+  workspace.writeFile({
+    relativePath: 'extensions/providers/openai/config.json',
+    payload: {
       api_key_env: 'OPENAI_API_KEY',
       base_url: 'https://api.openai.com/v1',
-    }),
-  );
-  writeFileSync(
-    join(tempRootPath, 'extensions', 'resolvers', 'profile-marker', 'index.js'),
-    [
+    },
+  });
+  workspace.writeFile({
+    relativePath: 'extensions/resolvers/profile-marker/index.js',
+    payload: [
       'export const resolver = {',
       "  name: 'profile-marker',",
       '  resolve: async ({ resolverArgs }) => ({',
@@ -145,7 +133,7 @@ beforeAll(async (): Promise<void> => {
       '  }),',
       '};',
     ].join('\n'),
-  );
+  });
 
   const requestMessagesByCall: Array<Array<Record<string, unknown>>> = [];
   const fixture = loadNetworkFixture({ fixtureKey: 'openai/chat-completions/200' });
@@ -179,7 +167,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  cleanupWorkspace();
+  workspace?.cleanup();
   process.chdir(previousCwd);
   delete process.env.OPENAI_API_KEY;
 });

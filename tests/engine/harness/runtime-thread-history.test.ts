@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { http, HttpResponse } from 'msw';
@@ -17,7 +17,7 @@ let tempRootPath = '';
 let previousCwd = '';
 let temporalDbPath = '';
 let capturedSecondRequestMessages: Array<Record<string, unknown>> = [];
-let cleanupWorkspace = (): void => undefined;
+let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
 
 const firstInboundMessage: InboundNormalizedMessage = {
   personaId: 'persona-thread-history',
@@ -54,51 +54,42 @@ const secondInboundMessage: InboundNormalizedMessage = {
 };
 
 beforeAll(async (): Promise<void> => {
-  const workspace = createTestWorkspaceFromFixture({
+  workspace = createTestWorkspaceFromFixture({
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-harness-thread-history-',
   });
   tempRootPath = workspace.tempRootPath;
   previousCwd = workspace.previousCwd;
-  cleanupWorkspace = workspace.cleanup;
   process.env.OPENAI_API_KEY = 'test-key';
 
-  mkdirSync(join(tempRootPath, 'extensions', 'providers', 'openai'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'personas', firstInboundMessage.personaId as string), {
-    recursive: true,
-  });
-
-  writeFileSync(
-    join(tempRootPath, 'personas', firstInboundMessage.personaId as string, 'persona.json'),
-    JSON.stringify({
+  workspace.patchPersona({
+    personaId: firstInboundMessage.personaId as string,
+    personaPatch: {
       personaId: firstInboundMessage.personaId,
       publicKeyBase32: 'fixture',
       emailLocalPart: 'fixture',
       createdAt: '2026-02-14T00:00:00.000Z',
-    }),
-  );
+    },
+  });
   workspace.patchConfigFiles({
     'context.json': {
       thread: ['thread-history', 'current-input'],
       responsibility: ['current-input'],
     },
   });
-  writeFileSync(
-    join(tempRootPath, 'extensions', 'providers', 'openai', 'config.json'),
-    JSON.stringify({
+  workspace.writeFile({
+    relativePath: 'extensions/providers/openai/config.json',
+    payload: {
       api_key_env: 'OPENAI_API_KEY',
       base_url: 'https://api.openai.com/v1',
-    }),
-  );
-  writeFileSync(
-    join(tempRootPath, 'extensions', 'extensions.json'),
-    JSON.stringify({
-      tools: [],
-      hooks: [],
-      providers: ['openai'],
-      resolvers: ['thread-history', 'current-input'],
-    }),
-  );
+    },
+  });
+  workspace.patchExtensionsManifest({
+    tools: [],
+    hooks: [],
+    providers: ['openai'],
+    resolvers: ['thread-history', 'current-input'],
+  });
 
   const requestMessagesByCall: Array<Array<Record<string, unknown>>> = [];
   networkServer.use(http.post(
@@ -151,7 +142,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  cleanupWorkspace();
+  workspace?.cleanup();
   process.chdir(previousCwd);
   delete process.env.OPENAI_API_KEY;
 });

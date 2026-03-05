@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -17,18 +17,15 @@ let unhealthyExitCode = -1;
 let doctorText = '';
 let relayIdentityCheckStatus = '';
 let healthyFailedCheckIds: string[] = [];
-let cleanupWorkspace = (): void => undefined;
+let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
 
 beforeAll(async (): Promise<void> => {
-  const workspace = createTestWorkspaceFromFixture({
+  workspace = createTestWorkspaceFromFixture({
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-cli-doctor-',
   });
   tempRootPath = workspace.tempRootPath;
   previousCwd = workspace.previousCwd;
-  cleanupWorkspace = workspace.cleanup;
-
-  mkdirSync(join(tempRootPath, 'extensions', 'providers', 'openai'), { recursive: true });
 
   workspace.patchConfigFiles({
     'gateway.json': {
@@ -55,7 +52,7 @@ beforeAll(async (): Promise<void> => {
       admin_contact_email: 'ops@example.com',
     },
   });
-  writeFileSync(join(tempRootPath, 'extensions', 'extensions.json'), JSON.stringify({
+  workspace.patchExtensionsManifest({
     providers: [
       {
         name: 'openai',
@@ -66,11 +63,14 @@ beforeAll(async (): Promise<void> => {
     ],
     tools: ['send-email'],
     hooks: [],
-  }, null, 2));
-  writeFileSync(join(tempRootPath, 'extensions', 'providers', 'openai', 'config.json'), JSON.stringify({
-    api_key_env: 'OPENAI_API_KEY',
-    base_url: 'https://api.openai.com/v1',
-  }, null, 2));
+  });
+  workspace.writeFile({
+    relativePath: 'extensions/providers/openai/config.json',
+    payload: {
+      api_key_env: 'OPENAI_API_KEY',
+      base_url: 'https://api.openai.com/v1',
+    },
+  });
   process.env.OPENAI_API_KEY = 'test-key';
   createPersona({
     emailDomain: 'mail.protege.bot',
@@ -109,7 +109,7 @@ beforeAll(async (): Promise<void> => {
       recursion_depth: 3,
     },
   });
-  writeFileSync(join(tempRootPath, 'extensions', 'extensions.json'), JSON.stringify({
+  workspace.patchExtensionsManifest({
     providers: [
       {
         name: 'openai',
@@ -120,7 +120,7 @@ beforeAll(async (): Promise<void> => {
     ],
     tools: ['send-email'],
     hooks: [],
-  }, null, 2));
+  });
   process.exitCode = 0;
   const unhealthyJson = JSON.parse((await captureStdout({
     run: async (): Promise<void> => runCli({
@@ -135,7 +135,7 @@ beforeAll(async (): Promise<void> => {
 
 afterAll((): void => {
   process.exitCode = 0;
-  cleanupWorkspace();
+  workspace?.cleanup();
   process.chdir(previousCwd);
   delete process.env.OPENAI_API_KEY;
 });

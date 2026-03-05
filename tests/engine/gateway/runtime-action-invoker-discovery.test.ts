@@ -1,11 +1,9 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { chdir, cwd } from 'node:process';
-import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createGatewayRuntimeActionInvoker } from '@engine/gateway/index';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
 let previousCwd = '';
@@ -14,16 +12,27 @@ let globTruncated = false;
 let globTotalMatches = -1;
 let searchMatchesCount = 0;
 let firstMatchPath = '';
+let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
 
 beforeAll(async (): Promise<void> => {
-  previousCwd = cwd();
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-runtime-discovery-actions-'));
-  mkdirSync(join(tempRootPath, 'src'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'docs'), { recursive: true });
-  writeFileSync(join(tempRootPath, 'src', 'alpha.ts'), 'const TODO = "ship";\n', 'utf8');
-  writeFileSync(join(tempRootPath, 'docs', 'guide.md'), '# TODO\n', 'utf8');
-  writeFileSync(join(tempRootPath, 'docs', 'notes.md'), '## TODO\n', 'utf8');
-  chdir(tempRootPath);
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-runtime-discovery-actions-',
+  });
+  previousCwd = workspace.previousCwd;
+  tempRootPath = workspace.tempRootPath;
+  workspace.writeFile({
+    relativePath: 'src/alpha.ts',
+    payload: 'const TODO = "ship";\n',
+  });
+  workspace.writeFile({
+    relativePath: 'docs/guide.md',
+    payload: '# TODO\n',
+  });
+  workspace.writeFile({
+    relativePath: 'docs/notes.md',
+    payload: '## TODO\n',
+  });
 
   const invoke = createGatewayRuntimeActionInvoker({
     message: {
@@ -77,8 +86,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
+  workspace?.cleanup();
   chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
 });
 
 describe('gateway runtime action invoker discovery actions', () => {

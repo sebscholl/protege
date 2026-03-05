@@ -26,17 +26,16 @@ let temporalInboundCount = 0;
 let temporalOutboundCount = 0;
 let correlatedLogFound = false;
 let correlationIdPropagated = false;
-let cleanupWorkspace = (): void => undefined;
+let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
 
 beforeAll(async (): Promise<void> => {
-  const workspace = createTestWorkspaceFromFixture({
+  workspace = createTestWorkspaceFromFixture({
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-e2e-relay-roundtrip-',
     symlinkExtensionsFromRepo: true,
   });
   tempRootPath = workspace.tempRootPath;
   previousCwd = workspace.previousCwd;
-  cleanupWorkspace = workspace.cleanup;
   process.env.OPENAI_API_KEY = 'test-key';
 
   const persona = createPersona({});
@@ -190,7 +189,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  cleanupWorkspace();
+  workspace?.cleanup();
   process.chdir(previousCwd);
   delete process.env.OPENAI_API_KEY;
 });

@@ -1,13 +1,12 @@
 import type { HarnessInput } from '@engine/harness/types';
 
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { buildHarnessContextFromPipeline } from '@engine/harness/context/pipeline';
 import { initializeDatabase } from '@engine/shared/database';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
 let previousCwd = '';
@@ -15,54 +14,55 @@ let renderedSystemText = '';
 let renderedInputText = '';
 let renderedActiveMemory = '';
 let renderedTemplatedFileText = '';
+let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-context-pipeline-'));
-  previousCwd = process.cwd();
-  process.chdir(tempRootPath);
-
-  mkdirSync(join(tempRootPath, 'config'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'extensions', 'resolvers', 'demo-resolver'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'memory', 'persona-demo'), { recursive: true });
-  writeFileSync(join(tempRootPath, 'memory', 'persona-demo', 'active.md'), 'Active memory from template');
-
-  writeFileSync(join(tempRootPath, 'config', 'snippet.md'), 'System section from file');
-  writeFileSync(
-    join(tempRootPath, 'config', 'context.json'),
-    JSON.stringify({
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-context-pipeline-',
+  });
+  tempRootPath = workspace.tempRootPath;
+  previousCwd = workspace.previousCwd;
+  workspace.writeFile({
+    relativePath: 'memory/persona-demo/active.md',
+    payload: 'Active memory from template',
+  });
+  workspace.writeFile({
+    relativePath: 'config/snippet.md',
+    payload: 'System section from file',
+  });
+  workspace.patchConfigFiles({
+    'context.json': {
       thread: [
         'load-file(config/snippet.md)',
         'load-file("memory/{ persona_id }/active.md")',
         'demo-resolver(foo, bar)',
       ],
       responsibility: ['demo-resolver(foo, bar)'],
-    }),
-  );
-  writeFileSync(
-    join(tempRootPath, 'extensions', 'extensions.json'),
-    JSON.stringify({
-      tools: [],
-      hooks: [],
-      resolvers: [
-        'load-file',
-        {
-          name: 'demo-resolver',
-          config: {
-            suffix: 'from-manifest',
-          },
+    },
+  });
+  workspace.patchExtensionsManifest({
+    tools: [],
+    hooks: [],
+    resolvers: [
+      'load-file',
+      {
+        name: 'demo-resolver',
+        config: {
+          suffix: 'from-manifest',
         },
-      ],
-    }),
-  );
-  writeFileSync(
-    join(tempRootPath, 'extensions', 'resolvers', 'demo-resolver', 'config.json'),
-    JSON.stringify({
+      },
+    ],
+  });
+  workspace.writeFile({
+    relativePath: 'extensions/resolvers/demo-resolver/config.json',
+    payload: {
       suffix: 'from-default',
-    }),
-  );
-  writeFileSync(
-    join(tempRootPath, 'extensions', 'resolvers', 'demo-resolver', 'index.js'),
-    [
+    },
+  });
+  workspace.writeFile({
+    relativePath: 'extensions/resolvers/demo-resolver/index.js',
+    payload: [
       'export const resolver = {',
       "  name: 'demo-resolver',",
       '  resolve: async ({ invocation, config, resolverArgs }) => ({',
@@ -72,7 +72,7 @@ beforeAll(async (): Promise<void> => {
       '  }),',
       '};',
     ].join('\n'),
-  );
+  });
 
   const db = initializeDatabase({
     databasePath: join(tempRootPath, 'memory', 'persona-demo', 'temporal.db'),
@@ -107,8 +107,8 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
+  workspace?.cleanup();
   process.chdir(previousCwd);
-  rmSync(tempRootPath, { recursive: true, force: true });
 });
 
 describe('harness context pipeline', () => {

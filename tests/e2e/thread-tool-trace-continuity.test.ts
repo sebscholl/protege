@@ -1,6 +1,5 @@
 import type { InboundNormalizedMessage } from '@engine/gateway/types';
 
-import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import Database from 'better-sqlite3';
@@ -18,7 +17,7 @@ let tempRootPath = '';
 let previousCwd = '';
 let providerSawPriorToolTrace = false;
 let persistedToolEventCount = 0;
-let cleanupWorkspace = (): void => undefined;
+let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
 
 const inboundTurnOne: InboundNormalizedMessage = {
   personaId: 'persona-e2e-tool-trace',
@@ -55,45 +54,36 @@ const inboundTurnTwo: InboundNormalizedMessage = {
 };
 
 beforeAll(async (): Promise<void> => {
-  const workspace = createTestWorkspaceFromFixture({
+  workspace = createTestWorkspaceFromFixture({
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-e2e-thread-tool-trace-',
   });
   tempRootPath = workspace.tempRootPath;
   previousCwd = workspace.previousCwd;
-  cleanupWorkspace = workspace.cleanup;
   process.env.OPENAI_API_KEY = 'test-key';
 
-  mkdirSync(join(tempRootPath, 'extensions', 'providers', 'openai'), { recursive: true });
-  mkdirSync(join(tempRootPath, 'personas', inboundTurnOne.personaId as string), {
-    recursive: true,
+  workspace.patchExtensionsManifest({
+    tools: ['send-email'],
+    hooks: [],
+    providers: ['openai'],
+    resolvers: ['thread-history', 'current-input'],
   });
-  writeFileSync(
-    join(tempRootPath, 'extensions', 'extensions.json'),
-    JSON.stringify({
-      tools: ['send-email'],
-      hooks: [],
-      providers: ['openai'],
-      resolvers: ['thread-history', 'current-input'],
-    }),
-  );
-  writeFileSync(
-    join(tempRootPath, 'extensions', 'providers', 'openai', 'config.json'),
-    JSON.stringify({
+  workspace.writeFile({
+    relativePath: 'extensions/providers/openai/config.json',
+    payload: {
       api_key_env: 'OPENAI_API_KEY',
       base_url: 'https://api.openai.com/v1',
-    }),
-  );
-
-  writeFileSync(
-    join(tempRootPath, 'personas', inboundTurnOne.personaId as string, 'persona.json'),
-    JSON.stringify({
+    },
+  });
+  workspace.patchPersona({
+    personaId: inboundTurnOne.personaId as string,
+    personaPatch: {
       personaId: inboundTurnOne.personaId,
       publicKeyBase32: 'fixture-e2e',
       emailLocalPart: 'fixture-e2e',
       createdAt: '2026-03-04T12:00:00.000Z',
-    }),
-  );
+    },
+  });
   workspace.patchConfigFiles({
     'system-prompt.md': 'You are Protege.',
     'inference.json': {
@@ -207,7 +197,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  cleanupWorkspace();
+  workspace?.cleanup();
   process.chdir(previousCwd);
   delete process.env.OPENAI_API_KEY;
 });

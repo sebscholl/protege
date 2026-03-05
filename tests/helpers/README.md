@@ -15,4 +15,8 @@ Current helper groups:
 - `relay-crypto.ts`: shared relay key encoding helpers for tests.
 - `relay-socket-doubles.ts`: reusable websocket/auth socket doubles for relay tests.
 - `stdout.ts`: stdout capture utility for CLI output assertions.
-- `workspace.ts`: fixture-template temp workspace lifecycle helper (copy/patch/cleanup).
+- `workspace.ts`: fixture-template temp workspace lifecycle helper (copy/patch/cleanup), including:
+  - `patchConfigFiles(...)`
+  - `patchExtensionsManifest(...)`
+  - `patchPersona(...)`
+  - `writeFile(...)`

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import Database from 'better-sqlite3';
@@ -17,26 +17,27 @@ let noToolRunFailed = false;
 let noToolOutboundMessageCount = 0;
 let toolRunErrorMessage = '';
 let noToolTemporalDbPath = '';
-let cleanupWorkspace = (): void => undefined;
+let workspace = undefined as ReturnType<typeof createTestWorkspaceFromFixture> | undefined;
 
 beforeAll(async (): Promise<void> => {
-  const workspace = createTestWorkspaceFromFixture({
+  workspace = createTestWorkspaceFromFixture({
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-gateway-tool-driven-',
     symlinkExtensionsFromRepo: true,
   });
   tempRootPath = workspace.tempRootPath;
   previousCwd = workspace.previousCwd;
-  cleanupWorkspace = workspace.cleanup;
   process.env.OPENAI_API_KEY = 'test-key';
 
-  mkdirSync(join(tempRootPath, 'personas', 'persona-tool-driven'), { recursive: true });
-  writeFileSync(join(tempRootPath, 'personas', 'persona-tool-driven', 'persona.json'), JSON.stringify({
+  workspace.patchPersona({
     personaId: 'persona-tool-driven',
-    publicKeyBase32: 'fixture',
-    emailLocalPart: 'fixture',
-    createdAt: '2026-02-14T00:00:00.000Z',
-  }));
+    personaPatch: {
+      personaId: 'persona-tool-driven',
+      publicKeyBase32: 'fixture',
+      emailLocalPart: 'fixture',
+      createdAt: '2026-02-14T00:00:00.000Z',
+    },
+  });
   workspace.patchConfigFiles({
     'inference.json': {
       provider: 'openai',
@@ -155,7 +156,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  cleanupWorkspace();
+  workspace?.cleanup();
   process.chdir(previousCwd);
   delete process.env.OPENAI_API_KEY;
 });
