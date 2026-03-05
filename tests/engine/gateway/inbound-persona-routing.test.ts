@@ -1,7 +1,5 @@
 import type { InboundNormalizedMessage } from '@engine/gateway/types';
 
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -9,8 +7,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { handleInboundData } from '@engine/gateway/inbound';
 import { createFixtureSession, createFixtureStream } from '@tests/helpers/email-fixtures';
 import { createInboundTestConfig } from '@tests/helpers/gateway-inbound';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
+let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let fallbackLogsDirPath = '';
 let fallbackAttachmentsDirPath = '';
 let personaLogsDirPath = '';
@@ -18,11 +17,15 @@ let personaAttachmentsDirPath = '';
 let capturedMessage: InboundNormalizedMessage | undefined;
 
 beforeAll(async (): Promise<void> => {
-  tempRootPath = mkdtempSync(join(tmpdir(), 'protege-inbound-persona-routing-'));
-  fallbackLogsDirPath = join(tempRootPath, 'fallback-logs');
-  fallbackAttachmentsDirPath = join(tempRootPath, 'fallback-attachments');
-  personaLogsDirPath = join(tempRootPath, 'persona-logs');
-  personaAttachmentsDirPath = join(tempRootPath, 'persona-attachments');
+  workspace = createTestWorkspaceFromFixture({
+    fixtureName: 'minimal-protege',
+    tempPrefix: 'protege-inbound-persona-routing-',
+    chdir: false,
+  });
+  fallbackLogsDirPath = join(workspace.tempRootPath, 'fallback-logs');
+  fallbackAttachmentsDirPath = join(workspace.tempRootPath, 'fallback-attachments');
+  personaLogsDirPath = join(workspace.tempRootPath, 'persona-logs');
+  personaAttachmentsDirPath = join(workspace.tempRootPath, 'persona-attachments');
 
   await handleInboundData({
     stream: createFixtureStream({ fixtureFileName: 'email-with-attachment.eml' }),
@@ -47,7 +50,7 @@ beforeAll(async (): Promise<void> => {
 });
 
 afterAll((): void => {
-  rmSync(tempRootPath, { recursive: true, force: true });
+  workspace.cleanup();
 });
 
 describe('gateway inbound persona routing', () => {
