@@ -47,7 +47,6 @@ beforeAll(async (): Promise<void> => {
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-cli-setup-',
   });
-  process.chdir(workspace.tempRootPath);
 
   const output = await captureStdout({
     run: async (): Promise<void> => runCli({
@@ -125,8 +124,12 @@ beforeAll(async (): Promise<void> => {
   anthropicEnvPresent = envText.includes('ANTHROPIC_API_KEY=anthropic-key-123');
   tavilyEnvPresent = envText.includes('TAVILY_API_KEY=tavily-key-123');
 
-  process.chdir(projectPath);
-  personaCount = listPersonas().length;
+  personaCount = listPersonas({
+    roots: {
+      personasDirPath: join(projectPath, 'personas'),
+      memoryDirPath: join(projectPath, 'memory'),
+    },
+  }).length;
 
   const rerunResult = await runSetupCommand({
     argv: [
