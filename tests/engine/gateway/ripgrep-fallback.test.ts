@@ -1,7 +1,6 @@
-import type { ExecFileSyncOptionsWithStringEncoding } from 'node:child_process';
-
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import type { RipgrepExecFileSync } from '@engine/gateway/index';
 import { runGlobRuntimeAction, runSearchRuntimeAction } from '@engine/gateway/index';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
@@ -14,16 +13,16 @@ let nonRipgrepErrorMessage = '';
 /**
  * Simulates missing ripgrep binary in CI/runtime environments.
  */
-function throwMissingRipgrep(): never {
+const throwMissingRipgrep: RipgrepExecFileSync = (): never => {
   throw new Error('spawnSync rg ENOENT');
-}
+};
 
 /**
  * Simulates one non-ripgrep process error to verify rethrow behavior.
  */
-function throwUnknownExecError(): never {
+const throwUnknownExecError: RipgrepExecFileSync = (): never => {
   throw new Error('exec failed for unrelated reason');
-}
+};
 
 beforeAll((): void => {
   workspace = createTestWorkspaceFromFixture({
@@ -45,11 +44,7 @@ beforeAll((): void => {
       cwd: '.',
       maxResults: 10,
     },
-    execFileSyncFn: throwMissingRipgrep as unknown as (
-      file: string,
-      args?: readonly string[] | undefined,
-      options?: ExecFileSyncOptionsWithStringEncoding | undefined,
-    ) => string,
+    execFileSyncFn: throwMissingRipgrep,
   });
   globPaths = Array.isArray(globResult.paths)
     ? globResult.paths.map((value) => String(value))
@@ -61,11 +56,7 @@ beforeAll((): void => {
       path: '.',
       maxResults: 10,
     },
-    execFileSyncFn: throwMissingRipgrep as unknown as (
-      file: string,
-      args?: readonly string[] | undefined,
-      options?: ExecFileSyncOptionsWithStringEncoding | undefined,
-    ) => string,
+    execFileSyncFn: throwMissingRipgrep,
   });
   const matches = Array.isArray(searchResult.matches)
     ? searchResult.matches as Array<Record<string, unknown>>
@@ -79,11 +70,7 @@ beforeAll((): void => {
         query: 'TODO',
         path: '.',
       },
-      execFileSyncFn: throwUnknownExecError as unknown as (
-        file: string,
-        args?: readonly string[] | undefined,
-        options?: ExecFileSyncOptionsWithStringEncoding | undefined,
-      ) => string,
+      execFileSyncFn: throwUnknownExecError,
     });
   } catch (error) {
     nonRipgrepErrorMessage = error instanceof Error ? error.message : String(error);

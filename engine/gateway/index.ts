@@ -5,6 +5,7 @@ import type {
   OutboundReplyRequest,
 } from '@engine/gateway/types';
 import type { SMTPServerDataStream, SMTPServerSession } from 'smtp-server';
+import type { ExecFileSyncOptionsWithStringEncoding } from 'node:child_process';
 
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -960,7 +961,7 @@ export function runEditFileRuntimeAction(
 export function runGlobRuntimeAction(
   args: {
     payload: Record<string, unknown>;
-    execFileSyncFn?: typeof execFileSync;
+    execFileSyncFn?: RipgrepExecFileSync;
   },
 ): Record<string, unknown> {
   const pattern = readRequiredRuntimeString({
@@ -1024,7 +1025,7 @@ export function runGlobRuntimeAction(
 export function runSearchRuntimeAction(
   args: {
     payload: Record<string, unknown>;
-    execFileSyncFn?: typeof execFileSync;
+    execFileSyncFn?: RipgrepExecFileSync;
   },
 ): Record<string, unknown> {
   const query = readRequiredRuntimeString({
@@ -1856,16 +1857,29 @@ export function normalizePerplexityResult(
 /**
  * Runs one ripgrep command and returns UTF-8 stdout with actionable error mapping.
  */
+export type RipgrepExecFileSync = (
+  file: string,
+  args: readonly string[],
+  options: ExecFileSyncOptionsWithStringEncoding,
+) => string;
+
+/**
+ * Runs one ripgrep command and returns UTF-8 stdout with actionable error mapping.
+ */
 export function runRipgrepCommand(
   args: {
     args: string[];
     cwd: string;
     actionName: string;
     allowNoMatches?: boolean;
-    execFileSyncFn?: typeof execFileSync;
+    execFileSyncFn?: RipgrepExecFileSync;
   },
 ): string {
-  const execSync = args.execFileSyncFn ?? execFileSync;
+  const execSync = args.execFileSyncFn ?? ((
+    file,
+    commandArgs,
+    options,
+  ) => execFileSync(file, commandArgs, options));
   try {
     return execSync('rg', args.args, {
       cwd: args.cwd,
