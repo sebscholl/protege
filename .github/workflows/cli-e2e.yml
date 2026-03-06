@@ -1,0 +1,73 @@
+name: CLI E2E
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  cli-fresh-workspace:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build tarball
+        run: npm pack
+
+      - name: Fresh workspace install and init
+        run: |
+          set -euo pipefail
+          PACKAGE_TGZ="$(ls -1 protege-*.tgz | head -n1)"
+          INSTALL_DIR="$(mktemp -d /tmp/protege-cli-install-XXXXXX)"
+          WORKSPACE_DIR="$(mktemp -d /tmp/protege-cli-workspace-XXXXXX)"
+          echo "INSTALL_DIR=$INSTALL_DIR" >> "$GITHUB_ENV"
+          echo "WORKSPACE_DIR=$WORKSPACE_DIR" >> "$GITHUB_ENV"
+          cd "$INSTALL_DIR"
+          npm init -y >/dev/null 2>&1
+          npm install "$GITHUB_WORKSPACE/$PACKAGE_TGZ"
+          BIN_PATH="$INSTALL_DIR/node_modules/.bin/protege"
+          "$BIN_PATH" --version
+          "$BIN_PATH" init --path "$WORKSPACE_DIR"
+
+      - name: Setup local mode and run doctor
+        run: |
+          set -euo pipefail
+          BIN_PATH="$INSTALL_DIR/node_modules/.bin/protege"
+          "$BIN_PATH" setup \
+            --path "$WORKSPACE_DIR" \
+            --non-interactive \
+            --provider openai \
+            --inference-api-key test-openai-key \
+            --outbound local \
+            --web-search-provider none \
+            --admin-contact-email ops@example.com
+          (
+            cd "$WORKSPACE_DIR"
+            "$BIN_PATH" doctor
+          )
+
+      - name: Setup relay mode config smoke
+        run: |
+          set -euo pipefail
+          BIN_PATH="$INSTALL_DIR/node_modules/.bin/protege"
+          "$BIN_PATH" setup \
+            --path "$WORKSPACE_DIR" \
+            --non-interactive \
+            --provider openai \
+            --inference-api-key test-openai-key \
+            --outbound relay \
+            --relay-ws-url wss://relay.protege.bot/ws \
+            --web-search-provider none \
+            --admin-contact-email ops@example.com

@@ -210,6 +210,7 @@ GitHub Actions workflows:
 
 1. `.github/workflows/ci.yml`
 2. `.github/workflows/release.yml`
+3. `.github/workflows/cli-e2e.yml`
 
 Pipeline gates:
 
@@ -218,6 +219,7 @@ Pipeline gates:
 3. `npm run test`
 4. package smoke via `npm pack` + clean install + `protege --help` + `protege --version`
 5. `npm publish --dry-run`
+6. clean-workspace CLI smoke via packed tarball install + `init` + `setup` + `doctor`
 
 Release publish behavior:
 
