@@ -7,7 +7,7 @@ import type {
 import type { SMTPServerDataStream, SMTPServerSession } from 'smtp-server';
 
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 
@@ -981,18 +981,35 @@ export function runGlobRuntimeAction(
     fieldName: 'maxResults',
     actionName: 'file.glob',
   }) ?? 100;
-  const output = runRipgrepCommand({
-    args: ['--files', '-g', pattern],
-    cwd: targetCwd,
-    execFileSyncFn: args.execFileSyncFn,
-    actionName: 'file.glob',
-  });
   const workspaceRoot = process.cwd();
-  const paths = output
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .map((line) => relative(workspaceRoot, resolve(targetCwd, line)));
+  let paths: string[];
+  try {
+    const output = runRipgrepCommand({
+      args: ['--files', '-g', pattern],
+      cwd: targetCwd,
+      execFileSyncFn: args.execFileSyncFn,
+      actionName: 'file.glob',
+    });
+    paths = output
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => relative(workspaceRoot, resolve(targetCwd, line)));
+  } catch (error) {
+    if (!isRipgrepUnavailableError({ error })) {
+      throw error;
+    }
+
+    const globMatcher = createGlobMatcher({
+      pattern,
+    });
+    paths = listRelativeFilePaths({
+      cwd: targetCwd,
+    })
+      .filter((filePath) => globMatcher(filePath))
+      .map((filePath) => relative(workspaceRoot, resolve(targetCwd, filePath)));
+  }
+
   const limitedPaths = paths.slice(0, maxResults);
   return {
     paths: limitedPaths,
@@ -1041,31 +1058,244 @@ export function runSearchRuntimeAction(
     query,
     '.',
   ];
-  const output = runRipgrepCommand({
-    args: ripgrepArgs,
-    cwd: searchRoot,
-    execFileSyncFn: args.execFileSyncFn,
-    actionName: 'file.search',
-    allowNoMatches: true,
-  });
   const workspaceRoot = process.cwd();
-  const matches = output
-    .split('\n')
-    .map((line) => parseRipgrepMatchLine({
-      line,
+  let matches: Array<{
+    path: string;
+    line: number;
+    column: number;
+    preview: string;
+  }>;
+  try {
+    const output = runRipgrepCommand({
+      args: ripgrepArgs,
       cwd: searchRoot,
+      execFileSyncFn: args.execFileSyncFn,
+      actionName: 'file.search',
+      allowNoMatches: true,
+    });
+    matches = output
+      .split('\n')
+      .map((line) => parseRipgrepMatchLine({
+        line,
+        cwd: searchRoot,
+        workspaceRoot,
+      }))
+      .filter((match): match is {
+        path: string;
+        line: number;
+        column: number;
+        preview: string;
+      } => match !== undefined)
+      .slice(0, maxResults);
+  } catch (error) {
+    if (!isRipgrepUnavailableError({ error })) {
+      throw error;
+    }
+    matches = runSearchFallback({
+      query,
+      searchRoot,
       workspaceRoot,
-    }))
-    .filter((match): match is {
-      path: string;
-      line: number;
-      column: number;
-      preview: string;
-    } => match !== undefined)
-    .slice(0, maxResults);
+      isRegex,
+      maxResults,
+    });
+  }
+
   return {
     matches,
   };
+}
+
+/**
+ * Returns true when a ripgrep invocation fails because the executable is unavailable.
+ */
+export function isRipgrepUnavailableError(
+  args: {
+    error: unknown;
+  },
+): boolean {
+  return args.error instanceof Error
+    && args.error.message.includes('spawnSync rg ENOENT');
+}
+
+/**
+ * Lists workspace-relative file paths below one cwd using POSIX separators.
+ */
+export function listRelativeFilePaths(
+  args: {
+    cwd: string;
+  },
+): string[] {
+  const filePaths: string[] = [];
+  collectRelativeFilePaths({
+    rootCwd: args.cwd,
+    currentRelativePath: '',
+    output: filePaths,
+  });
+  return filePaths;
+}
+
+/**
+ * Recursively collects relative file paths below one root path.
+ */
+export function collectRelativeFilePaths(
+  args: {
+    rootCwd: string;
+    currentRelativePath: string;
+    output: string[];
+  },
+): void {
+  const absolutePath = args.currentRelativePath.length > 0
+    ? join(args.rootCwd, args.currentRelativePath)
+    : args.rootCwd;
+  const entries = readdirSync(absolutePath, { withFileTypes: true });
+  for (const entry of entries) {
+    const entryRelativePath = args.currentRelativePath.length > 0
+      ? `${args.currentRelativePath}/${entry.name}`
+      : entry.name;
+
+    if (entry.isDirectory()) {
+      collectRelativeFilePaths({
+        rootCwd: args.rootCwd,
+        currentRelativePath: entryRelativePath,
+        output: args.output,
+      });
+      continue;
+    }
+
+    if (entry.isFile()) {
+      args.output.push(entryRelativePath);
+    }
+  }
+}
+
+/**
+ * Creates a file-path predicate from one glob pattern.
+ */
+export function createGlobMatcher(
+  args: {
+    pattern: string;
+  },
+): (value: string) => boolean {
+  const expression = globPatternToRegExp({
+    pattern: args.pattern,
+  });
+  return (value: string): boolean => expression.test(value);
+}
+
+/**
+ * Converts a basic glob pattern into a regular-expression matcher.
+ */
+export function globPatternToRegExp(
+  args: {
+    pattern: string;
+  },
+): RegExp {
+  const escapedPattern = args.pattern.replace(/([.+^${}()|[\]\\])/g, '\\$1');
+  const regexPattern = escapedPattern
+    .replace(/\*\*/g, '__PROTEGE_GLOBSTAR__')
+    .replace(/\*/g, '[^/]*')
+    .replace(/\?/g, '[^/]')
+    .replace(/__PROTEGE_GLOBSTAR__/g, '.*');
+  return new RegExp(`^${regexPattern}$`);
+}
+
+/**
+ * Runs one file-search fallback implementation when ripgrep is unavailable.
+ */
+export function runSearchFallback(
+  args: {
+    query: string;
+    searchRoot: string;
+    workspaceRoot: string;
+    isRegex: boolean;
+    maxResults: number;
+  },
+): Array<{
+  path: string;
+  line: number;
+  column: number;
+  preview: string;
+}> {
+  const output: Array<{
+    path: string;
+    line: number;
+    column: number;
+    preview: string;
+  }> = [];
+  const matcher = args.isRegex
+    ? new RegExp(args.query)
+    : undefined;
+  for (const relativePath of listRelativeFilePaths({
+    cwd: args.searchRoot,
+  })) {
+    if (output.length >= args.maxResults) {
+      break;
+    }
+
+    const absolutePath = resolve(args.searchRoot, relativePath);
+    const fileText = readTextFileSafely({
+      absolutePath,
+    });
+    if (fileText === undefined) {
+      continue;
+    }
+
+    const lines = fileText.split('\n');
+    for (let index = 0; index < lines.length; index += 1) {
+      if (output.length >= args.maxResults) {
+        break;
+      }
+
+      const preview = lines[index];
+      const column = matcher
+        ? findRegexColumn({
+          matcher,
+          preview,
+        })
+        : preview.indexOf(args.query) + 1;
+      if (column <= 0) {
+        continue;
+      }
+
+      output.push({
+        path: relative(args.workspaceRoot, absolutePath),
+        line: index + 1,
+        column,
+        preview,
+      });
+    }
+  }
+
+  return output;
+}
+
+/**
+ * Returns one 1-based column index for the first regex match on one line.
+ */
+export function findRegexColumn(
+  args: {
+    matcher: RegExp;
+    preview: string;
+  },
+): number {
+  args.matcher.lastIndex = 0;
+  const match = args.matcher.exec(args.preview);
+  return match?.index === undefined ? 0 : match.index + 1;
+}
+
+/**
+ * Reads one UTF-8 file and returns undefined for non-readable/binary content.
+ */
+export function readTextFileSafely(
+  args: {
+    absolutePath: string;
+  },
+): string | undefined {
+  try {
+    return readFileSync(args.absolutePath, 'utf8');
+  } catch {
+    return undefined;
+  }
 }
 
 const DEFAULT_WEB_FETCH_TIMEOUT_MS = 10000;
