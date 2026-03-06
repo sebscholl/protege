@@ -26,6 +26,8 @@
   "scripts": {
     "build": "tsup",
     "docs:dev": "vitepress dev site --host 127.0.0.1 --port 4173",
+    "docs:build": "vitepress build site",
+    "docs:preview": "vitepress preview site --host 127.0.0.1 --port 4174",
     "prepack": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",

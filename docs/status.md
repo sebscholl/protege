@@ -12,7 +12,7 @@ This file tracks implementation progress against:
 1. Milestone 1: Complete
 2. Milestone 2: Complete (core), with ongoing UX hardening
 3. Milestone 3: Complete
-4. Milestone 4: In progress
+4. Milestone 4: Complete
 5. Packaging/docs consolidation: In progress
 
 ## Milestone 1 (Gateway)
@@ -59,7 +59,7 @@ Completed:
 
 ## Milestone 4 (Extensions, Scheduler, Security/Ops)
 
-Status: In progress
+Status: Complete
 
 Completed:
 
@@ -78,8 +78,7 @@ Completed:
 
 Open follow-ups:
 
-1. Final security/ops pass for remaining edge policies.
-2. Continue E2E reliability expansion where needed.
+1. Continue E2E reliability expansion where needed.
 
 ## Active ADR Coverage
 

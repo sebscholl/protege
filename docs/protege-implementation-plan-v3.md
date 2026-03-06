@@ -4,6 +4,14 @@ This version freezes the architecture decisions made during discovery.
 
 Implementation progress is tracked in `docs/status.md`.
 
+## Current Execution State
+
+1. Milestone 1: complete.
+2. Milestone 2: complete (core behavior shipped).
+3. Milestone 3: complete.
+4. Milestone 4: complete.
+5. Current focus: launch readiness operations (release runbook, CI hardening, docs hosting).
+
 ## Frozen Product Decisions
 
 1. Primary v1 user: anyone with basic terminal competency.

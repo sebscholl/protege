@@ -1,15 +1,17 @@
 import { defineConfig } from 'vitepress';
 import { withMermaid } from 'vitepress-plugin-mermaid';
 
+const repositoryName = process.env.GITHUB_REPOSITORY?.split('/')[1];
+const githubPagesBase = repositoryName ? `/${repositoryName}/` : '/';
+const base = process.env.GITHUB_ACTIONS === 'true' ? githubPagesBase : '/';
+
 export default withMermaid(defineConfig({
   title: 'Protege',
   description: 'Email-native AI agent framework',
+  base,
   srcDir: '.',
   mermaid: {},
   themeConfig: {
-    search: {
-      provider: 'local',
-    },
     nav: [
       { text: 'Introduction', link: '/' },
       { text: 'Getting Started', link: '/getting-started/' },
@@ -63,6 +65,7 @@ export default withMermaid(defineConfig({
         items: [
           { text: 'CLI Commands', link: '/reference/cli' },
           { text: 'Chat Guide', link: '/reference/chat' },
+          { text: 'Release Runbook', link: '/reference/release' },
           { text: 'Troubleshooting', link: '/reference/troubleshooting' },
         ],
       },
