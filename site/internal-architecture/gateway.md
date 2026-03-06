@@ -6,7 +6,7 @@ Gateway is the protocol edge for Protege runtime.
 
 - parse inbound SMTP into `InboundNormalizedMessage`
 - route inbound by recipient local-part to persona
-- enforce gateway sender access policy (`config/security.json`)
+- enforce gateway sender access policy (`configs/security.json`)
 - persist inbound message before async harness execution
 - execute runtime actions used by tools
 - send outbound via SMTP transport or relay tunnel

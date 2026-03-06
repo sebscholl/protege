@@ -8,9 +8,9 @@ Helpers in this directory should stay deterministic and avoid hidden global stat
 
 Current helper groups:
 - `async.ts`: async polling/wait utilities for integration and e2e tests.
-- `config.ts`: shared `config/*` file scaffolding helper for test workspaces.
+- `config.ts`: shared `configs/*` file scaffolding helper for test workspaces.
 - `email-fixtures.ts`: SMTP fixture streams and session doubles.
-- `gateway-inbound.ts`: inbound gateway config/logger builders.
+- `gateway-inbound.ts`: inbound gateway configs/logger builders.
 - `inbound-message.ts`: inbound normalized message factory for runtime tests.
 - `json.ts`: JSON-safe record casting for fixture-backed response payloads.
 - `provider.ts`: provider scaffold helper for manifest/config/env test setup.

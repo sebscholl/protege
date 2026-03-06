@@ -439,7 +439,7 @@ export function hydrateSetupSeedFromExistingProject(
   const seeded: SetupCommandOptions = {
     ...args.options,
   };
-  const inferenceConfigPath = join(targetPath, 'config', 'inference.json');
+  const inferenceConfigPath = join(targetPath, 'configs', 'inference.json');
   if (existsSync(inferenceConfigPath)) {
     const inferenceConfig = readJsonFile({
       filePath: inferenceConfigPath,
@@ -454,7 +454,7 @@ export function hydrateSetupSeedFromExistingProject(
     }
   }
 
-  const gatewayConfigPath = join(targetPath, 'config', 'gateway.json');
+  const gatewayConfigPath = join(targetPath, 'configs', 'gateway.json');
   if (existsSync(gatewayConfigPath)) {
     const gatewayConfig = readJsonFile({
       filePath: gatewayConfigPath,
@@ -469,7 +469,7 @@ export function hydrateSetupSeedFromExistingProject(
     }
   }
 
-  const systemConfigPath = join(targetPath, 'config', 'system.json');
+  const systemConfigPath = join(targetPath, 'configs', 'system.json');
   if (existsSync(systemConfigPath)) {
     const systemConfig = readJsonFile({
       filePath: systemConfigPath,
@@ -683,9 +683,9 @@ export function applySetup(
     init: InitCommandResult;
   },
 ): SetupCommandResult {
-  const inferenceConfigPath = join(process.cwd(), 'config', 'inference.json');
-  const gatewayConfigPath = join(process.cwd(), 'config', 'gateway.json');
-  const systemConfigPath = join(process.cwd(), 'config', 'system.json');
+  const inferenceConfigPath = join(process.cwd(), 'configs', 'inference.json');
+  const gatewayConfigPath = join(process.cwd(), 'configs', 'gateway.json');
+  const systemConfigPath = join(process.cwd(), 'configs', 'system.json');
   const extensionsManifestPath = join(process.cwd(), 'extensions', 'extensions.json');
 
   const inferenceConfig = readJsonFile({

@@ -12,7 +12,7 @@ Harness is the reasoning and orchestration core for each run.
 
 ## Context Assembly
 
-Default path uses `config/context.json` and resolver registry.
+Default path uses `configs/context.json` and resolver registry.
 
 Context output structure:
 

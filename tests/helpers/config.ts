@@ -7,7 +7,7 @@ import { join } from 'node:path';
 export type TestConfigFilePayload = string | Record<string, unknown>;
 
 /**
- * Writes one or more files under `config/` for one test workspace.
+ * Writes one or more files under `configs/` for one test workspace.
  */
 export function writeTestConfigFiles(
   args: {
@@ -15,7 +15,7 @@ export function writeTestConfigFiles(
     files: Record<string, TestConfigFilePayload>;
   },
 ): void {
-  const configDirPath = join(args.tempRootPath, 'config');
+  const configDirPath = join(args.tempRootPath, 'configs');
   mkdirSync(configDirPath, { recursive: true });
 
   for (const [fileName, payload] of Object.entries(args.files)) {

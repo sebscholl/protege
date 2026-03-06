@@ -94,6 +94,49 @@ Status: Complete
 3. Edge-case coverage includes slow hooks, failing hooks, wildcard/exact subscriptions, and manifest-order execution.
 4. E2E coverage validates real manifest->loader->logger->dispatcher->hook callback flow.
 
+## H5: Default Memory Synthesis Hooks (Planned)
+
+Status: Complete
+
+Decision anchor:
+
+1. `docs/adr/0037-memory-synthesis-hooks-and-chained-events-v1.md`
+
+### Tasks
+
+1. Ship default hooks:
+   - `thread-memory-updater`
+   - `active-memory-updater`
+2. Add chained event sequencing:
+   - `harness.inference.completed` -> `memory.thread.updated` -> active-memory flow
+3. Add DB-backed active-memory dirty-state persistence.
+4. Add hook-level provider/model override config and prompt-path config.
+5. Add prompt files under `prompts/`.
+
+### Acceptance
+
+1. Memory hooks are enabled/disabled via manifest only.
+2. Active memory never runs before thread memory commit for a completed inference.
+3. Dirty-state survives restarts and coalesces bursts.
+4. Memory synthesis uses editable file-based prompts.
+
+### Completion Notes
+
+1. Default hook modules shipped:
+   - `extensions/hooks/thread-memory-updater`
+   - `extensions/hooks/active-memory-updater`
+2. Hook dispatcher now supports chained event emissions from hook callback return payloads (`{ emit: [...] }`).
+3. Thread memory state and persona active-memory synthesis state persistence landed via migration:
+   - `engine/shared/migrations/0005_memory_synthesis_state.sql`
+4. Prompt files shipped:
+   - `prompts/thread-summary.md`
+   - `prompts/active-summary.md`
+5. Coverage added:
+   - `tests/extensions/hooks/thread-memory-updater/index.test.ts`
+   - `tests/extensions/hooks/active-memory-updater/index.test.ts`
+   - `tests/engine/harness/memory/storage.test.ts`
+   - `tests/e2e/memory-synthesis-hooks.test.ts`
+
 ## H4: Docs and Operator Guidance
 
 Status: Complete

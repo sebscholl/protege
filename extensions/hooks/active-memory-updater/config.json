@@ -1,0 +1,6 @@
+{
+  "prompt_path": "prompts/active-summary.md",
+  "max_recent_threads": 6,
+  "max_output_tokens": 600,
+  "debounce_ms": 0
+}

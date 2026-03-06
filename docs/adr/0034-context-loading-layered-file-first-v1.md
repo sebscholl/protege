@@ -20,7 +20,7 @@ The project also needs a first-class persona instruction document so that person
 
 Adopt a layered context contract with explicit source precedence:
 
-1. `config/system-prompt.md` (global base behavior)
+1. `prompts/system.md` (global base behavior)
 2. `personas/{persona_id}/PERSONA.md` (persona-specific identity/instructions)
 3. `memory/{persona_id}/active.md` (short-horizon active memory)
 4. invocation metadata note:

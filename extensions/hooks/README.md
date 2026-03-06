@@ -13,7 +13,8 @@ Contract (v1):
 3. Hook execution is non-blocking and failure-isolated.
 4. Hook ordering is deterministic by `extensions/extensions.json` hook manifest order.
 5. Hook callback signature is `onEvent(event, payload, config)`.
-6. Event and payload types are exported from `@engine/harness/hook-events`.
+6. Event and payload types are exported from `@engine/harness/hooks/events`.
+7. Hooks may return `{ emit: [...] }` to trigger additional typed hook events.
 
 Entry point resolution order is `index.js` first, then `index.ts`.
 
@@ -38,7 +39,7 @@ Guidance:
 Typed signature example (TypeScript):
 
 ```ts
-import type { HarnessHookOnEvent } from '@engine/harness/hook-events';
+import type { HarnessHookOnEvent } from '@engine/harness/hooks/events';
 
 export const onEvent: HarnessHookOnEvent = async (event, payload, config) => {
   if (event === 'harness.inference.completed') {
@@ -73,7 +74,7 @@ export const onEvent: HarnessHookOnEvent = async (event, payload, config) => {
 
 Hook event names and payload types are defined in:
 
-1. `engine/harness/hook-events.ts`
+1. `engine/harness/hooks/events.ts`
 
 Reference catalog:
 

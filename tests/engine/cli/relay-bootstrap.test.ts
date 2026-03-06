@@ -73,7 +73,7 @@ beforeAll(async (): Promise<void> => {
   personaCountAfterSecondBootstrap = listPersonas().length;
 
   const gatewayConfig = JSON.parse(
-    readFileSync(join(tempRootPath, 'config', 'gateway.json'), 'utf8'),
+    readFileSync(join(tempRootPath, 'configs', 'gateway.json'), 'utf8'),
   ) as {
     mailDomain?: string;
     relay?: {
@@ -135,6 +135,6 @@ describe('relay bootstrap cli', () => {
   });
 
   it('creates gateway config file when bootstrap runs', () => {
-    expect(existsSync(join(tempRootPath, 'config', 'gateway.json'))).toBe(true);
+    expect(existsSync(join(tempRootPath, 'configs', 'gateway.json'))).toBe(true);
   });
 });

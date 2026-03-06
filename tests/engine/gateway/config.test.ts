@@ -23,7 +23,7 @@ beforeAll((): void => {
     chdir: false,
   });
 
-  const validConfigPath = join(workspace.tempRootPath, 'config', 'gateway-valid.json');
+  const validConfigPath = join(workspace.tempRootPath, 'configs', 'gateway-valid.json');
   writeFileSync(validConfigPath, JSON.stringify({
     mode: 'dev',
     host: '127.0.0.1',
@@ -49,7 +49,7 @@ beforeAll((): void => {
   validConfigRelayEnabled = validConfig.relay?.enabled === true;
   validConfigAttachmentMaxBytes = validConfig.attachmentLimits?.maxAttachmentBytes ?? -1;
 
-  const missingMailDomainPath = join(workspace.tempRootPath, 'config', 'gateway-missing-mail-domain.json');
+  const missingMailDomainPath = join(workspace.tempRootPath, 'configs', 'gateway-missing-mail-domain.json');
   writeFileSync(missingMailDomainPath, JSON.stringify({
     mode: 'dev',
     host: '127.0.0.1',
@@ -63,7 +63,7 @@ beforeAll((): void => {
     missingMailDomainThrows = true;
   }
 
-  const invalidRelayUrlPath = join(workspace.tempRootPath, 'config', 'gateway-invalid-relay-url.json');
+  const invalidRelayUrlPath = join(workspace.tempRootPath, 'configs', 'gateway-invalid-relay-url.json');
   writeFileSync(invalidRelayUrlPath, JSON.stringify({
     mode: 'dev',
     host: '127.0.0.1',
@@ -85,7 +85,7 @@ beforeAll((): void => {
     invalidRelayUrlThrows = true;
   }
 
-  const invalidRelayDelayPath = join(workspace.tempRootPath, 'config', 'gateway-invalid-relay-delay.json');
+  const invalidRelayDelayPath = join(workspace.tempRootPath, 'configs', 'gateway-invalid-relay-delay.json');
   writeFileSync(invalidRelayDelayPath, JSON.stringify({
     mode: 'dev',
     host: '127.0.0.1',
@@ -107,7 +107,7 @@ beforeAll((): void => {
     invalidRelayDelayThrows = true;
   }
 
-  const relayWithLocalhostMailDomainPath = join(workspace.tempRootPath, 'config', 'gateway-relay-localhost-mail-domain.json');
+  const relayWithLocalhostMailDomainPath = join(workspace.tempRootPath, 'configs', 'gateway-relay-localhost-mail-domain.json');
   writeFileSync(relayWithLocalhostMailDomainPath, JSON.stringify({
     mode: 'dev',
     host: '127.0.0.1',
@@ -129,7 +129,7 @@ beforeAll((): void => {
     relayWithLocalhostMailDomainThrows = true;
   }
 
-  const invalidAttachmentLimitPath = join(workspace.tempRootPath, 'config', 'gateway-invalid-attachment-limit.json');
+  const invalidAttachmentLimitPath = join(workspace.tempRootPath, 'configs', 'gateway-invalid-attachment-limit.json');
   writeFileSync(invalidAttachmentLimitPath, JSON.stringify({
     mode: 'dev',
     host: '127.0.0.1',

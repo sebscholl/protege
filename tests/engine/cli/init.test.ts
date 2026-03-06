@@ -15,6 +15,7 @@ let forceCreatedCount = 0;
 let gatewayConfigExists = false;
 let securityConfigExists = false;
 let toolsReadmeExists = false;
+let threadMemoryHookExists = false;
 let inferenceLocalExampleExists = false;
 let initializedInferenceHasNoProvidersBlock = false;
 let initializedExtensionsIncludesOpenAiProvider = false;
@@ -36,11 +37,12 @@ beforeAll(async (): Promise<void> => {
     createdFiles: string[];
   };
   firstCreatedCount = firstResult.createdFiles.length;
-  gatewayConfigExists = existsSync(join(projectPath, 'config', 'gateway.json'));
-  securityConfigExists = existsSync(join(projectPath, 'config', 'security.json'));
+  gatewayConfigExists = existsSync(join(projectPath, 'configs', 'gateway.json'));
+  securityConfigExists = existsSync(join(projectPath, 'configs', 'security.json'));
   toolsReadmeExists = existsSync(join(projectPath, 'extensions', 'tools', 'README.md'));
-  inferenceLocalExampleExists = existsSync(join(projectPath, 'config', 'inference.local.example.json'));
-  const inferenceJson = JSON.parse(readFileSync(join(projectPath, 'config', 'inference.json'), 'utf8')) as {
+  threadMemoryHookExists = existsSync(join(projectPath, 'extensions', 'hooks', 'thread-memory-updater', 'index.ts'));
+  inferenceLocalExampleExists = existsSync(join(projectPath, 'configs', 'inference.local.example.json'));
+  const inferenceJson = JSON.parse(readFileSync(join(projectPath, 'configs', 'inference.json'), 'utf8')) as {
     providers?: unknown;
   };
   initializedInferenceHasNoProvidersBlock = inferenceJson.providers === undefined;
@@ -59,12 +61,12 @@ beforeAll(async (): Promise<void> => {
 
     return entry.name === 'openai';
   }) ?? false;
-  const systemJson = JSON.parse(readFileSync(join(projectPath, 'config', 'system.json'), 'utf8')) as {
+  const systemJson = JSON.parse(readFileSync(join(projectPath, 'configs', 'system.json'), 'utf8')) as {
     admin_contact_email?: unknown;
   };
   initializedAdminContactEmailBlank = systemJson.admin_contact_email === '';
 
-  const sentinelPath = join(projectPath, 'config', 'gateway.json');
+  const sentinelPath = join(projectPath, 'configs', 'gateway.json');
   const sentinelValue = '{"sentinel":"keep"}\n';
   writeFileSync(sentinelPath, sentinelValue);
 
@@ -107,6 +109,10 @@ describe('init cli command', () => {
 
   it('writes extensions tools directory readme scaffold into target path', () => {
     expect(toolsReadmeExists).toBe(true);
+  });
+
+  it('writes default thread-memory hook scaffold into target path', () => {
+    expect(threadMemoryHookExists).toBe(true);
   });
 
   it('does not scaffold inference.local example config files', () => {

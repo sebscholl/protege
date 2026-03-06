@@ -67,7 +67,7 @@ Use these top-level aliases across source and tests:
 
 1. `@engine/*`
 2. `@extensions/*`
-3. `@config/*`
+3. `@configs/*`
 4. `@memory/*`
 5. `@tests/*`
 

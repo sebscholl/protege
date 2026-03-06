@@ -119,7 +119,7 @@ export function checkRelayPersonaAddressDomains(): DoctorCheckResult {
       id: 'relay.persona_sender_domains_consistent',
       status: 'fail',
       message: (error as Error).message,
-      hint: 'Fix config/gateway.json and persona metadata.',
+      hint: 'Fix configs/gateway.json and persona metadata.',
     };
   }
 }
@@ -202,7 +202,7 @@ export function checkGatewayConfigReadableAndValid(): DoctorCheckResult {
       id: 'config.gateway.readable_and_valid',
       status: 'fail',
       message: (error as Error).message,
-      hint: 'Fix config/gateway.json format and required fields.',
+      hint: 'Fix configs/gateway.json format and required fields.',
     };
   }
 }
@@ -336,7 +336,7 @@ export function checkProviderConfigPresent(): DoctorCheckResult {
       id: 'provider.config_present_for_selected_provider',
       status: 'fail',
       message: (error as Error).message,
-      hint: 'Ensure config/inference.json is readable and valid.',
+      hint: 'Ensure configs/inference.json is readable and valid.',
     };
   }
 }
@@ -367,7 +367,7 @@ export function checkRelayConfigValidWhenEnabled(): DoctorCheckResult {
       id: 'relay.config_valid_when_enabled',
       status: 'fail',
       message: (error as Error).message,
-      hint: 'Fix config/gateway.json relay fields.',
+      hint: 'Fix configs/gateway.json relay fields.',
     };
   }
 }
@@ -413,7 +413,7 @@ export function checkAdminContactEmailConfigured(): DoctorCheckResult {
       id: 'scheduler.admin_contact_email_configured',
       status: 'warn',
       message: 'system config not found; runtime failure alerts are disabled.',
-      hint: 'Create config/system.json with admin_contact_email.',
+      hint: 'Create configs/system.json with admin_contact_email.',
     };
   }
 
@@ -431,7 +431,7 @@ export function checkAdminContactEmailConfigured(): DoctorCheckResult {
         id: 'scheduler.admin_contact_email_configured',
         status: 'warn',
         message: 'admin_contact_email is missing; runtime failure alerts will be logged only.',
-        hint: 'Set admin_contact_email in config/system.json.',
+        hint: 'Set admin_contact_email in configs/system.json.',
       };
     }
     if (typeof value !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
@@ -453,7 +453,7 @@ export function checkAdminContactEmailConfigured(): DoctorCheckResult {
       id: 'scheduler.admin_contact_email_configured',
       status: 'fail',
       message: (error as Error).message,
-      hint: 'Fix config/system.json syntax.',
+      hint: 'Fix configs/system.json syntax.',
     };
   }
 }

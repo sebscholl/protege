@@ -29,7 +29,7 @@ Success means an operator can:
 4. Thread view supports explicit return to inbox.
 5. Send shortcut: `Ctrl+S`.
 6. Shortcut policy: `Ctrl` only (cross-platform), no `Cmd`-specific bindings.
-7. Shortcut configuration lives in `config/system.json`.
+7. Shortcut configuration lives in `configs/system.json`.
 8. Display mode toggle is global for the full chat session:
    - `light`
    - `verbose`

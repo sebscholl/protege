@@ -4,6 +4,8 @@
 export const HOOK_EVENT = {
   ChatRuntimeActionCompleted: 'chat.runtime_action.completed',
   ChatSendFailed: 'chat.send.failed',
+  MemoryActiveUpdated: 'memory.active.updated',
+  MemoryThreadUpdated: 'memory.thread.updated',
   GatewayAlertFailed: 'gateway.alert.failed',
   GatewayAlertSent: 'gateway.alert.sent',
   GatewayAlertSkippedMissingAdminContact: 'gateway.alert.skipped_missing_admin_contact',
@@ -75,6 +77,8 @@ export type HookEventPayloadBase<
 export type HookEventPayloadByName = {
   [HOOK_EVENT.ChatRuntimeActionCompleted]: HookEventPayloadBase<typeof HOOK_EVENT.ChatRuntimeActionCompleted>;
   [HOOK_EVENT.ChatSendFailed]: HookEventPayloadBase<typeof HOOK_EVENT.ChatSendFailed>;
+  [HOOK_EVENT.MemoryActiveUpdated]: HookEventPayloadBase<typeof HOOK_EVENT.MemoryActiveUpdated>;
+  [HOOK_EVENT.MemoryThreadUpdated]: HookEventPayloadBase<typeof HOOK_EVENT.MemoryThreadUpdated>;
   [HOOK_EVENT.GatewayAlertFailed]: HookEventPayloadBase<typeof HOOK_EVENT.GatewayAlertFailed>;
   [HOOK_EVENT.GatewayAlertSent]: HookEventPayloadBase<typeof HOOK_EVENT.GatewayAlertSent>;
   [HOOK_EVENT.GatewayAlertSkippedMissingAdminContact]: HookEventPayloadBase<typeof HOOK_EVENT.GatewayAlertSkippedMissingAdminContact>;
@@ -132,7 +136,22 @@ export type HarnessHookOnEvent = <
   event: TEvent,
   payload: HookEventPayloadByName[TEvent],
   config: Record<string, unknown>,
-) => Promise<void> | void;
+) => Promise<HarnessHookResult> | HarnessHookResult;
+
+/**
+ * Represents one hook-emitted event payload used for chained hook workflows.
+ */
+export type HarnessHookEmittedEvent = {
+  event: HookEventName;
+  payload: HookEventPayloadByName[HookEventName];
+};
+
+/**
+ * Represents one optional hook callback result with chained event emissions.
+ */
+export type HarnessHookResult = void | {
+  emit?: HarnessHookEmittedEvent[];
+};
 
 /**
  * Returns true when one string value is a known hook event name.

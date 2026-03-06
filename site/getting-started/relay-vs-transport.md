@@ -4,9 +4,9 @@ Protege supports two outbound/inbound connectivity models through gateway config
 
 ## Transport (Direct SMTP)
 
-Gateway uses `config/gateway.json -> transport` (`host`, `port`, `secure`, optional `auth`) for outbound SMTP.
+Gateway uses `configs/gateway.json -> transport` (`host`, `port`, `secure`, optional `auth`) for outbound SMTP.
 
-Inbound SMTP is served by Protege gateway itself on `host:port` in `config/gateway.json`.
+Inbound SMTP is served by Protege gateway itself on `host:port` in `configs/gateway.json`.
 
 Use this when:
 
@@ -15,7 +15,7 @@ Use this when:
 
 ## Relay (WebSocket + SMTP Bridge)
 
-Gateway uses `config/gateway.json -> relay` (`enabled`, `relayWsUrl`, reconnect/heartbeat timing).
+Gateway uses `configs/gateway.json -> relay` (`enabled`, `relayWsUrl`, reconnect/heartbeat timing).
 
 When relay is enabled:
 
@@ -55,6 +55,6 @@ Relay-first (recommended first run):
 
 Direct-local path:
 
-1. set `config/gateway.json` with local SMTP `transport`
+1. set `configs/gateway.json` with local SMTP `transport`
 2. keep `relay.enabled` false
 3. `protege gateway start`

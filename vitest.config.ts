@@ -19,7 +19,7 @@ export default defineConfig({
       '@engine': resolveFromRoot({ relativePath: './engine' }),
       '@relay': resolveFromRoot({ relativePath: './relay' }),
       '@extensions': resolveFromRoot({ relativePath: './extensions' }),
-      '@config': resolveFromRoot({ relativePath: './config' }),
+      '@configs': resolveFromRoot({ relativePath: './configs' }),
       '@memory': resolveFromRoot({ relativePath: './memory' }),
       '@tests': resolveFromRoot({ relativePath: './tests' })
     }

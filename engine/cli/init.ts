@@ -182,7 +182,7 @@ export function resolvePackageRootDirPath(): string {
   for (let depth = 0; depth < 6; depth += 1) {
     const candidatePackagePath = join(currentDirPath, 'package.json');
     const candidateEnvExamplePath = join(currentDirPath, '.env.example');
-    const candidateGatewayConfigPath = join(currentDirPath, 'config', 'gateway.json');
+    const candidateGatewayConfigPath = join(currentDirPath, 'configs', 'gateway.json');
     const candidateExtensionsManifestPath = join(currentDirPath, 'extensions', 'extensions.json');
     if (
       existsSync(candidatePackagePath)
@@ -220,32 +220,44 @@ export function buildInitCopyMappings(
       targetRelativePath: '.env.example',
     },
     {
-      sourceFilePath: join(args.packageRootDirPath, 'config', 'gateway.json'),
-      targetRelativePath: 'config/gateway.json',
+      sourceFilePath: join(args.packageRootDirPath, 'configs', 'gateway.json'),
+      targetRelativePath: 'configs/gateway.json',
     },
     {
-      sourceFilePath: join(args.packageRootDirPath, 'config', 'inference.json'),
-      targetRelativePath: 'config/inference.json',
+      sourceFilePath: join(args.packageRootDirPath, 'configs', 'inference.json'),
+      targetRelativePath: 'configs/inference.json',
     },
     {
-      sourceFilePath: join(args.packageRootDirPath, 'config', 'system-prompt.md'),
-      targetRelativePath: 'config/system-prompt.md',
+      sourceFilePath: join(args.packageRootDirPath, 'prompts', 'system.md'),
+      targetRelativePath: 'prompts/system.md',
     },
     {
-      sourceFilePath: join(args.packageRootDirPath, 'config', 'context.json'),
-      targetRelativePath: 'config/context.json',
+      sourceFilePath: join(args.packageRootDirPath, 'prompts', 'README.md'),
+      targetRelativePath: 'prompts/README.md',
     },
     {
-      sourceFilePath: join(args.packageRootDirPath, 'config', 'system.json'),
-      targetRelativePath: 'config/system.json',
+      sourceFilePath: join(args.packageRootDirPath, 'prompts', 'thread-summary.md'),
+      targetRelativePath: 'prompts/thread-summary.md',
     },
     {
-      sourceFilePath: join(args.packageRootDirPath, 'config', 'security.json'),
-      targetRelativePath: 'config/security.json',
+      sourceFilePath: join(args.packageRootDirPath, 'prompts', 'active-summary.md'),
+      targetRelativePath: 'prompts/active-summary.md',
     },
     {
-      sourceFilePath: join(args.packageRootDirPath, 'config', 'theme.json'),
-      targetRelativePath: 'config/theme.json',
+      sourceFilePath: join(args.packageRootDirPath, 'configs', 'context.json'),
+      targetRelativePath: 'configs/context.json',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'configs', 'system.json'),
+      targetRelativePath: 'configs/system.json',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'configs', 'security.json'),
+      targetRelativePath: 'configs/security.json',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'configs', 'theme.json'),
+      targetRelativePath: 'configs/theme.json',
     },
     {
       sourceFilePath: join(args.packageRootDirPath, 'extensions', 'extensions.json'),
@@ -258,6 +270,34 @@ export function buildInitCopyMappings(
     {
       sourceFilePath: join(args.packageRootDirPath, 'extensions', 'hooks', 'README.md'),
       targetRelativePath: 'extensions/hooks/README.md',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'hooks', 'EVENTS.md'),
+      targetRelativePath: 'extensions/hooks/EVENTS.md',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'hooks', 'thread-memory-updater', 'README.md'),
+      targetRelativePath: 'extensions/hooks/thread-memory-updater/README.md',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'hooks', 'thread-memory-updater', 'index.ts'),
+      targetRelativePath: 'extensions/hooks/thread-memory-updater/index.ts',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'hooks', 'thread-memory-updater', 'config.json'),
+      targetRelativePath: 'extensions/hooks/thread-memory-updater/config.json',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'hooks', 'active-memory-updater', 'README.md'),
+      targetRelativePath: 'extensions/hooks/active-memory-updater/README.md',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'hooks', 'active-memory-updater', 'index.ts'),
+      targetRelativePath: 'extensions/hooks/active-memory-updater/index.ts',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'hooks', 'active-memory-updater', 'config.json'),
+      targetRelativePath: 'extensions/hooks/active-memory-updater/config.json',
     },
     {
       sourceFilePath: join(args.packageRootDirPath, 'extensions', 'providers', 'README.md'),

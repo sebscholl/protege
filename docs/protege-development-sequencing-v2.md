@@ -25,7 +25,7 @@ For current completion state against this sequence, see `docs/status.md`.
 
 | Step | Component | Task | Test | Depends On |
 |---|---|---|---|---|
-| 5 | **Config & Memory** | Implement loading for `config/` files and initialize persona-scoped memory (`memory/{persona_id}/temporal.db` with `better-sqlite3`, plus `memory/{persona_id}/active.md` for short-horizon working memory). | `node -e "..."` | M1 |
+| 5 | **Config & Memory** | Implement loading for `configs/` files and initialize persona-scoped memory (`memory/{persona_id}/temporal.db` with `better-sqlite3`, plus `memory/{persona_id}/active.md` for short-horizon working memory). | `node -e "..."` | M1 |
 | 6 | **Inference Harness** | Build the core LLM call loop. It must accept the parsed email object from `mailparser`, build a context (system prompt + email body), call the LLM, and return a string response. | Unit test | Step 5 |
 | 7 | **Full Loop** | Wire the Gateway to the Harness. Inbound email from Step 2 now calls the Harness (Step 6), and the Harness's response is sent as the reply via the outbound Gateway (Step 3). | Manual test | Step 6 |
 | 8 | **Memory (History)** | Add conversation history. Store each turn in the SQLite DB (keyed by thread ID) and retrieve it to build context for the next turn. | Unit test | Step 7 |

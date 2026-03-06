@@ -42,7 +42,7 @@ Tools are registered via an extension manifest and can be configured per-persona
 - Scheduler runtime with cron triggers, overlap guardrails, and failure alerts
 - `protege chat` TUI for local email-native chat
 - Guided `protege setup` onboarding wizard
-- Theming via `config/theme.json`
+- Theming via `configs/theme.json`
 
 ### What's Remaining
 - Scheduler hardening (concurrency controls, E2E coverage)

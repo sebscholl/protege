@@ -53,10 +53,11 @@ The physical layout of a project is its most immediate API. A well-organized pro
 ```
 protege/
 ├── .env
-├── config/
+├── configs/
 │   ├── inference.json
 │   ├── system.json
-│   ├── system-prompt.md
+├── prompts/
+│   └── system.md
 ├── personas/
 │   └── {persona_id}/
 │       ├── persona.json
@@ -90,7 +91,8 @@ protege/
 | Directory | Metaphor | Purpose |
 |---|---|---|
 | **`.env`** | The Keys | Secrets and machine-specific variables (`API_KEY`, `RELAY_URL`, etc.). |
-| **`config/`** | The Pantry | User-editable configuration that defines the agent's behavior and personality. |
+| **`configs/`** | The Pantry | User-editable JSON configuration that defines runtime behavior. |
+| **`prompts/`** | The Recipe Cards | User-editable markdown prompts that define agent behavior. |
 | **`personas/`** | The Identity Shelf | Persona identity material and metadata (`persona.json`, `passport.key`). |
 | **`memory/`** | The Refrigerator | Runtime data created and used by the agent (database, attachments, logs). |
 | **`extensions/`** | The Spice Rack | Third-party add-ons (tools and hooks) to extend the agent's capabilities. |
@@ -100,7 +102,7 @@ protege/
 
 Extensions (tools and hooks) are self-contained directories. To enable or disable extensions, the user edits the `extensions/extensions.json` manifest file. This provides a single, clear control panel for all add-ons.
 
-Local machine-specific secrets (for example provider API keys) should be stored in environment variables loaded from `.env`/`.env.local` or shell environment, while `config/` remains the canonical non-secret runtime configuration surface.
+Local machine-specific secrets (for example provider API keys) should be stored in environment variables loaded from `.env`/`.env.local` or shell environment, while `configs/` remains the canonical non-secret runtime configuration surface.
 
 ## 4. Gateway (Email)
 
@@ -163,9 +165,9 @@ For v1, conversation history search will be handled by SQLite's built-in FTS5 fu
 
 ## 7. Security & Operational Concerns
 
-*   **Access Control:** A user-configurable sender policy in `config/security.json` (supporting wildcards) determines who the gateway will accept inbound mail from.
+*   **Access Control:** A user-configurable sender policy in `configs/security.json` (supporting wildcards) determines who the gateway will accept inbound mail from.
 *   **Error Handling:** Critical operations will retry up to 3 times with exponential backoff before failing and notifying the owner.
-*   **Agent-to-Agent Loops:** A `recursion_depth` setting in `config/inference.json` (default: 3) prevents infinite loops. The agent tracks this by adding a `X-Protege-Recursion: N` header to all outbound mail, decrementing the value from any inbound mail it receives from another agent.
+*   **Agent-to-Agent Loops:** A `recursion_depth` setting in `configs/inference.json` (default: 3) prevents infinite loops. The agent tracks this by adding a `X-Protege-Recursion: N` header to all outbound mail, decrementing the value from any inbound mail it receives from another agent.
 
 ## 8. TUI (Terminal User Interface)
 

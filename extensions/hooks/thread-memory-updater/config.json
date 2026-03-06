@@ -1,0 +1,5 @@
+{
+  "prompt_path": "prompts/thread-summary.md",
+  "max_delta_items": 24,
+  "max_output_tokens": 800
+}

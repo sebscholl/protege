@@ -23,7 +23,7 @@ Adopt a unified resolver-based context pipeline with these boundaries:
 1. Harness owns resolver contracts, pipeline runner, validation, and orchestration.
 2. Resolver implementations live in `extensions/resolvers/*`.
 3. Resolver registration is manifest-driven in `extensions/extensions.json` under `resolvers`.
-4. Context pipeline config is declarative in `config/context.json` using only resolver-call steps:
+4. Context pipeline config is declarative in `configs/context.json` using only resolver-call steps:
    - `<resolver-name>`
    - `<resolver-name>(arg1, arg2, ...)`
 5. Shipped and custom resolvers use the same resolver contract and invocation shape.

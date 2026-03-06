@@ -21,10 +21,10 @@ personas/**
 !personas/README.md
 
 # Legacy persona location during migration (keep ignored)
-config/personas/**
+configs/personas/**
 
 # Local config overrides (untracked secrets/machine settings)
-config/inference.local.json
+configs/inference.local.json
 
 # VitePress runtime cache artifacts
 site/.vitepress/cache/

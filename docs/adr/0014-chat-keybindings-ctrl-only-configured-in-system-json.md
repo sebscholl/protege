@@ -14,7 +14,7 @@ We need one binding model that is predictable, configurable, and testable.
 
 1. Chat keybindings in v1 use `Ctrl` combos as canonical modifier shortcuts.
 2. `Cmd`-specific bindings are not supported in v1.
-3. Keybindings are defined in `config/system.json` under a dedicated `chat.keymap` section.
+3. Keybindings are defined in `configs/system.json` under a dedicated `chat.keymap` section.
 4. Chat rendering detail mode (`light|verbose`) is global to the session and toggled through configured keybinding.
 5. Compose safety model is mandatory:
    - normal prose input does not trigger command actions.

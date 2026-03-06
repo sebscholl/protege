@@ -10,6 +10,7 @@ let failureHookErrorMessage = '';
 let wildcardHookObserved = false;
 let exactHookObserved = false;
 let manifestOrderTrace = '';
+let chainedHookObserved = false;
 
 /**
  * Returns one hook entry that records execution order in a shared trace array.
@@ -79,6 +80,32 @@ beforeAll(async (): Promise<void> => {
         slowHookCompleted = true;
       },
     },
+    {
+      name: 'emitter',
+      events: ['harness.inference.completed'],
+      config: {},
+      onEvent: async () => ({
+        emit: [{
+          event: 'memory.thread.updated',
+          payload: {
+            level: 'info',
+            scope: 'memory',
+            event: 'memory.thread.updated',
+            timestamp: new Date().toISOString(),
+            personaId: 'persona-a',
+            threadId: 'thread-a',
+          },
+        }],
+      }),
+    },
+    {
+      name: 'chained-subscriber',
+      events: ['memory.thread.updated'],
+      config: {},
+      onEvent: async (): Promise<void> => {
+        chainedHookObserved = true;
+      },
+    },
   ];
   const dispatcher = createHookDispatcher({
     hooks,
@@ -113,6 +140,7 @@ afterAll((): void => {
   wildcardHookObserved = false;
   exactHookObserved = false;
   manifestOrderTrace = '';
+  chainedHookObserved = false;
 });
 
 describe('harness hook dispatch behavior', () => {
@@ -139,5 +167,8 @@ describe('harness hook dispatch behavior', () => {
   it('dispatches exact subscriptions for matching events', () => {
     expect(exactHookObserved).toBe(true);
   });
-});
 
+  it('dispatches chained emitted events returned by hook callbacks', () => {
+    expect(chainedHookObserved).toBe(true);
+  });
+});

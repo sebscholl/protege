@@ -26,7 +26,7 @@ This plan defines:
 
 ## Context Pipeline API (v1)
 
-Use one declarative config: `config/context.json`.
+Use one declarative config: `configs/context.json`.
 
 Step syntax is intentionally minimal:
 
@@ -40,7 +40,7 @@ All dynamic context providers use the same contract, whether shipped by core or 
 ```json
 {
   "thread": [
-    "load-file(config/system-prompt.md)",
+    "load-file(prompts/system.md)",
     "load-file(personas/{persona_id}/PERSONA.md)",
     "load-file(memory/{persona_id}/active.md)",
     "thread-memory-state",
@@ -50,7 +50,7 @@ All dynamic context providers use the same contract, whether shipped by core or 
     "current-input"
   ],
   "responsibility": [
-    "load-file(config/system-prompt.md)",
+    "load-file(prompts/system.md)",
     "load-file(personas/{persona_id}/PERSONA.md)",
     "load-file(memory/{persona_id}/active.md)",
     "invocation-metadata",
@@ -87,7 +87,7 @@ Resolver output is text (or empty/null to skip).
 
 Context layers:
 
-1. `System Prompt` (`config/system-prompt.md`)
+1. `System Prompt` (`prompts/system.md`)
 2. `Persona Prompt` (`personas/{persona_id}/PERSONA.md`)
 3. `Persona Active Memory` (`memory/{persona_id}/active.md`)
 4. `Thread Memory State` (DB-backed per thread summary/context ledger)
@@ -205,6 +205,37 @@ Update model:
 1. Updated by async cadence/debounced consolidation jobs.
 2. Not recomputed inline on every inbound turn.
 3. Inference always reads latest committed snapshot at run start.
+
+## Memory Synthesis Orchestration (Hook-Chained v1)
+
+Thread and active memory synthesis are both hook-driven, but must run in sequence.
+
+Event chain:
+
+1. `harness.inference.completed` -> `thread-memory-updater`
+2. `thread-memory-updater` emits `memory.thread.updated`
+3. `active-memory-updater` subscribes to `memory.thread.updated`
+
+Rules:
+
+1. `active-memory-updater` must not subscribe directly to `harness.inference.completed`.
+2. Thread-memory synthesis runs first and commits before active-memory dirtying.
+3. Active-memory synthesis is persona-level, debounced/cadenced, and reads latest committed thread-memory states.
+
+Dirty-state persistence:
+
+1. Keep DB-backed persona dirty rows so pending active-memory updates survive restarts.
+2. Store trigger metadata (`persona_id`, `thread_id`, `message_id`, timestamps).
+
+Prompt/input strategy:
+
+1. Thread memory updater uses incremental input:
+   - previous summary/state
+   - delta messages + tool events since last update
+2. Active memory updater uses consolidation input:
+   - current active.md
+   - recently updated thread states
+   - optional PERSONA.md context
 
 ## 3) Knowledge Guidance File (Filesystem)
 

@@ -16,7 +16,20 @@
     "web-search",
     "send-email"
   ],
-  "hooks": [],
+  "hooks": [
+    {
+      "name": "thread-memory-updater",
+      "events": [
+        "harness.inference.completed"
+      ]
+    },
+    {
+      "name": "active-memory-updater",
+      "events": [
+        "memory.thread.updated"
+      ]
+    }
+  ],
   "resolvers": [
     "load-file",
     "thread-memory-state",

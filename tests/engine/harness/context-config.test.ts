@@ -24,7 +24,7 @@ beforeAll((): void => {
   writeFileSync(
     validConfigPath,
     JSON.stringify({
-      thread: ['load-file(config/system-prompt.md)', 'thread-history'],
+      thread: ['load-file(prompts/system.md)', 'thread-history'],
       responsibility: ['current-input(foo, bar)'],
     }),
   );

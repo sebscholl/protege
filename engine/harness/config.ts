@@ -19,14 +19,14 @@ export type InferenceRuntimeConfig = {
  * Resolves the default inference config path in repository config.
  */
 export function resolveDefaultInferenceConfigPath(): string {
-  return join(process.cwd(), 'config', 'inference.json');
+  return join(process.cwd(), 'configs', 'inference.json');
 }
 
 /**
- * Resolves the default system prompt path in repository config.
+ * Resolves the default system prompt path in repository prompts.
  */
 export function resolveDefaultSystemPromptPath(): string {
-  return join(process.cwd(), 'config', 'system-prompt.md');
+  return join(process.cwd(), 'prompts', 'system.md');
 }
 
 /**

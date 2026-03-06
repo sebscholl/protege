@@ -1,6 +1,6 @@
 # Project Status
 
-Last Updated: 2026-03-05
+Last Updated: 2026-03-06
 
 This file tracks implementation progress against `docs/protege-development-sequencing-v2.md` and `docs/protege-implementation-plan-v3.md`.
 
@@ -160,9 +160,9 @@ Planning updates:
    - `web_search` now resolves default config in code and deep-merges manifest overrides
    - invalid tool manifest object entry shapes now fail with explicit validation errors
 18. OH2 implemented:
-   - scaffolded `config/inference.json` now uses provider `api_key_env` references
-   - scaffolded `config/system.json` now defaults `admin_contact_email` to blank
-   - `protege init` no longer scaffolds `config/inference.local.example.json`
+   - scaffolded `configs/inference.json` now uses provider `api_key_env` references
+   - scaffolded `configs/system.json` now defaults `admin_contact_email` to blank
+   - `protege init` no longer scaffolds `configs/inference.local.example.json`
    - `.env.example` reduced to secret credential keys only
    - CLI dotenv loading now applies `.env` then `.env.local`, while preserving shell-defined env values
 19. OH3 implemented:
@@ -213,17 +213,17 @@ Planning updates:
    - setup reruns now hydrate defaults from existing project config/env/manifest to prevent accidental reset drift
 31. Pretty-log theming improvements:
    - pretty console mode now renders multiline, indented key/value context rows for readability
-   - ANSI styling is now theme-driven via `config/theme.json` and `theme_config_path` in `config/system.json`
+   - ANSI styling is now theme-driven via `configs/theme.json` and `theme_config_path` in `configs/system.json`
 32. Scheduler restart recovery hardening:
    - scheduler startup now finalizes interrupted `running` rows as `failed` (`failure_category=runtime`) to prevent permanent overlap-lock after gateway restarts
 33. Chat inbox theming:
-   - inbox list row styling now resolves entirely from `config/theme.json` (`chat_ui.inbox`) including line tags and selected-row colors
+   - inbox list row styling now resolves entirely from `configs/theme.json` (`chat_ui.inbox`) including line tags and selected-row colors
 34. CLI output contract hardening:
    - command output now defaults to pretty-readable mode with explicit `--json` opt-in
    - top-level and subcommand help content is file-backed under `engine/cli/*.help.txt`
    - shared CLI table rendering now powers status/persona/scheduler/init/setup pretty outputs
 35. Gateway access-control security baseline:
-   - gateway sender access policy moved to dedicated `config/security.json`
+   - gateway sender access policy moved to dedicated `configs/security.json`
    - deny-first wildcard policy evaluation is enforced during inbound gateway processing before persistence/enqueue
    - local chat remains trusted and unaffected by gateway access policy enforcement
 36. Hooks implementation planning initialized:
@@ -231,15 +231,23 @@ Planning updates:
    - hooks milestone checklist created in `docs/milestones/hooks-plan.md`
 37. Hooks runtime and dispatch completed:
    - manifest-driven hook loading supports string/object entries with default-config deep merge
-   - typed hook event contract added (`engine/harness/hook-events.ts`) and applied at dispatch boundary
+   - typed hook event contract added (`engine/harness/hooks/events.ts`) and applied at dispatch boundary
    - logger emission now fans out non-blocking hook dispatch in gateway/chat runtimes with failure isolation
    - edge-case tests added for slow hooks, failing hooks, wildcard/exact subscriptions, and manifest-order execution
    - e2e observer coverage added via `tests/e2e/hooks-observer.test.ts`
-38. Context-loading planning initialized:
+38. Memory synthesis hooks and chained events completed:
+   - default hooks enabled in manifest:
+     - `thread-memory-updater` on `harness.inference.completed`
+     - `active-memory-updater` on `memory.thread.updated`
+   - hook dispatcher now supports chained event emissions returned from hook callbacks
+   - thread-memory and active-memory synthesis state tables added (`0005_memory_synthesis_state.sql`)
+   - provider-backed memory synthesis prompt files shipped under `prompts/`
+   - unit + e2e coverage added for storage, hook behavior, and chained event flow
+39. Context-loading planning initialized:
    - layered, file-first context model frozen via ADR-0034
    - milestone checklist created in `docs/milestones/context-loading-plan.md`
-39. Context pipeline migration (CP1-CP5 initial slice) implemented:
-   - `config/context.json` scaffold added with ordered `thread` and `responsibility` profiles
+40. Context pipeline migration (CP1-CP5 initial slice) implemented:
+   - `configs/context.json` scaffold added with ordered `thread` and `responsibility` profiles
    - resolver manifest support added to `extensions/extensions.json` with normalization + registry loading
    - shipped resolver modules added under `extensions/resolvers/*` (`system-prompt`, `persona-prompt`, `active-memory`, `thread-memory-state`, `invocation-metadata`, `knowledge-guidance`, `thread-history`, `current-input`)
    - harness runtime now builds context through resolver pipeline; legacy fallback path removed
@@ -252,11 +260,11 @@ Planning updates:
    - `tests/engine/harness/context-pipeline.test.ts`
    - `tests/engine/harness/resolver-registry.test.ts`
    - regression suites remain green across harness/gateway/scheduler/e2e slices.
-39. Holistic context-management planning expanded:
+41. Holistic context-management planning expanded:
    - end-to-end scenario plan added in `docs/milestones/context-management-plan.md` covering thread, responsibility, and relationship-aware context profiles
-40. Context-management planning refined:
+42. Context-management planning refined:
    - async memory synthesis model added (post-turn thread-memory updates + cadence/debounced active-memory updates), with inference reading committed snapshots only
-41. Tool-trace continuity planning initialized:
+43. Tool-trace continuity planning initialized:
    - persistence and causal ordering policy frozen via ADR-0035
    - implementation checklist created in `docs/milestones/tool-trace-persistence-plan.md`
 42. Context API planning refined:
@@ -268,6 +276,16 @@ Planning updates:
 44. Context pipeline migration completion:
    - runtime entry points (gateway/chat/scheduler) now all route through one harness context pipeline path
    - integration coverage added for thread vs responsibility profile selection (`tests/e2e/context-profile-integration.test.ts`)
+45. Memory synthesis strategy frozen:
+   - both thread and active memory synthesis are hook-driven default extensions
+   - sequencing is chained by events (`harness.inference.completed` -> `memory.thread.updated` -> active-memory flow)
+   - active-memory updates use DB-backed dirty-state coalescing
+   - per-hook provider/model override and prompt-path configuration are required
+   - decision captured in `docs/adr/0037-memory-synthesis-hooks-and-chained-events-v1.md`
+46. Memory synthesis failure/restart hardening completed:
+   - startup recovery sweep added (`engine/harness/hooks/recovery.ts`) and invoked during gateway startup
+   - dirty personas now receive synthetic `memory.thread.updated` re-dispatch after process restarts
+   - e2e coverage added for failed active-memory synthesis followed by successful startup recovery (`tests/e2e/memory-synthesis-recovery.test.ts`)
 
 ## ADR Coverage
 
@@ -297,3 +315,4 @@ Recent status-aligned ADRs:
 22. `docs/adr/0031-scheduler-concurrency-and-no-overlap-policy.md`
 23. `docs/adr/0032-scheduler-run-outcome-and-observability-policy.md`
 24. `docs/adr/0033-hooks-manifest-and-async-dispatch-v1.md`
+25. `docs/adr/0037-memory-synthesis-hooks-and-chained-events-v1.md`

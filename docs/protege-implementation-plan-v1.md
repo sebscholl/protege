@@ -36,7 +36,7 @@ This plan translates the specification and sequencing documents into an executio
 1. Initialize monorepo or single-package structure (decide explicitly).
 2. Create the canonical directory layout from spec.
 3. Add `README.md` with local dev quickstart and architecture map.
-4. Add `.env.example` and config templates (`config/inference.json`, `config/system-prompt.md`).
+4. Add `.env.example` and config templates (`configs/inference.json`, `prompts/system.md`).
 5. Add lint/format/test/typecheck scripts and CI workflow.
 6. Add structured error model (`AppError` hierarchy) and shared utilities.
 

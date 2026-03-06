@@ -34,6 +34,6 @@ Web search runtime config resolves key from configured provider env field.
 
 ## Recommended Practice
 
-- keep behavior config in `config/*.json`
+- keep behavior config in `configs/*.json`
 - keep secrets only in `.env` / `.env.local` or process environment
 - avoid committing credential files

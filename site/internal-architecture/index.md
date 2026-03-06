@@ -29,7 +29,7 @@ flowchart TD
 
 Per persona:
 
-- config/identity in `personas/{persona_id}/`
+- configs/identity in `personas/{persona_id}/`
 - runtime DB and memory in `memory/{persona_id}/`
 
 Thread timeline continuity uses:

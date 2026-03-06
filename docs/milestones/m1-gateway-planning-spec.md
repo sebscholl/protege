@@ -27,7 +27,7 @@ Milestone 1 is successful when Protege can:
    - `protege gateway restart`
 4. If inbound `Message-ID` is missing, generate a synthetic ID and treat it as canonical for threading.
 5. Persist inbound attachments in persona-scoped memory namespace (`memory/{persona_id}/attachments/`) when persona routing resolves.
-6. Enforce configurable attachment limits from `config/gateway.json`:
+6. Enforce configurable attachment limits from `configs/gateway.json`:
    - `maxAttachmentBytes`
    - `maxAttachmentsPerMessage`
    - `maxTotalAttachmentBytes`

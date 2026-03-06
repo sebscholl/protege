@@ -22,7 +22,7 @@ These conventions apply to:
 1. `engine/`
 2. `memory/`
 3. `extensions/`
-4. `config/` templates and schema code
+4. `configs/` templates and schema code
 5. `tests/`
 6. CLI/TUI code
 

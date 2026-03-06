@@ -30,7 +30,7 @@ Reusable patterns for Protege:
 
 For each harness invocation, build context in this order:
 
-1. `System layer`: `config/system-prompt.md`.
+1. `System layer`: `prompts/system.md`.
 2. `Persona layer`: `personas/{persona_id}/PERSONA.md`.
 3. `Active memory layer`: `memory/{persona_id}/active.md`.
 4. `Invocation layer`:
@@ -81,7 +81,7 @@ Budget tuning and true tokenizer support are follow-up work.
 
 Add one dedicated config for context assembly:
 
-1. `config/context.json`
+1. `configs/context.json`
 
 Minimal v1 surface:
 

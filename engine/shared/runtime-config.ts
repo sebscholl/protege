@@ -5,7 +5,7 @@ const DEFAULT_LOGS_DIR_PATH = join(process.cwd(), 'tmp', 'logs');
 const DEFAULT_POLL_INTERVAL_MS = 1500;
 const DEFAULT_SCHEDULER_POLL_INTERVAL_MS = 1000;
 const DEFAULT_SCHEDULER_MAX_GLOBAL_CONCURRENT_RUNS = 5;
-const DEFAULT_THEME_CONFIG_PATH = join(process.cwd(), 'config', 'theme.json');
+const DEFAULT_THEME_CONFIG_PATH = join(process.cwd(), 'configs', 'theme.json');
 
 /**
  * Represents supported chat display modes.
@@ -43,7 +43,7 @@ export type ChatKeyAction =
 export type ChatKeymap = Record<ChatKeyAction, string>;
 
 /**
- * Represents chat runtime configuration loaded from `config/system.json`.
+ * Represents chat runtime configuration loaded from `configs/system.json`.
  */
 export type ChatRuntimeConfig = {
   defaultDisplayMode: ChatDisplayMode;
@@ -79,7 +79,7 @@ export type PrettyLogStyleToken =
   | 'white';
 
 /**
- * Represents one configurable pretty-log theme loaded from `config/theme.json`.
+ * Represents one configurable pretty-log theme loaded from `configs/theme.json`.
  */
 export type PrettyLogTheme = {
   enabled: boolean;
@@ -101,7 +101,7 @@ export type PrettyLogTheme = {
 };
 
 /**
- * Represents chat inbox theme tokens loaded from `config/theme.json`.
+ * Represents chat inbox theme tokens loaded from `configs/theme.json`.
  */
 export type ChatUiTheme = {
   inbox: {
@@ -137,7 +137,7 @@ export type ChatUiTheme = {
 };
 
 /**
- * Represents scheduler runtime configuration loaded from `config/system.json`.
+ * Represents scheduler runtime configuration loaded from `configs/system.json`.
  */
 export type SchedulerRuntimeSettings = {
   pollIntervalMs: number;
@@ -188,7 +188,7 @@ export function getDefaultChatRuntimeConfig(): ChatRuntimeConfig {
  * Resolves default global runtime config path.
  */
 export function resolveDefaultGlobalConfigPath(): string {
-  return join(process.cwd(), 'config', 'system.json');
+  return join(process.cwd(), 'configs', 'system.json');
 }
 
 /**

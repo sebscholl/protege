@@ -13,7 +13,7 @@
       "@engine/*": ["engine/*"],
       "@relay/*": ["relay/*"],
       "@extensions/*": ["extensions/*"],
-      "@config/*": ["config/*"],
+      "@configs/*": ["configs/*"],
       "@memory/*": ["memory/*"],
       "@tests/*": ["tests/*"]
     },

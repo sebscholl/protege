@@ -18,7 +18,7 @@ Then start again.
 
 ## `logs` Fails with Log File Not Found
 
-1. Confirm `config/system.json` and `logs_dir_path`.
+1. Confirm `configs/system.json` and `logs_dir_path`.
 2. Start gateway to generate runtime events.
 3. Retry:
 ```bash
@@ -35,7 +35,7 @@ Inspect failed checks and follow each check's `hint`.
 
 Common failures:
 
-1. Missing or invalid `config/gateway.json`.
+1. Missing or invalid `configs/gateway.json`.
 2. No personas created.
 3. Missing provider API key in inference config.
 4. Missing or invalid `extensions/extensions.json`.
@@ -103,7 +103,7 @@ npm install node-cron@4.2.1
 ```bash
 protege gateway start
 ```
-2. Ensure `config/gateway.json` has either:
+2. Ensure `configs/gateway.json` has either:
    - a valid `transport` block, or
    - `relay.enabled: true` with a connected relay client persona.
 3. Verify `mailDomain` is configured to a non-`localhost` domain when relay mode is enabled.
@@ -114,7 +114,7 @@ protege logs --scope scheduler --tail 200
 
 ## Runtime Failure Alerts Are Not Sent
 
-1. Set `admin_contact_email` in `config/system.json`.
+1. Set `admin_contact_email` in `configs/system.json`.
 2. Ensure it is a valid email address.
 3. Run:
 ```bash
@@ -142,7 +142,7 @@ PERPLEXITY_API_KEY=pplx-...
 ## Scheduler Appears Backlogged
 
 1. Scheduler now enforces bounded concurrency.
-2. Check `config/system.json`:
+2. Check `configs/system.json`:
    - `scheduler.max_global_concurrent_runs`
 3. Increase limits carefully if runs are consistently queued.
 

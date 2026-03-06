@@ -18,7 +18,7 @@ Mailpit web UI:
 http://127.0.0.1:8025
 ```
 
-Gateway transport config (`config/gateway.json`):
+Gateway transport config (`configs/gateway.json`):
 
 ```json
 {
@@ -176,7 +176,7 @@ swaks \
 
 ## Relay Debugging
 
-Enable readable console logs in `config/system.json`:
+Enable readable console logs in `configs/system.json`:
 
 ```json
 {

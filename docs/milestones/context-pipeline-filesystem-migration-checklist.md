@@ -10,7 +10,7 @@ Scope: Reorganize harness modules and implement resolver-driven context pipeline
 ## Exit Criteria
 
 1. Harness context loading flows through one pipeline runner.
-2. Pipeline is configured by `config/context.json` resolver-call steps only (`<name>` and `<name>(arg1, ...)`).
+2. Pipeline is configured by `configs/context.json` resolver-call steps only (`<name>` and `<name>(arg1, ...)`).
 3. Resolver implementations are loaded from `extensions/resolvers/*` via manifest.
 4. Gateway/chat/scheduler harness paths use the same invocation-based context call.
 5. Existing behavior remains parity-safe with tests.
@@ -34,7 +34,7 @@ Scope: Reorganize harness modules and implement resolver-driven context pipeline
 
 ## CP3: Context Config Contract
 
-- [x] Add `config/context.json` default scaffold.
+- [x] Add `configs/context.json` default scaffold.
 - [x] Add parser/validator for ordered pipeline steps.
 - [x] Validate supported step forms:
   1. `<resolver-name>`

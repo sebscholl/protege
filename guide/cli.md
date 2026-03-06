@@ -214,9 +214,9 @@ protege logs --json
 
 Pretty console log theming:
 
-1. Pretty-mode colors and indentation are configured in `config/theme.json`.
-2. `config/system.json` controls the theme file path with `theme_config_path` (default: `config/theme.json`).
-3. Chat inbox list styling is also configured in `config/theme.json` under `chat_ui.inbox` (title/timestamp/participants/preview/separator tags and selected-row colors).
+1. Pretty-mode colors and indentation are configured in `configs/theme.json`.
+2. `configs/system.json` controls the theme file path with `theme_config_path` (default: `configs/theme.json`).
+3. Chat inbox list styling is also configured in `configs/theme.json` under `chat_ui.inbox` (title/timestamp/participants/preview/separator tags and selected-row colors).
 
 ## Doctor
 

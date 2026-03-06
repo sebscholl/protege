@@ -52,7 +52,7 @@ Thread:
 6. `PageUp` / `PageDown`: fast scroll.
 7. `Ctrl+U` / `Ctrl+D`: fast scroll alternative.
 
-All chat keybindings are configurable in `config/system.json` under `chat.keymap`.
+All chat keybindings are configurable in `configs/system.json` under `chat.keymap`.
 
 ## Sending Behavior
 

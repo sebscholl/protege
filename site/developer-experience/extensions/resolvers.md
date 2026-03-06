@@ -1,6 +1,6 @@
 # Resolvers
 
-Resolvers are context loaders used by the harness context pipeline (`config/context.json`).
+Resolvers are context loaders used by the harness context pipeline (`configs/context.json`).
 
 ## Resolver Contract
 
@@ -33,7 +33,7 @@ export type HarnessResolverDefinition = {
 
 ## Context Step Syntax
 
-In `config/context.json`, each step is a resolver call:
+In `configs/context.json`, each step is a resolver call:
 
 - `resolver-name`
 - `resolver-name(arg1, arg2, arg3)`

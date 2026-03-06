@@ -1,6 +1,6 @@
 {
   "thread": [
-    "load-file(config/system-prompt.md)",
+    "load-file(prompts/system.md)",
     "load-file(personas/{persona_id}/PERSONA.md)",
     "load-file(memory/{persona_id}/active.md)",
     "thread-memory-state",
@@ -10,7 +10,7 @@
     "current-input"
   ],
   "responsibility": [
-    "load-file(config/system-prompt.md)",
+    "load-file(prompts/system.md)",
     "load-file(personas/{persona_id}/PERSONA.md)",
     "load-file(memory/{persona_id}/active.md)",
     "load-file(personas/{persona_id}/knowledge/CONTENT.md)",

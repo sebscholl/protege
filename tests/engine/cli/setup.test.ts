@@ -76,12 +76,12 @@ beforeAll(async (): Promise<void> => {
   setupResult = JSON.parse(output.trim()) as typeof setupResult;
 
   const projectPath = join(workspace.tempRootPath, 'sample-project');
-  const inferenceConfig = JSON.parse(readFileSync(join(projectPath, 'config', 'inference.json'), 'utf8')) as {
+  const inferenceConfig = JSON.parse(readFileSync(join(projectPath, 'configs', 'inference.json'), 'utf8')) as {
     provider: string;
   };
   inferenceProvider = inferenceConfig.provider;
 
-  const gatewayConfig = JSON.parse(readFileSync(join(projectPath, 'config', 'gateway.json'), 'utf8')) as {
+  const gatewayConfig = JSON.parse(readFileSync(join(projectPath, 'configs', 'gateway.json'), 'utf8')) as {
     relay?: {
       enabled?: boolean;
       relayWsUrl?: string;
@@ -96,7 +96,7 @@ beforeAll(async (): Promise<void> => {
   gatewayRelayWsUrl = gatewayConfig.relay?.relayWsUrl ?? '';
   gatewayTransportDefined = gatewayConfig.transport !== undefined;
 
-  const systemConfig = JSON.parse(readFileSync(join(projectPath, 'config', 'system.json'), 'utf8')) as {
+  const systemConfig = JSON.parse(readFileSync(join(projectPath, 'configs', 'system.json'), 'utf8')) as {
     admin_contact_email?: string;
   };
   systemAdminContactEmail = systemConfig.admin_contact_email ?? '';
@@ -142,7 +142,7 @@ beforeAll(async (): Promise<void> => {
   rerunOutboundMode = rerunResult.outboundMode;
   rerunWebSearchProvider = rerunResult.webSearchProvider;
   rerunNextCommand = rerunResult.nextCommand;
-  const rerunSystemConfig = JSON.parse(readFileSync(join(projectPath, 'config', 'system.json'), 'utf8')) as {
+  const rerunSystemConfig = JSON.parse(readFileSync(join(projectPath, 'configs', 'system.json'), 'utf8')) as {
     admin_contact_email?: string;
   };
   rerunAdminContactEmail = rerunSystemConfig.admin_contact_email ?? '';
@@ -262,7 +262,7 @@ beforeAll(async (): Promise<void> => {
   });
   localSetupResult = JSON.parse(output.trim()) as typeof localSetupResult;
 
-  const gatewayConfig = JSON.parse(readFileSync(join(localProjectPath, 'config', 'gateway.json'), 'utf8')) as {
+  const gatewayConfig = JSON.parse(readFileSync(join(localProjectPath, 'configs', 'gateway.json'), 'utf8')) as {
     relay?: {
       enabled?: boolean;
     };

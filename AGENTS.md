@@ -68,7 +68,7 @@ Do not silently diverge from these files.
 7. Use path aliases instead of deep relative imports across top-level domains:
    - `@engine/*`
    - `@extensions/*`
-   - `@config/*`
+   - `@configs/*`
    - `@memory/*`
    - `@tests/*`
 8. Import ordering is mandatory:

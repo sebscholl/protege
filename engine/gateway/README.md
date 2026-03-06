@@ -48,7 +48,7 @@ Responsible for SMTP parsing/sending and relay tunneling behavior.
 
 ## Config Validation
 
-1. `config/gateway.json` is now fail-fast validated at startup.
+1. `configs/gateway.json` is now fail-fast validated at startup.
 2. Required top-level fields: `mode`, `host`, `port`, `mailDomain`.
 3. `relay` is optional, but when present must include valid websocket URL (`ws://` or `wss://`) plus positive integer timing fields.
 4. Relay mode rejects `mailDomain: "localhost"` to prevent unauthenticated outbound sender domains.

@@ -25,6 +25,7 @@ import { buildReplySubject } from '@engine/gateway/threading';
 import type { HookEventPayloadByName } from '@engine/harness/hooks/events';
 import { isHookEventName } from '@engine/harness/hooks/events';
 import { createHookDispatcher, loadHookRegistry } from '@engine/harness/hooks/registry';
+import { recoverDirtyMemorySynthesisStates } from '@engine/harness/hooks/recovery';
 import type { HarnessRuntimeActionInvoker } from '@engine/harness/runtime';
 import {
   persistInboundMessageForRuntime,
@@ -159,6 +160,13 @@ export async function startGatewayRuntime(
         return;
       }
       hookDispatcher.dispatch(payload.event, payload as HookEventPayloadByName[typeof payload.event]);
+    },
+  });
+  recoverDirtyMemorySynthesisStates({
+    hookDispatcher,
+    logger: {
+      info: logger.info,
+      error: logger.error,
     },
   });
   const transport = args.config.transport
@@ -2433,7 +2441,7 @@ export function readGatewayRuntimeConfig(
  * Resolves the default gateway config path within the workspace.
  */
 export function resolveDefaultGatewayConfigPath(): string {
-  return join(process.cwd(), 'config', 'gateway.json');
+  return join(process.cwd(), 'configs', 'gateway.json');
 }
 
 /**

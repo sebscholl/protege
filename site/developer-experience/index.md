@@ -21,7 +21,7 @@ Object entries support config override and deep-merge semantics in loaders.
 - Extensions: `extensions/`
 - Persona identity and prompts: `personas/`
 - Runtime memory: `memory/{persona_id}/`
-- User-editable config: `config/`
+- User-editable config: `configs/`
 
 ## Key Principles
 

@@ -6,7 +6,7 @@ This file documents the v1 hook event catalog and payload contract.
 
 Source of truth:
 
-1. Event names and mapped payload types: `engine/harness/hook-events.ts`
+1. Event names and mapped payload types: `engine/harness/hooks/events.ts`
 
 ## Payload Contract
 
@@ -15,6 +15,10 @@ All hook callbacks receive:
 1. `event`: `HookEventName`
 2. `payload`: `HookEventPayloadByName[event]`
 3. `config`: resolved hook config object
+
+Hooks may also return a chained emission payload:
+
+1. `{ emit: [{ event, payload }] }`
 
 `payload` always includes base fields:
 
@@ -27,54 +31,13 @@ And may include event-specific context fields emitted by runtime log calls (for 
 
 ## Event Catalog (v1)
 
-1. `chat.runtime_action.completed`
-2. `chat.send.failed`
-3. `gateway.alert.failed`
-4. `gateway.alert.sent`
-5. `gateway.alert.skipped_missing_admin_contact`
-6. `gateway.alert.skipped_missing_persona`
-7. `gateway.error`
-8. `gateway.inbound.enqueued`
-9. `gateway.inbound.parsed`
-10. `gateway.inbound.received`
-11. `gateway.inbound.server_started`
-12. `gateway.outbound.queued_via_relay`
-13. `gateway.outbound.sent_via_relay`
-14. `gateway.outbound.relay_delivery_signal_timeout`
-15. `gateway.outbound.sending`
-16. `gateway.outbound.sent`
-17. `gateway.persona.email_domain_reconciled`
-18. `gateway.relay.authenticated`
-19. `gateway.relay.client_starting`
-20. `gateway.relay.clients_started`
-21. `gateway.relay.control_message`
-22. `gateway.relay.disconnected`
-23. `gateway.relay.frame_invalid`
-24. `gateway.relay.ingest_failed`
-25. `gateway.relay.ingest_uninitialized`
-26. `gateway.runtime_action.completed`
-27. `gateway.runtime_action.invoking`
-28. `gateway.scheduler.start_failed`
-29. `harness.inbound.persisted`
-30. `harness.inference.completed`
-31. `harness.inference.started`
-32. `harness.tool.call.completed`
-33. `harness.tool.call.failed`
-34. `harness.tool.call.started`
-35. `harness.tool.calls.received`
-36. `scheduler.alert.skipped_missing_admin_contact`
-37. `scheduler.cron.enqueued`
-38. `scheduler.cron.invalid_schedule`
-39. `scheduler.cron.skipped_overlap`
-40. `scheduler.cycle.persona_failed`
-41. `scheduler.cycle.throttled`
-42. `scheduler.recovery.interrupted_runs_finalized`
-43. `scheduler.run.claimed`
-44. `scheduler.run.completed`
-45. `scheduler.run.failed`
-46. `scheduler.run.started`
-47. `scheduler.stopped`
-48. `scheduler.sync.completed`
+Authoritative event names are defined in `engine/harness/hooks/events.ts` (`HOOK_EVENT`).
+
+Notable chain events:
+
+1. `harness.inference.completed`
+2. `memory.thread.updated`
+3. `memory.active.updated`
 
 ## Payload Fields by Event (Additional to Base Fields)
 
@@ -82,9 +45,11 @@ Base fields are always present: `level`, `scope`, `event`, `timestamp`.
 
 1. `chat.runtime_action.completed`: `action`, `threadId`, `messageId`
 2. `chat.send.failed`: `personaId`, `threadId`, `errorName`, `message`, `errorStackPreview`
-3. `gateway.alert.failed`: `correlationId`, `personaId`, `threadId`, `messageId`, `message`
-4. `gateway.alert.sent`: `correlationId`, `personaId`, `threadId`, `messageId`, `alertMessageId`
-5. `gateway.alert.skipped_missing_admin_contact`: `correlationId`, `personaId`, `threadId`, `messageId`
+3. `memory.active.updated`: `personaId`, `threadId`, `synthesisProvider`, `synthesisModel`
+4. `memory.thread.updated`: `personaId`, `threadId`, `sourceMessageId`, `sourceReceivedAt`, `sourceToolEventAt`, `synthesisProvider`, `synthesisModel`
+5. `gateway.alert.failed`: `correlationId`, `personaId`, `threadId`, `messageId`, `message`
+6. `gateway.alert.sent`: `correlationId`, `personaId`, `threadId`, `messageId`, `alertMessageId`
+7. `gateway.alert.skipped_missing_admin_contact`: `correlationId`, `personaId`, `threadId`, `messageId`
 6. `gateway.alert.skipped_missing_persona`: `correlationId`, `threadId`, `messageId`
 7. `gateway.error`: union payload from callsite, typically one of:
    - `reasonCode`, `message`, `smtpSessionId`
@@ -135,7 +100,7 @@ Base fields are always present: `level`, `scope`, `event`, `timestamp`.
 ## TypeScript Usage
 
 ```ts
-import type { HarnessHookOnEvent } from '@engine/harness/hook-events';
+import type { HarnessHookOnEvent } from '@engine/harness/hooks/events';
 
 export const onEvent: HarnessHookOnEvent = async (event, payload, config) => {
   if (event === 'harness.tool.call.failed') {

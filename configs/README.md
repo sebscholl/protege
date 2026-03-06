@@ -4,7 +4,7 @@ Extension Surface: Yes
 
 This directory contains user-editable runtime behavior configuration.
 
-Includes model/provider settings and prompts. It should not contain runtime-generated state.
+Includes model/provider settings and runtime behavior controls. It should not contain runtime-generated state.
 
 Current top-level config files:
 
@@ -13,7 +13,8 @@ Current top-level config files:
 3. `context.json` for harness context-loading pipeline behavior.
 4. `security.json` for gateway access-control policy.
 5. `system.json` for global runtime behavior (for example unified log path).
-6. `system-prompt.md` for the base system prompt text.
+
+Prompt templates are intentionally separate and live under top-level `prompts/` (for example `prompts/system.md`).
 
 ## `gateway.json`
 
@@ -133,7 +134,7 @@ Scope:
 
 ## Secrets and Env
 
-`config/` is canonical non-secret config. Secrets belong in process env (`.env`, `.env.local`, or shell env).
+`configs/` is canonical non-secret config. Secrets belong in process env (`.env`, `.env.local`, or shell env).
 
 The current `.env.example` keys are:
 

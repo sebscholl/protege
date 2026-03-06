@@ -55,9 +55,9 @@ Optional:
 
 When rerunning `protege setup`, defaults are hydrated from existing project state before prompting or applying:
 
-1. `config/inference.json` provider
-2. `config/gateway.json` relay mode + relay ws URL
-3. `config/system.json` admin contact email
+1. `configs/inference.json` provider
+2. `configs/gateway.json` relay mode + relay ws URL
+3. `configs/system.json` admin contact email
 4. `extensions/extensions.json` web search provider
 5. `.env` provider/web-search keys (for prompt seed only)
 

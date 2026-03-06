@@ -18,10 +18,10 @@ Runtime behavior:
 1. Cron enqueue is overlap-safe per responsibility:
    - if a responsibility already has an open run (`queued` or `running`), scheduler logs `scheduler.cron.skipped_overlap`, persists a `skipped_overlap` run outcome, and does not enqueue a duplicate.
 2. Scheduler dispatch is bounded and parallel:
-   - one global concurrent run cap is enforced from `config/system.json` (`scheduler.max_global_concurrent_runs`).
+   - one global concurrent run cap is enforced from `configs/system.json` (`scheduler.max_global_concurrent_runs`).
    - when queued work is temporarily blocked by that global cap, runtime emits `scheduler.cycle.throttled` visibility logs.
 3. Failure alerts use global admin contact:
-   - `admin_contact_email` in `config/system.json`.
+   - `admin_contact_email` in `configs/system.json`.
    - if missing, failures are logged and alert send is skipped.
 4. Startup recovery finalizes interrupted runs:
    - `running` rows left behind by a stopped gateway process are marked `failed` with `failure_category=runtime` during scheduler persona startup.

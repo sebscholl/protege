@@ -36,7 +36,7 @@ export type GatewayAccessEvaluation = {
  * Resolves the default security config path in repository config.
  */
 export function resolveDefaultSecurityConfigPath(): string {
-  return join(process.cwd(), 'config', 'security.json');
+  return join(process.cwd(), 'configs', 'security.json');
 }
 
 /**

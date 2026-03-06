@@ -71,7 +71,6 @@ beforeAll(async (): Promise<void> => {
     },
   });
   workspace.patchConfigFiles({
-    'system-prompt.md': 'You are Protege.',
     'inference.json': {
       provider: 'openai',
       model: 'gpt-4.1',
@@ -85,6 +84,10 @@ beforeAll(async (): Promise<void> => {
       logs_dir_path: join(tempRootPath, 'tmp', 'logs'),
       console_log_format: 'json',
     },
+  });
+  workspace.writeFile({
+    relativePath: 'prompts/system.md',
+    payload: 'You are Protege.',
   });
 
   let callCount = 0;

@@ -24,7 +24,7 @@ Implementation progress is tracked in `docs/status.md`.
    - temporal memory in `memory/{persona_id}/temporal.db`
    - active memory in `memory/{persona_id}/active.md`
 16. Inbound sequencing: persist and acknowledge SMTP quickly, then enqueue async harness execution.
-17. Unified runtime logging: global `config/system.json` controls log path and console format.
+17. Unified runtime logging: global `configs/system.json` controls log path and console format.
 18. Tool-driven outbound email defaults to same-thread replies; explicit `threadingMode: "new_thread"` is required to start separate conversations.
 
 ## Relay Identity and Auth (Replaces Token-Issuance Model)

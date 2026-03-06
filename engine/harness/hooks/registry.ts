@@ -1,5 +1,6 @@
 import type { HookManifestEntry, NormalizedHookManifestEntry } from '@engine/harness/tools/registry';
 import type {
+  HarnessHookEmittedEvent,
   HarnessHookOnEvent,
   HookEventName,
   HookEventPayloadByName,
@@ -94,20 +95,26 @@ export function createHookDispatcher(
     ) => void;
   },
 ): HookDispatcher {
-  return {
-    dispatch: (
-      event,
-      payload,
-    ): void => {
-      for (const hook of args.hooks) {
-        if (!isHookSubscribedToEvent({
-          hook,
-          event,
-        })) {
-          continue;
-        }
+  const dispatchInternal = <TEvent extends HookEventName>(
+    event: TEvent,
+    payload: HookEventPayloadByName[TEvent],
+  ): void => {
+    for (const hook of args.hooks) {
+      if (!isHookSubscribedToEvent({
+        hook,
+        event,
+      })) {
+        continue;
+      }
 
-        void Promise.resolve(hook.onEvent(event, payload, hook.config)).catch((error: unknown) => {
+      void Promise.resolve(hook.onEvent(event, payload, hook.config))
+        .then((result) => {
+          dispatchEmittedEvents({
+            emittedEvents: result?.emit,
+            dispatch: dispatchInternal,
+          });
+        })
+        .catch((error: unknown) => {
           const normalizedError = error instanceof Error ? error : new Error(String(error));
           args.onHookError?.(
             hook.name,
@@ -115,9 +122,41 @@ export function createHookDispatcher(
             normalizedError,
           );
         });
-      }
+    }
+  };
+
+  return {
+    dispatch: (
+      event,
+      payload,
+    ): void => {
+      dispatchInternal(event, payload);
     },
   };
+}
+
+/**
+ * Dispatches one optional emitted-event list returned from hook callback execution.
+ */
+export function dispatchEmittedEvents(
+  args: {
+    emittedEvents: HarnessHookEmittedEvent[] | undefined;
+    dispatch: <TEvent extends HookEventName>(
+      event: TEvent,
+      payload: HookEventPayloadByName[TEvent],
+    ) => void;
+  },
+): void {
+  if (!args.emittedEvents || args.emittedEvents.length === 0) {
+    return;
+  }
+
+  for (const emittedEvent of args.emittedEvents) {
+    args.dispatch(
+      emittedEvent.event,
+      emittedEvent.payload as HookEventPayloadByName[typeof emittedEvent.event],
+    );
+  }
 }
 
 /**

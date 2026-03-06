@@ -6,7 +6,7 @@ This directory owns context pipeline orchestration for harness runs.
 
 It is responsible for:
 
-1. Loading `config/context.json`.
+1. Loading `configs/context.json`.
 2. Executing ordered context steps.
 3. Enforcing context budgets and ordering.
 

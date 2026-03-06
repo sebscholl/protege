@@ -22,7 +22,7 @@ export type ContextPipelineConfig = {
  * Resolves default context-pipeline config path.
  */
 export function resolveDefaultContextConfigPath(): string {
-  return join(process.cwd(), 'config', 'context.json');
+  return join(process.cwd(), 'configs', 'context.json');
 }
 
 /**

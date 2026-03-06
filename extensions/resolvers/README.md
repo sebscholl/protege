@@ -23,7 +23,7 @@ Where:
 
 1. `type` is `thread` or `responsibility`
 2. `context` contains source-specific fields (`personaId`, `threadId`, etc.)
-3. `resolverArgs` contains positional string args parsed from `config/context.json` resolver step calls
+3. `resolverArgs` contains positional string args parsed from `configs/context.json` resolver step calls
 
 Resolver step syntax:
 

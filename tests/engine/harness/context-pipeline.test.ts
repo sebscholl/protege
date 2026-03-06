@@ -26,13 +26,13 @@ beforeAll(async (): Promise<void> => {
     payload: 'Active memory from template',
   });
   workspace.writeFile({
-    relativePath: 'config/snippet.md',
+    relativePath: 'configs/snippet.md',
     payload: 'System section from file',
   });
   workspace.patchConfigFiles({
     'context.json': {
       thread: [
-        'load-file(config/snippet.md)',
+        'load-file(configs/snippet.md)',
         'load-file("memory/{ persona_id }/active.md")',
         'demo-resolver(foo, bar)',
       ],
@@ -93,7 +93,7 @@ beforeAll(async (): Promise<void> => {
     input,
     personaId: 'persona-demo',
     maxHistoryTokens: 1200,
-    configPath: join(tempRootPath, 'config', 'context.json'),
+    configPath: join(tempRootPath, 'configs', 'context.json'),
     manifestPath: join(tempRootPath, 'extensions', 'extensions.json'),
   });
 

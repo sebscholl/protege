@@ -1,8 +1,8 @@
 # Config Files
 
-This page covers every file under `config/` currently used by runtime.
+This page covers every file under `configs/` currently used by runtime.
 
-## `config/gateway.json`
+## `configs/gateway.json`
 
 Runtime loader: `readGatewayRuntimeConfig` (`engine/gateway/index.ts`).
 
@@ -37,7 +37,7 @@ Runtime loader: `readGatewayRuntimeConfig` (`engine/gateway/index.ts`).
 
 If `relay.enabled` is `true`, `mailDomain` must not be `localhost`.
 
-## `config/inference.json`
+## `configs/inference.json`
 
 Runtime loader: `readInferenceRuntimeConfig` (`engine/harness/config.ts`).
 
@@ -55,7 +55,7 @@ Runtime loader: `readInferenceRuntimeConfig` (`engine/harness/config.ts`).
 
 Provider credential and endpoint config are loaded from `extensions/extensions.json -> providers` plus provider-local defaults.
 
-## `config/security.json`
+## `configs/security.json`
 
 Runtime loader: `readSecurityRuntimeConfig` (`engine/shared/security-config.ts`).
 
@@ -82,7 +82,7 @@ Wildcard match uses `*` and is case-insensitive after normalization.
 
 Scope: gateway inbound sender filtering only. Local chat is not filtered by this policy.
 
-## `config/system.json`
+## `configs/system.json`
 
 Runtime loader: `readGlobalRuntimeConfig` (`engine/shared/runtime-config.ts`).
 
@@ -90,7 +90,7 @@ Runtime loader: `readGlobalRuntimeConfig` (`engine/shared/runtime-config.ts`).
 
 - `logs_dir_path`: string path
 - `console_log_format`: `"json" | "pretty"`
-- `theme_config_path`: optional path to theme file (defaults to `config/theme.json`)
+- `theme_config_path`: optional path to theme file (defaults to `configs/theme.json`)
 - `admin_contact_email`: optional global failure alert target
 
 ### `chat`
@@ -125,7 +125,7 @@ Runtime loader: `readGlobalRuntimeConfig` (`engine/shared/runtime-config.ts`).
 - `max_global_concurrent_runs`: positive integer
 - `admin_contact_email`: optional scheduler-local override
 
-## `config/context.json`
+## `configs/context.json`
 
 Runtime loader: `readContextPipelineConfig` (`engine/harness/context/config.ts`).
 
@@ -148,7 +148,7 @@ Current scaffolded values:
 ```json
 {
   "thread": [
-    "load-file(config/system-prompt.md)",
+    "load-file(prompts/system.md)",
     "load-file(personas/{persona_id}/PERSONA.md)",
     "load-file(memory/{persona_id}/active.md)",
     "thread-memory-state",
@@ -158,7 +158,7 @@ Current scaffolded values:
     "current-input"
   ],
   "responsibility": [
-    "load-file(config/system-prompt.md)",
+    "load-file(prompts/system.md)",
     "load-file(personas/{persona_id}/PERSONA.md)",
     "load-file(memory/{persona_id}/active.md)",
     "load-file(personas/{persona_id}/knowledge/CONTENT.md)",
@@ -167,13 +167,13 @@ Current scaffolded values:
 }
 ```
 
-## `config/system-prompt.md`
+## `prompts/system.md`
 
 Loaded by harness via `loadSystemPrompt`. If missing, system prompt contribution is empty.
 
-Also commonly loaded via context pipeline `load-file(config/system-prompt.md)`.
+Also commonly loaded via context pipeline `load-file(prompts/system.md)`.
 
-## `config/theme.json`
+## `configs/theme.json`
 
 Runtime loader: theme parsing in `engine/shared/runtime-config.ts`.
 
