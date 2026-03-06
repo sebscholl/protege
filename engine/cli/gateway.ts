@@ -4,7 +4,12 @@ import { join } from 'node:path';
 
 import { readGatewayRuntimeConfig, resolveDefaultGatewayConfigPath, startGatewayRuntime } from '@engine/gateway/index';
 
-const PID_FILE_PATH = join(process.cwd(), 'tmp', 'gateway.pid');
+/**
+ * Resolves the gateway pid marker file path from the current working directory.
+ */
+export function resolveGatewayPidFilePath(): string {
+  return join(process.cwd(), 'tmp', 'gateway.pid');
+}
 
 /**
  * Dispatches gateway-specific CLI commands.
@@ -60,7 +65,7 @@ export async function startGatewayCommand(
     : baseConfig;
 
   mkdirSync(join(process.cwd(), 'tmp'), { recursive: true });
-  writeFileSync(PID_FILE_PATH, String(process.pid));
+  writeFileSync(resolveGatewayPidFilePath(), String(process.pid));
 
   await startGatewayRuntime({
     config: runtimeConfig,
@@ -71,12 +76,13 @@ export async function startGatewayCommand(
  * Stops a tracked gateway process by pid marker when available.
  */
 export function stopGatewayCommand(): void {
-  if (!existsSync(PID_FILE_PATH)) {
+  const pidFilePath = resolveGatewayPidFilePath();
+  if (!existsSync(pidFilePath)) {
     stopGatewayByProcessScan();
     return;
   }
 
-  const pidText = readFileSync(PID_FILE_PATH, 'utf8').trim();
+  const pidText = readFileSync(pidFilePath, 'utf8').trim();
   const pid = Number(pidText);
   if (!Number.isNaN(pid)) {
     try {
@@ -86,7 +92,7 @@ export function stopGatewayCommand(): void {
     }
   }
 
-  unlinkSync(PID_FILE_PATH);
+  unlinkSync(pidFilePath);
   stopGatewayByProcessScan();
 }
 

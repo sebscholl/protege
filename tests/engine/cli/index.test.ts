@@ -5,12 +5,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   runCli,
+  resolveGatewayPidFilePath,
   stopGatewayCommand,
 } from '@engine/cli/index';
 import { captureStdout } from '@tests/helpers/stdout';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
-
-const PID_PATH = join(process.cwd(), 'tmp', 'gateway.pid');
 
 /**
  * Ensures the tmp runtime directory exists before pid-file assertions.
@@ -25,38 +24,43 @@ describe('gateway cli lifecycle behavior', () => {
   });
 
   it('returns safely when stop is called without pid file', () => {
-    if (existsSync(PID_PATH)) {
-      rmSync(PID_PATH, { force: true });
+    const pidPath = resolveGatewayPidFilePath();
+    if (existsSync(pidPath)) {
+      rmSync(pidPath, { force: true });
     }
     expect(() => stopGatewayCommand()).not.toThrow();
   });
 
   it('removes pid file when pid is not numeric', () => {
+    const pidPath = resolveGatewayPidFilePath();
     ensureRuntimeDirectory();
-    writeFileSync(PID_PATH, 'not-a-number');
+    writeFileSync(pidPath, 'not-a-number');
     stopGatewayCommand();
-    expect(existsSync(PID_PATH)).toBe(false);
+    expect(existsSync(pidPath)).toBe(false);
   });
 
   it('removes pid file when process id is stale', () => {
+    const pidPath = resolveGatewayPidFilePath();
     ensureRuntimeDirectory();
-    writeFileSync(PID_PATH, '999999');
+    writeFileSync(pidPath, '999999');
     stopGatewayCommand();
-    expect(existsSync(PID_PATH)).toBe(false);
+    expect(existsSync(pidPath)).toBe(false);
   });
 
   it('dispatches stop command through runCli', async () => {
+    const pidPath = resolveGatewayPidFilePath();
     ensureRuntimeDirectory();
-    writeFileSync(PID_PATH, 'not-a-number');
+    writeFileSync(pidPath, 'not-a-number');
     await runCli({ argv: ['gateway', 'stop'] });
-    expect(existsSync(PID_PATH)).toBe(false);
+    expect(existsSync(pidPath)).toBe(false);
   });
 
   it('writes the expected pid marker value for fixture setup', () => {
+    const pidPath = resolveGatewayPidFilePath();
     ensureRuntimeDirectory();
-    writeFileSync(PID_PATH, '12345');
-    expect(readFileSync(PID_PATH, 'utf8').trim()).toBe('12345');
-    rmSync(PID_PATH, { force: true });
+    writeFileSync(pidPath, '12345');
+    expect(readFileSync(pidPath, 'utf8').trim()).toBe('12345');
+    rmSync(pidPath, { force: true });
   });
 });
 

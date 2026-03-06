@@ -338,4 +338,7 @@ export function resolveCliPackageJsonPath(): string {
   throw new Error('Unable to resolve package.json for CLI version output.');
 }
 
-export { stopGatewayCommand } from '@engine/cli/gateway';
+export {
+  resolveGatewayPidFilePath,
+  stopGatewayCommand,
+} from '@engine/cli/gateway';
