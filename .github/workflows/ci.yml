@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+  package-smoke:
+    runs-on: ubuntu-latest
+    needs: quality
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build tarball
+        run: npm pack
+
+      - name: Install tarball in clean project
+        run: |
+          set -euo pipefail
+          PACKAGE_TGZ="$(ls -1 protege-*.tgz | head -n1)"
+          SMOKE_DIR="/tmp/protege-smoke-ci"
+          rm -rf "$SMOKE_DIR"
+          mkdir -p "$SMOKE_DIR"
+          cd "$SMOKE_DIR"
+          npm init -y >/dev/null 2>&1
+          npm install "$GITHUB_WORKSPACE/$PACKAGE_TGZ"
+
+      - name: Verify CLI entrypoint
+        run: |
+          set -euo pipefail
+          SMOKE_DIR="/tmp/protege-smoke-ci"
+          "$SMOKE_DIR/node_modules/.bin/protege" --help
+          "$SMOKE_DIR/node_modules/.bin/protege" --version
+
+      - name: Verify package publish payload
+        run: npm publish --dry-run

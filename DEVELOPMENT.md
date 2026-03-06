@@ -203,3 +203,24 @@ Key relay lifecycle events to watch:
 2. `gateway.relay.authenticated`
 3. `gateway.relay.control_message`
 4. `gateway.relay.disconnected`
+
+## CI and Release Pipeline
+
+GitHub Actions workflows:
+
+1. `.github/workflows/ci.yml`
+2. `.github/workflows/release.yml`
+
+Pipeline gates:
+
+1. `npm ci`
+2. `npm run typecheck`
+3. `npm run test`
+4. package smoke via `npm pack` + clean install + `protege --help` + `protege --version`
+5. `npm publish --dry-run`
+
+Release publish behavior:
+
+1. Runs on tags matching `v*`.
+2. Publishes to npm with provenance.
+3. Requires repository secret: `NPM_TOKEN`.
