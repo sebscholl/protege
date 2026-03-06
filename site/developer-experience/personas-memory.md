@@ -20,6 +20,34 @@ Per persona directory (`personas/{persona_id}/`) includes:
 - `emailAddress`
 - `createdAt`
 - optional `label`
+- optional `aliases` (additional local-parts or addresses for inbound routing)
+
+Example:
+
+```json
+{
+  "personaId": "5d5291bc3285362f",
+  "publicKeyBase32": "cep6474yx3wwbr5xwxgrc2wr5tpsyfxuk2vshsvnf5ib4vause3a",
+  "emailLocalPart": "cep6474yx3wwbr5xwxgrc2wr5tpsyfxuk2vshsvnf5ib4vause3a",
+  "emailAddress": "cep6474yx3wwbr5xwxgrc2wr5tpsyfxuk2vshsvnf5ib4vause3a@mail.protege.bot",
+  "createdAt": "2026-03-04T20:59:02.277Z",
+  "aliases": [
+    "charlie",
+    "tech-support-charlie",
+    "support@example.com"
+  ]
+}
+```
+
+Alias routing behavior:
+
+- Non-qualified aliases (for example `charlie`) are interpreted as `charlie@<gateway.mailDomain>`.
+- Recipient domain must match configured `gateway.mailDomain`; mismatched domains do not route.
+- Fully-qualified aliases (for example `support@example.com`) are only valid when they exactly match the inbound recipient address and the recipient domain matches configured `gateway.mailDomain`.
+- Alias matching is case-insensitive after normalization.
+- Plus-addressed recipients (for example `charlie+123@...`) route to the same base alias/root mailbox (`charlie@...`).
+- Domainless recipients (for example `charlie+123`) are interpreted against configured `gateway.mailDomain`.
+- Aliases must be unique across personas; collisions are treated as configuration errors.
 
 ## Key Material
 

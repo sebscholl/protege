@@ -19,6 +19,7 @@ export type PersonaMetadata = {
   emailAddress: string;
   createdAt: string;
   label?: string;
+  aliases?: string[];
 };
 
 /**
@@ -182,18 +183,24 @@ export function readPersonaMetadata(
   });
   const text = readFileSync(join(configDirPath, 'persona.json'), 'utf8');
   const parsed = JSON.parse(text) as PersonaMetadata;
-  if (typeof parsed.emailAddress === 'string' && parsed.emailAddress.trim().length > 0) {
-    return parsed;
+  const metadata: PersonaMetadata = {
+    ...parsed,
+    aliases: normalizePersonaAliases({
+      aliases: parsed.aliases,
+    }),
+  };
+  if (typeof metadata.emailAddress === 'string' && metadata.emailAddress.trim().length > 0) {
+    return metadata;
   }
 
   return {
-    ...parsed,
-    emailAddress: `${parsed.emailLocalPart}@localhost`,
+    ...metadata,
+    emailAddress: `${metadata.emailLocalPart}@localhost`,
   };
 }
 
 /**
- * Resolves one persona by full public-key local-part from recipient addressing.
+ * Resolves one persona by canonical or alias local-part from recipient addressing.
  */
 export function resolvePersonaByEmailLocalPart(
   args: {
@@ -201,8 +208,79 @@ export function resolvePersonaByEmailLocalPart(
     roots?: PersonaRoots;
   },
 ): PersonaMetadata | undefined {
+  const normalizedLocalPart = normalizePersonaLocalPart({
+    value: args.emailLocalPart,
+  });
   const personas = listPersonas({ roots: args.roots });
-  return personas.find((persona) => persona.emailLocalPart === args.emailLocalPart);
+  const rootMatch = personas.find((persona) => normalizePersonaLocalPart({
+    value: persona.emailLocalPart,
+  }) === normalizedLocalPart);
+  if (rootMatch) {
+    return rootMatch;
+  }
+
+  const aliasMatches = personas.filter((persona) => (persona.aliases ?? []).some((alias) => normalizePersonaLocalPart({
+    value: alias,
+  }) === normalizedLocalPart));
+  if (aliasMatches.length > 1) {
+    throw new Error(`Persona alias collision for local-part "${normalizedLocalPart}".`);
+  }
+
+  return aliasMatches[0];
+}
+
+/**
+ * Resolves one persona by full recipient address with strict configured-domain matching.
+ */
+export function resolvePersonaByRecipientAddress(
+  args: {
+    recipientAddress: string;
+    mailDomain: string;
+    roots?: PersonaRoots;
+  },
+): PersonaMetadata | undefined {
+  const normalizedRecipientAddress = normalizePersonaAddress({
+    value: args.recipientAddress,
+  });
+  const effectiveRecipientAddress = normalizedRecipientAddress.includes('@')
+    ? normalizedRecipientAddress
+    : `${normalizePersonaLocalPart({ value: normalizedRecipientAddress })}@${normalizePersonaDomain({ value: args.mailDomain })}`;
+  const recipientDomain = extractEmailDomain({
+    emailAddress: effectiveRecipientAddress,
+  });
+  if (recipientDomain !== normalizePersonaDomain({ value: args.mailDomain })) {
+    return undefined;
+  }
+
+  const personas = listPersonas({ roots: args.roots });
+  const rootMatch = personas.find((persona) => normalizePersonaAddress({
+    value: persona.emailAddress,
+  }) === effectiveRecipientAddress);
+  if (rootMatch) {
+    return rootMatch;
+  }
+
+  const recipientLocalPart = normalizePersonaLocalPart({
+    value: effectiveRecipientAddress,
+  });
+  const rootLocalPartMatch = personas.find((persona) => normalizePersonaLocalPart({
+    value: persona.emailLocalPart,
+  }) === recipientLocalPart);
+  if (rootLocalPartMatch) {
+    return rootLocalPartMatch;
+  }
+
+  const aliasMatches = personas.filter((persona) => (persona.aliases ?? []).some((alias) => normalizePersonaLocalPart({
+    value: normalizePersonaAliasAddress({
+    alias,
+    mailDomain: args.mailDomain,
+  }),
+  }) === recipientLocalPart));
+  if (aliasMatches.length > 1) {
+    throw new Error(`Persona alias collision for recipient "${effectiveRecipientAddress}".`);
+  }
+
+  return aliasMatches[0];
 }
 
 /**
@@ -334,4 +412,107 @@ export function extractEmailLocalPart(
 ): string {
   const atIndex = args.emailAddress.indexOf('@');
   return atIndex >= 0 ? args.emailAddress.slice(0, atIndex) : args.emailAddress;
+}
+
+/**
+ * Normalizes one persona local-part candidate to lowercase trimmed text.
+ */
+export function normalizePersonaLocalPart(
+  args: {
+    value: string;
+  },
+): string {
+  return stripPlusAddressTag({
+    localPart: extractEmailLocalPart({
+    emailAddress: args.value.trim().toLowerCase(),
+    }),
+  });
+}
+
+/**
+ * Normalizes one optional alias list to deduplicated lowercase local-parts.
+ */
+export function normalizePersonaAliases(
+  args: {
+    aliases: unknown;
+  },
+): string[] {
+  if (!Array.isArray(args.aliases)) {
+    return [];
+  }
+
+  const normalized = args.aliases
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((entry) => normalizePersonaLocalPart({ value: entry }))
+    .filter((entry) => entry.length > 0);
+  return Array.from(new Set(normalized));
+}
+
+/**
+ * Normalizes one email/domain string to lowercase trimmed text.
+ */
+export function normalizePersonaDomain(
+  args: {
+    value: string;
+  },
+): string {
+  return args.value.trim().toLowerCase();
+}
+
+/**
+ * Normalizes one full email address candidate to lowercase trimmed text.
+ */
+export function normalizePersonaAddress(
+  args: {
+    value: string;
+  },
+): string {
+  return args.value.trim().toLowerCase();
+}
+
+/**
+ * Expands one alias into one fully-qualified address using configured mail domain fallback.
+ */
+export function normalizePersonaAliasAddress(
+  args: {
+    alias: string;
+    mailDomain: string;
+  },
+): string {
+  const normalizedAlias = normalizePersonaAddress({
+    value: args.alias,
+  });
+  if (normalizedAlias.includes('@')) {
+    return normalizedAlias;
+  }
+
+  return `${normalizedAlias}@${normalizePersonaDomain({ value: args.mailDomain })}`;
+}
+
+/**
+ * Returns recipient domain text from one full email address.
+ */
+export function extractEmailDomain(
+  args: {
+    emailAddress: string;
+  },
+): string {
+  const atIndex = args.emailAddress.indexOf('@');
+  if (atIndex < 0) {
+    return '';
+  }
+
+  return args.emailAddress.slice(atIndex + 1).trim().toLowerCase();
+}
+
+/**
+ * Removes one plus-address tag suffix from one local-part while keeping base mailbox identity.
+ */
+export function stripPlusAddressTag(
+  args: {
+    localPart: string;
+  },
+): string {
+  const plusIndex = args.localPart.indexOf('+');
+  return plusIndex >= 0 ? args.localPart.slice(0, plusIndex) : args.localPart;
 }

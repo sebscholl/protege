@@ -133,7 +133,7 @@ export function startInboundServer(
             smtpSessionId: session.id,
           },
         });
-        callback(inboundError);
+        callback(toPublicInboundSmtpError({ error: inboundError }));
       });
     },
   });
@@ -541,6 +541,28 @@ export function asInboundError(
     message: 'Unknown inbound processing failure.',
     cause: args.error,
   });
+}
+
+/**
+ * Converts one internal inbound error into one externally-safe SMTP error.
+ */
+export function toPublicInboundSmtpError(
+  args: {
+    error: GatewayInboundError;
+  },
+): Error {
+  const smtpError = new Error(
+    args.error.code === 'persona_not_found'
+      ? 'Requested action not taken: mailbox unavailable.'
+      : args.error.message,
+  ) as Error & {
+    responseCode?: number;
+  };
+  if (args.error.code === 'persona_not_found') {
+    smtpError.responseCode = 550;
+  }
+
+  return smtpError;
 }
 
 /**

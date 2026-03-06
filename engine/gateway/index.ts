@@ -40,12 +40,11 @@ import {
   readEmailAddressDomain,
 } from '@engine/shared/email';
 import {
-  extractEmailLocalPart,
   listPersonas,
   readPersonaMetadata,
   resolvePersonaConfigDirPath,
   resolveDefaultPersonaRoots,
-  resolvePersonaByEmailLocalPart,
+  resolvePersonaByRecipientAddress,
   resolvePersonaMemoryPaths,
   updatePersonaEmailAddress,
 } from '@engine/shared/personas';
@@ -91,15 +90,16 @@ export type GatewayRelayClientRuntimeConfig = {
 export function resolvePersonaIdFromSession(
   args: {
     recipientAddress?: string;
+    mailDomain: string;
   },
 ): string | undefined {
   if (!args.recipientAddress) {
     return undefined;
   }
 
-  const emailLocalPart = extractEmailLocalPart({ emailAddress: args.recipientAddress });
-  const persona = resolvePersonaByEmailLocalPart({
-    emailLocalPart,
+  const persona = resolvePersonaByRecipientAddress({
+    recipientAddress: args.recipientAddress,
+    mailDomain: args.mailDomain,
     roots: resolveDefaultPersonaRoots(),
   });
   return persona?.personaId;
@@ -353,6 +353,7 @@ export function createGatewayInboundProcessingConfig(
     attachmentLimits: args.runtimeConfig.attachmentLimits,
     resolvePersonaId: ({ session }): string | undefined => resolvePersonaIdFromSession({
       recipientAddress: session.envelope?.rcptTo?.[0]?.address,
+      mailDomain: args.runtimeConfig.mailDomain,
     }),
     resolvePersonaPaths: ({ personaId }) => resolveGatewayPersonaPaths({ personaId }),
     evaluateSenderAccess: ({ senderAddress }) => evaluateGatewayAccess({

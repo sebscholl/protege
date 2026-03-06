@@ -7,7 +7,7 @@ import { Readable } from 'node:stream';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { handleInboundData } from '@engine/gateway/inbound';
+import { handleInboundData, toPublicInboundSmtpError } from '@engine/gateway/inbound';
 import { createFixtureSession, createFixtureStream } from '@tests/helpers/email-fixtures';
 import { createInboundTestConfig } from '@tests/helpers/gateway-inbound';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
@@ -19,6 +19,8 @@ let capturedError: GatewayInboundError | undefined;
 let logsDirExists = false;
 let attachmentsDirExists = false;
 let streamDrainedOnReject = false;
+let publicRejectMessage = '';
+let publicRejectCode: number | undefined;
 
 beforeAll(async (): Promise<void> => {
   workspace = createTestWorkspaceFromFixture({
@@ -79,6 +81,16 @@ beforeAll(async (): Promise<void> => {
   } catch {
     // Expected failure path.
   }
+
+  if (capturedError) {
+    const publicSmtpError = toPublicInboundSmtpError({
+      error: capturedError,
+    }) as Error & {
+      responseCode?: number;
+    };
+    publicRejectMessage = publicSmtpError.message;
+    publicRejectCode = publicSmtpError.responseCode;
+  }
 });
 
 afterAll((): void => {
@@ -88,6 +100,18 @@ afterAll((): void => {
 describe('gateway inbound persona rejection', () => {
   it('rejects inbound messages when recipient does not resolve to a persona', () => {
     expect(capturedError?.code).toBe('persona_not_found');
+  });
+
+  it('retains internal persona-not-found detail for logs and telemetry', () => {
+    expect(capturedError?.message.includes('did not map to a known persona')).toBe(true);
+  });
+
+  it('returns a generic public smtp rejection message for unknown recipients', () => {
+    expect(publicRejectMessage).toBe('Requested action not taken: mailbox unavailable.');
+  });
+
+  it('returns a mailbox-unavailable smtp response code for unknown recipients', () => {
+    expect(publicRejectCode).toBe(550);
   });
 
   it('does not persist raw mime or attachments to fallback storage paths', () => {
