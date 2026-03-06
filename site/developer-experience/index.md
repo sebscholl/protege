@@ -36,3 +36,4 @@ Object entries support config override and deep-merge semantics in loaders.
 - [Personas and Memory](/developer-experience/personas-memory)
 - [.env and Secrets](/developer-experience/environment)
 - [Config Files](/developer-experience/configuration)
+- [Security and Risk Model](/developer-experience/security)

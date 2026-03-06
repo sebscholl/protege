@@ -67,8 +67,9 @@ Completed:
 2. Production tools set: `send_email`, `read_file`, `write_file`, `edit_file`, `glob`, `search`, `shell`, `web_fetch`, `web_search`.
 3. Scheduler runtime and reliability hardening (overlap/concurrency/failure taxonomy).
 4. Gateway access policy in `configs/security.json`.
-5. Hook dispatch runtime with typed event contracts.
-6. Memory synthesis chain:
+5. Gateway recursion header safeguards (`X-Protege-Recursion`) with ingress exhaustion rejection.
+6. Hook dispatch runtime with typed event contracts.
+7. Memory synthesis chain:
    - `harness.inference.completed` -> `memory.thread.updated` -> active-memory update
    - dirty-state persistence in DB
    - startup recovery re-dispatch for dirty personas

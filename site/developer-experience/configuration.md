@@ -53,6 +53,8 @@ Runtime loader: `readInferenceRuntimeConfig` (`engine/harness/config.ts`).
 - `temperature`: number
 - `max_output_tokens`: number
 
+`recursion_depth` is used by gateway email recursion headers (`X-Protege-Recursion`) for agent-to-agent loop bounding.
+
 Provider credential and endpoint config are loaded from `extensions/extensions.json -> providers` plus provider-local defaults.
 
 ## `configs/security.json`

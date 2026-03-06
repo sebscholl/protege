@@ -33,6 +33,7 @@ export type InboundErrorCode =
   | 'attachment_write_failed'
   | 'persona_not_found'
   | 'access_denied'
+  | 'recursion_exhausted'
   | 'storage_path_unresolved';
 
 /**
@@ -201,6 +202,9 @@ export async function handleInboundData(
   const senderAddress = readPrimarySenderAddress({
     parsedMail,
   });
+  const inboundRecursionHeader = readInboundRecursionHeader({
+    parsedMail,
+  });
   if (args.config.evaluateSenderAccess) {
     const accessEvaluation = args.config.evaluateSenderAccess({
       senderAddress,
@@ -218,6 +222,16 @@ export async function handleInboundData(
         ].filter((item) => item.length > 0).join(' '),
       });
     }
+  }
+  if (inboundRecursionHeader !== undefined && inboundRecursionHeader <= 0) {
+    throw new GatewayInboundError({
+      code: 'recursion_exhausted',
+      message: [
+        'Inbound sender recursion budget is exhausted.',
+        `sender=${senderAddress}`,
+        `inboundRecursion=${String(inboundRecursionHeader)}`,
+      ].join(' '),
+    });
   }
 
   const receivedAt = new Date().toISOString();
@@ -268,9 +282,40 @@ export async function handleInboundData(
     receivedAt,
     rawMimePath,
     attachments,
+    metadata: {
+      recursion_inbound: inboundRecursionHeader ?? null,
+      recursion_remaining: inboundRecursionHeader === undefined
+        ? null
+        : inboundRecursionHeader - 1,
+    },
   };
 
   await args.config.onMessage({ message });
+}
+
+/**
+ * Reads one optional inbound `X-Protege-Recursion` header value.
+ */
+export function readInboundRecursionHeader(
+  args: {
+    parsedMail: ParsedMail;
+  },
+): number | undefined {
+  const headerValue = args.parsedMail.headers.get('x-protege-recursion');
+  if (typeof headerValue === 'number' && Number.isInteger(headerValue)) {
+    return headerValue;
+  }
+
+  if (typeof headerValue !== 'string') {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(headerValue.trim(), 10);
+  if (!Number.isInteger(parsed)) {
+    return undefined;
+  }
+
+  return parsed;
 }
 
 /**

@@ -44,6 +44,7 @@ export default withMermaid(defineConfig({
           { text: 'Personas and Memory', link: '/developer-experience/personas-memory' },
           { text: '.env and Secrets', link: '/developer-experience/environment' },
           { text: 'Config Files', link: '/developer-experience/configuration' },
+          { text: 'Security and Risk Model', link: '/developer-experience/security' },
         ],
       },
       {

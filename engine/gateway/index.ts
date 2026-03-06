@@ -51,6 +51,7 @@ import {
 } from '@engine/shared/personas';
 import { evaluateGatewayAccess, readSecurityRuntimeConfig } from '@engine/shared/security-config';
 import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
+import { readInferenceRuntimeConfig } from '@engine/harness/config';
 
 import { createOutboundTransport } from './outbound';
 import type { AttachmentLimits } from './inbound';
@@ -701,6 +702,7 @@ export function createGatewayRuntimeActionInvoker(
     payload: Record<string, unknown>;
   },
 ) => Promise<Record<string, unknown>> {
+  const defaultRecursionDepth = readDefaultRecursionDepth();
   return async (
     runtimeArgs: {
       action: string;
@@ -772,6 +774,7 @@ export function createGatewayRuntimeActionInvoker(
       personaSenderAddress: args.personaSenderAddress
         ?? resolvePersonaSenderAddress({ message: args.message }),
       payload: runtimeArgs.payload,
+      defaultRecursionDepth,
     });
     let messageId: string | null = null;
     if (args.transport) {
@@ -817,6 +820,17 @@ export function createGatewayRuntimeActionInvoker(
       messageId,
     };
   };
+}
+
+/**
+ * Reads default recursion depth from inference config with a safe fallback for gateway actions.
+ */
+export function readDefaultRecursionDepth(): number {
+  try {
+    return readInferenceRuntimeConfig().recursionDepth;
+  } catch {
+    return 3;
+  }
 }
 
 /**
@@ -2367,6 +2381,7 @@ export function buildEmailSendRequestFromAction(
     message: InboundNormalizedMessage;
     personaSenderAddress: string;
     payload: Record<string, unknown>;
+    defaultRecursionDepth?: number;
   },
 ): OutboundReplyRequest {
   const threadingMode = readEmailSendThreadingMode({
@@ -2409,6 +2424,15 @@ export function buildEmailSendRequestFromAction(
   const fromAddress = resolveReplyFromAddress({
     personaSenderAddress: args.personaSenderAddress,
   });
+  const recursionHeaderValue = resolveOutboundRecursionHeaderValue({
+    message: args.message,
+    defaultRecursionDepth: args.defaultRecursionDepth ?? 3,
+  });
+  const baseHeaders = toStringRecord({ value: args.payload.headers });
+  const headers = {
+    ...(baseHeaders ?? {}),
+    'X-Protege-Recursion': String(recursionHeaderValue),
+  };
 
   return {
     to: to.map((address) => ({ address })),
@@ -2426,9 +2450,49 @@ export function buildEmailSendRequestFromAction(
     references: threadingMode === 'new_thread'
       ? (toStringArray({ value: args.payload.references }) ?? [])
       : args.message.references,
-    headers: toStringRecord({ value: args.payload.headers }),
+    headers,
     attachments: toOutboundAttachments({ value: args.payload.attachments }),
   };
+}
+
+/**
+ * Resolves outbound recursion header value by decrementing inbound thread budget when present.
+ */
+export function resolveOutboundRecursionHeaderValue(
+  args: {
+    message: InboundNormalizedMessage;
+    defaultRecursionDepth: number;
+  },
+): number {
+  const inboundRemaining = readInboundRecursionRemaining({
+    message: args.message,
+  });
+  if (inboundRemaining === undefined) {
+    return args.defaultRecursionDepth;
+  }
+
+  return Math.max(0, inboundRemaining);
+}
+
+/**
+ * Reads optional recursion remaining value from inbound message metadata.
+ */
+export function readInboundRecursionRemaining(
+  args: {
+    message: InboundNormalizedMessage;
+  },
+): number | undefined {
+  const metadata = args.message.metadata;
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return undefined;
+  }
+
+  const value = (metadata as Record<string, unknown>).recursion_remaining;
+  if (typeof value === 'number' && Number.isInteger(value)) {
+    return value;
+  }
+
+  return undefined;
 }
 
 /**
