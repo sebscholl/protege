@@ -1,21 +1,25 @@
 # Chat Guide
 
-`protege chat` is a terminal inbox for one persona. It does not introduce a new protocol. Every interaction is stored as email-thread data in persona memory.
+`protege chat` is a terminal inbox client. It does not introduce a new protocol. Every interaction is stored as email-thread data in persona memory.
 
 ## Start Chat
 
-1. Open chat for one persona:
+1. Open chat with a unified inbox across personas:
+```bash
+protege chat
+```
+2. Open chat filtered to one persona:
 ```bash
 protege chat --persona <persona_id_or_prefix>
 ```
-2. Open chat and jump directly to one thread:
+3. Open chat and jump directly to one thread:
 ```bash
-protege chat --persona <persona_id_or_prefix> --thread <thread_id>
+protege chat --thread <thread_id>
 ```
 
 ## Mental Model
 
-1. Inbox view: list of known threads for the selected persona.
+1. Inbox view: list of known threads across selected persona scope.
 2. Thread view: one thread conversation.
 3. Existing threads: read-only in v1.
 4. Writable threads: only threads created inside chat (`Ctrl+N`).
@@ -40,7 +44,7 @@ Inbox:
 
 Thread:
 
-1. `Esc`: back to inbox (or leave compose mode).
+1. `Esc`: back to inbox.
 2. `i`: enter compose mode from command mode.
 3. `Ctrl+S`: send draft.
 4. `Ctrl+Enter`: legacy send fallback (terminal-dependent).

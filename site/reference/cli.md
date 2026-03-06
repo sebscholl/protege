@@ -101,7 +101,7 @@ Primary options:
 ## `protege chat`
 
 ```bash
-protege chat --persona <persona_id_or_prefix> [--thread <thread_id>]
+protege chat [--persona <persona_id_or_prefix>] [--thread <thread_id>]
 ```
 
 Terminal inbox/thread interface over persisted message threads.

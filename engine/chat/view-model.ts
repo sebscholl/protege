@@ -66,7 +66,10 @@ export function buildInboxViewModel(
       timestamp: formatIsoTimestampCompact({
         value: summary.lastReceivedAt,
       }),
-      participants: summary.lastSender,
+      participants: formatInboxParticipants({
+        lastSender: summary.lastSender,
+        summary,
+      }),
       preview: truncatePreviewText({
         value: summary.preview,
         maxLength: 120,
@@ -81,6 +84,23 @@ export function buildInboxViewModel(
       `${formatBindingLabel({ binding: args.keymap.quit })}=quit`,
     ].join('  '),
   };
+}
+
+/**
+ * Formats one inbox participants label with persona context when available.
+ */
+export function formatInboxParticipants(
+  args: {
+    lastSender: string;
+    summary: ChatThreadSummary;
+  },
+): string {
+  const personaId = (args.summary as Record<string, unknown>).personaId;
+  if (typeof personaId !== 'string' || personaId.length === 0) {
+    return args.lastSender;
+  }
+
+  return `${personaId} · ${args.lastSender}`;
 }
 
 /**
@@ -108,7 +128,7 @@ export function buildThreadViewModel(
     draft: composeEnabled ? args.state.draft : '',
     footerHint: composeEnabled
       ? [
-        `${formatBindingLabel({ binding: args.keymap.back_to_inbox })}=command mode`,
+        `${formatBindingLabel({ binding: args.keymap.back_to_inbox })}=back to inbox`,
         `${formatBindingLabel({ binding: args.keymap.enter_compose_mode })}=compose mode`,
         `${formatBindingLabel({ binding: args.keymap.send })}=send`,
         `${formatBindingLabel({ binding: args.keymap.refresh })}=refresh`,

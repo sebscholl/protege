@@ -1,15 +1,15 @@
-# .env and Secrets
+# .secrets and Secrets
 
 Protege CLI loads environment variables at startup from:
 
-1. `.env`
-2. `.env.local`
+1. `.secrets`
+2. `.secrets.local`
 
 Shell-defined env vars are preserved and not overwritten by files.
 
 ## Current Secret Keys
 
-From `.env.example`:
+From `.secrets.example`:
 
 - `OPENAI_API_KEY`
 - `ANTHROPIC_API_KEY`
@@ -35,5 +35,5 @@ Web search runtime config resolves key from configured provider env field.
 ## Recommended Practice
 
 - keep behavior config in `configs/*.json`
-- keep secrets only in `.env` / `.env.local` or process environment
+- keep secrets only in `.secrets` / `.secrets.local` or process environment
 - avoid committing credential files

@@ -59,10 +59,10 @@ sudo certbot --nginx -d relay.protege.bot
 
 ## Deploy Flow
 
-Environment variables are loaded from repository `.env` automatically by deploy scripts.
+Environment variables are loaded from repository `.relay.env` automatically by deploy scripts.
 You can still export variables in your shell to override defaults.
 
-Suggested `.env` keys:
+Suggested `.relay.env` keys:
 
 ```bash
 RELAY_SSH_HOST=187.77.78.12

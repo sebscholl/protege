@@ -120,7 +120,7 @@ beforeAll(async (): Promise<void> => {
     ? webSearchEntry.config?.provider ?? ''
     : '';
 
-  const envText = readFileSync(join(projectPath, '.env'), 'utf8');
+  const envText = readFileSync(join(projectPath, '.secrets'), 'utf8');
   anthropicEnvPresent = envText.includes('ANTHROPIC_API_KEY=anthropic-key-123');
   tavilyEnvPresent = envText.includes('TAVILY_API_KEY=tavily-key-123');
 
@@ -209,8 +209,8 @@ describe('setup cli command', () => {
     expect(personaCount).toBe(1);
   });
 
-  it('writes .env file into target project path', () => {
-    expect(existsSync(join(workspace.tempRootPath, 'sample-project', '.env'))).toBe(true);
+  it('writes .secrets file into target project path', () => {
+    expect(existsSync(join(workspace.tempRootPath, 'sample-project', '.secrets'))).toBe(true);
   });
 
   it('preserves provider selection on non-interactive rerun without flags', () => {

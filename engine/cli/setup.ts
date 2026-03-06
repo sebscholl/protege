@@ -493,7 +493,7 @@ export function hydrateSetupSeedFromExistingProject(
     seeded.webSearchProvider = webSearchProvider;
   }
 
-  const envPath = join(targetPath, '.env');
+  const envPath = join(targetPath, '.secrets');
   if (existsSync(envPath)) {
     const envValues = parseDotEnvText({
       text: readFileSync(envPath, 'utf8'),
@@ -737,7 +737,7 @@ export function applySetup(
   });
 
   const wroteEnvKeys = writeSetupEnvFile({
-    filePath: join(process.cwd(), '.env'),
+    filePath: join(process.cwd(), '.secrets'),
     values: buildSetupEnvValues({
       options: args.options,
     }),

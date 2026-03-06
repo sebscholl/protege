@@ -20,7 +20,7 @@
     "personas/README.md",
     "memory/README.md",
     "site/",
-    ".env.example",
+    ".secrets.example",
     "README.md"
   ],
   "scripts": {

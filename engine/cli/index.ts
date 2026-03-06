@@ -112,12 +112,12 @@ export async function runCli(
 }
 
 /**
- * Resolves supported dotenv file paths for CLI process startup.
+ * Resolves supported secrets file paths for CLI process startup.
  */
 export function resolveCliEnvFilePaths(): string[] {
   return [
-    join(process.cwd(), '.env'),
-    join(process.cwd(), '.env.local'),
+    join(process.cwd(), '.secrets'),
+    join(process.cwd(), '.secrets.local'),
   ];
 }
 

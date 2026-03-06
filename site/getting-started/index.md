@@ -48,7 +48,7 @@ Use `--json` for machine-readable output.
 ## 5) Open Terminal Inbox
 
 ```bash
-protege chat --persona <persona_id_or_prefix>
+protege chat
 ```
 
 ## Setup Modes

@@ -95,7 +95,7 @@ Deployment assets for VPS use with Nginx + systemd are in:
 
 Recommended workflow:
 
-1. Configure `.env` in repo root (auto-loaded by deploy scripts):
+1. Configure `.relay.env` in repo root (auto-loaded by deploy scripts):
 ```bash
 RELAY_SSH_HOST=187.77.78.12
 RELAY_SSH_USER=root

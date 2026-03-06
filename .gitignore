@@ -4,6 +4,9 @@ coverage/
 *.log
 *.pid
 .env
+.secrets
+.secrets.local
+.relay.env
 .DS_Store
 .vscode/
 scratchpad.md

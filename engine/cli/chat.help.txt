@@ -1,10 +1,14 @@
 Chat Command
 
-Usage: protege chat --persona <persona_id_or_prefix> [--thread <thread_id>]
+Usage: protege chat [--persona <persona_id_or_prefix>] [--thread <thread_id>]
 
 Description:
-  Opens the terminal inbox/thread client for one persona.
+  Opens the terminal inbox/thread client.
+  By default chat loads a unified inbox across all personas on this machine.
+  If --persona is provided, chat filters to that persona.
+  If --thread is provided, chat opens that thread when found.
 
 Examples:
+  protege chat
   protege chat --persona 68c33af4249a5647
-  protege chat --persona 68c33af4249a5647 --thread 39a7d636...
+  protege chat --thread 39a7d636...

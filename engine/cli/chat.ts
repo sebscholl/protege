@@ -4,7 +4,7 @@ import { startChatRuntime } from '@engine/chat/runtime';
  * Represents parsed `protege chat` command options.
  */
 export type ChatCommandOptions = {
-  persona: string;
+  persona?: string;
   threadId?: string;
 };
 
@@ -16,7 +16,7 @@ export function parseChatArgs(
     argv: string[];
   },
 ): ChatCommandOptions {
-  let persona = '';
+  let persona: string | undefined;
   let threadId: string | undefined;
   for (let index = 0; index < args.argv.length; index += 1) {
     const token = args.argv[index];
@@ -31,12 +31,10 @@ export function parseChatArgs(
     }
   }
 
-  if (persona.trim().length === 0) {
-    throw new Error('Usage: protege chat --persona <persona_id_or_prefix> [--thread <thread_id>]');
-  }
+  const normalizedPersona = persona && persona.trim().length > 0 ? persona : undefined;
 
   return {
-    persona,
+    persona: normalizedPersona,
     threadId,
   };
 }

@@ -183,7 +183,7 @@ export function resolvePackageRootDirPath(): string {
   let currentDirPath = dirname(fileURLToPath(import.meta.url));
   for (let depth = 0; depth < 6; depth += 1) {
     const candidatePackagePath = join(currentDirPath, 'package.json');
-    const candidateEnvExamplePath = join(currentDirPath, '.env.example');
+    const candidateEnvExamplePath = join(currentDirPath, '.secrets.example');
     const candidateGatewayConfigPath = join(currentDirPath, 'configs', 'gateway.json');
     const candidateExtensionsManifestPath = join(currentDirPath, 'extensions', 'extensions.json');
     if (
@@ -218,8 +218,8 @@ export function buildInitCopyMappings(
 }> {
   return [
     {
-      sourceFilePath: join(args.packageRootDirPath, '.env.example'),
-      targetRelativePath: '.env.example',
+      sourceFilePath: join(args.packageRootDirPath, '.secrets.example'),
+      targetRelativePath: '.secrets.example',
     },
     {
       sourceFilePath: join(args.packageRootDirPath, 'configs', 'gateway.json'),

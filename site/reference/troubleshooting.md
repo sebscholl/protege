@@ -61,7 +61,7 @@ protege persona list
 ```
 2. Retry chat using full `persona_id` or an unambiguous prefix:
 ```bash
-protege chat --persona <persona_id_or_prefix>
+protege chat [--persona <persona_id_or_prefix>]
 ```
 
 ## Chat Send Does Nothing in Existing Threads
@@ -111,7 +111,7 @@ protege doctor --json
 
 ## Web Search Fails with Missing Environment Variable
 
-1. Configure provider env keys in `.env` or shell:
+1. Configure provider env keys in `.secrets` or shell:
 ```bash
 TAVILY_API_KEY=tvly-...
 PERPLEXITY_API_KEY=pplx-...

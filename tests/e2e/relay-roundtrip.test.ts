@@ -117,7 +117,7 @@ beforeAll(async (): Promise<void> => {
       mode: 'dev',
       host: '127.0.0.1',
       port: 2525,
-      mailDomain: 'localhost',
+      mailDomain: 'relay-protege-mail.com',
     },
     logger,
     relayClientsByPersonaId,

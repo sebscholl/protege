@@ -29,8 +29,36 @@ import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
  * Represents runtime options for starting one interactive chat TUI session.
  */
 export type StartChatRuntimeOptions = {
-  personaSelector: string;
+  personaSelector?: string;
   threadId?: string;
+};
+
+/**
+ * Represents one persona-scoped chat runtime context.
+ */
+type ChatPersonaContext = {
+  personaId: string;
+  emailAddress: string;
+  localMailboxIdentity: string;
+  db: ReturnType<typeof initializeDatabase>;
+};
+
+/**
+ * Represents one persona-scoped inbox summary item with a stable UI key.
+ */
+type ChatRuntimeSummary = ReturnType<typeof listChatThreadSummaries>[number] & {
+  threadKey: string;
+  personaId: string;
+  localMailboxIdentity: string;
+};
+
+/**
+ * Represents one persona-scoped thread resolution payload.
+ */
+type ChatRuntimeThreadSelection = {
+  threadId: string;
+  personaId: string;
+  localMailboxIdentity: string;
 };
 
 /**
@@ -40,10 +68,32 @@ export async function startChatRuntime(
   args: StartChatRuntimeOptions,
 ): Promise<void> {
   const globalConfig = readGlobalRuntimeConfig();
-  const persona = resolvePersonaBySelector({
-    selector: args.personaSelector,
-  });
-  const personaMailboxIdentity = `${persona.emailLocalPart}@localhost`;
+  const allPersonas = listPersonas();
+  const filteredPersonas = args.personaSelector
+    ? [resolvePersonaBySelector({
+      selector: args.personaSelector,
+    })]
+    : allPersonas;
+  if (filteredPersonas.length === 0) {
+    throw new Error('No personas available. Create one with `protege persona create`.');
+  }
+  let selectedNewThreadPersonaIndex = 0;
+  let isNewThreadPersonaPickerVisible = false;
+  const personaContexts = filteredPersonas.map((persona) => ({
+    personaId: persona.personaId,
+    emailAddress: persona.emailAddress,
+    localMailboxIdentity: `${persona.emailLocalPart}@localhost`,
+    db: initializeDatabase({
+      databasePath: resolvePersonaMemoryPaths({
+        personaId: persona.personaId,
+      }).temporalDbPath,
+      migrationsDirPath: resolveMigrationsDirPath(),
+    }),
+  }));
+  const defaultPersonaContext = personaContexts[0];
+  if (!defaultPersonaContext) {
+    throw new Error('No personas available. Create one with `protege persona create`.');
+  }
   const hooks = await loadHookRegistry().catch((error: Error) => {
     process.stderr.write(`hook.dispatch.load_failed scope=chat message=${error.message}\n`);
     return [];
@@ -73,17 +123,12 @@ export async function startChatRuntime(
       hookDispatcher.dispatch(payload.event, payload as HookEventPayloadByName[typeof payload.event]);
     },
   });
-  const personaMemoryPaths = resolvePersonaMemoryPaths({
-    personaId: persona.personaId,
-  });
-  const db = initializeDatabase({
-    databasePath: personaMemoryPaths.temporalDbPath,
-    migrationsDirPath: resolveMigrationsDirPath(),
-  });
   const screen = blessed.screen({
     smartCSR: true,
     fastCSR: true,
-    title: `Protege Chat: ${persona.personaId}`,
+    title: args.personaSelector
+      ? `Protege Chat: ${defaultPersonaContext.personaId}`
+      : 'Protege Chat',
   });
   const inboxList = blessed.box({
     top: 1,
@@ -143,53 +188,91 @@ export async function startChatRuntime(
     draft: state.draft,
   });
   let shouldScrollThreadToBottom = false;
-  let summaries = listChatThreadSummaries({
-    db,
-    personaMailboxIdentity,
-  });
-  if (args.threadId) {
-    const thread = summaries.find((item) => item.threadId === args.threadId);
-    if (thread) {
-      const transition = applyChatControllerAction({
-        state,
-        action: {
-          type: 'open_thread',
-          threadId: thread.threadId,
-          isReadOnly: thread.isReadOnly,
-        },
-      });
-      state = transition.state;
-      composeInputState = createComposeInputState({
-        draft: state.draft,
-      });
-      selectedInboxIndex = summaries.findIndex((item) => item.threadId === thread.threadId);
-      shouldScrollThreadToBottom = true;
-    }
-  }
+  let summaries: ChatRuntimeSummary[] = [];
+  let selectedThread: ChatRuntimeThreadSelection | undefined;
 
   /**
    * Refreshes in-memory thread summaries from persona temporal storage.
    */
   function refreshSummaries(): void {
-    summaries = listChatThreadSummaries({
-      db,
-      personaMailboxIdentity,
-    });
+    summaries = personaContexts
+      .flatMap((context) => listChatThreadSummaries({
+        db: context.db,
+        personaMailboxIdentity: context.localMailboxIdentity,
+      }).map((summary) => ({
+        ...summary,
+        threadKey: `${context.personaId}:${summary.threadId}`,
+        personaId: context.personaId,
+        localMailboxIdentity: context.localMailboxIdentity,
+      })))
+      .sort((left, right) => right.lastReceivedAt.localeCompare(left.lastReceivedAt));
     if (selectedInboxIndex >= summaries.length) {
       selectedInboxIndex = Math.max(0, summaries.length - 1);
     }
   }
 
   /**
+   * Resolves one persona context by persona id.
+   */
+  function resolvePersonaContextById(
+    resolvePersonaContextByIdArgs: {
+      personaId: string;
+    },
+  ): ChatPersonaContext | undefined {
+    return personaContexts.find((context) => context.personaId === resolvePersonaContextByIdArgs.personaId);
+  }
+
+  /**
+   * Resolves one selected thread binding from inbox selection key.
+   */
+  function resolveSelectedThreadFromState(): ChatRuntimeThreadSelection | undefined {
+    const threadKey = state.selectedThreadId;
+    if (!threadKey) {
+      return undefined;
+    }
+    const summary = summaries.find((item) => item.threadKey === threadKey);
+    if (!summary) {
+      return undefined;
+    }
+
+    return {
+      threadId: summary.threadId,
+      personaId: summary.personaId,
+      localMailboxIdentity: summary.localMailboxIdentity,
+    };
+  }
+
+  /**
    * Renders current chat session view state to blessed widgets.
    */
   function render(): void {
+    if (isNewThreadPersonaPickerVisible) {
+      const personaRows = filteredPersonas.map((personaRow, index) => {
+        const marker = index === selectedNewThreadPersonaIndex ? '>' : ' ';
+        const label = personaRow.label && personaRow.label.trim().length > 0 ? ` (${personaRow.label})` : '';
+        return `${marker} ${personaRow.personaId}${label} - ${personaRow.emailAddress}`;
+      });
+      inboxList.show();
+      threadBox.hide();
+      composeBox.hide();
+      inboxList.focus();
+      inboxList.setContent(personaRows.join('\n'));
+      statusBar.setContent(buildStatusLine({
+        view: 'inbox',
+        displayModeLabel: state.displayMode.toUpperCase(),
+        footerHint: `${globalConfig.chat.keymap.open_thread}=create thread for persona  Esc=cancel`,
+        statusMessage,
+        theme: globalConfig.chatUiTheme,
+      }));
+      screen.render();
+      return;
+    }
     if (state.view === 'inbox') {
       composeCursorVisible = true;
       const inboxViewModel = buildInboxViewModel({
         state: {
           ...state,
-          selectedThreadId: summaries[selectedInboxIndex]?.threadId,
+          selectedThreadId: summaries[selectedInboxIndex]?.threadKey,
         },
         summaries,
         keymap: globalConfig.chat.keymap,
@@ -227,12 +310,17 @@ export async function startChatRuntime(
       return;
     }
 
-    const threadId = state.selectedThreadId;
-    const detail = threadId
+    selectedThread = resolveSelectedThreadFromState();
+    const threadContext = selectedThread
+      ? resolvePersonaContextById({
+        personaId: selectedThread.personaId,
+      })
+      : undefined;
+    const detail = selectedThread && threadContext
       ? readChatThreadDetail({
-        db,
-        threadId,
-        personaMailboxIdentity,
+        db: threadContext.db,
+        threadId: selectedThread.threadId,
+        personaMailboxIdentity: selectedThread.localMailboxIdentity,
       })
       : {
         threadId: '',
@@ -296,7 +384,7 @@ export async function startChatRuntime(
     if (runtimeClosed) {
       return;
     }
-    if (state.view === 'thread' && state.mode === 'compose') {
+    if (isNewThreadPersonaPickerVisible || (state.view === 'thread' && state.mode === 'compose')) {
       return;
     }
 
@@ -327,28 +415,42 @@ export async function startChatRuntime(
   ): Promise<void> {
     statusMessage = 'Sending...';
     render();
+    const selected = summaries.find((item) => item.threadKey === effect.threadId);
+    if (!selected) {
+      statusMessage = 'Send failed: selected thread was not found.';
+      render();
+      return;
+    }
+    const context = resolvePersonaContextById({
+      personaId: selected.personaId,
+    });
+    if (!context) {
+      statusMessage = 'Send failed: selected persona context was not found.';
+      render();
+      return;
+    }
     const stored = storeLocalChatUserMessage({
-      db,
-      threadId: effect.threadId,
-      personaMailboxIdentity,
+      db: context.db,
+      threadId: selected.threadId,
+      personaMailboxIdentity: selected.localMailboxIdentity,
       text: effect.draft,
     });
     shouldScrollThreadToBottom = true;
     render();
     const references = readChatThreadDetail({
-      db,
-      threadId: effect.threadId,
-      personaMailboxIdentity,
+      db: context.db,
+      threadId: selected.threadId,
+      personaMailboxIdentity: selected.localMailboxIdentity,
     }).messages.map((message) => message.messageId);
     const inboundMessage: InboundNormalizedMessage = {
-      personaId: persona.personaId,
+      personaId: selected.personaId,
       messageId: stored.messageId,
       threadId: stored.threadId,
       from: [{ address: 'user@localhost' }],
-      to: [{ address: personaMailboxIdentity }],
+      to: [{ address: selected.localMailboxIdentity }],
       cc: [],
       bcc: [],
-      envelopeRcptTo: [{ address: personaMailboxIdentity }],
+      envelopeRcptTo: [{ address: selected.localMailboxIdentity }],
       subject: stored.subject,
       text: stored.text,
       html: undefined,
@@ -360,13 +462,13 @@ export async function startChatRuntime(
     try {
       await runHarnessForPersistedInboundMessage({
         message: inboundMessage,
-        senderAddress: personaMailboxIdentity,
+        senderAddress: selected.localMailboxIdentity,
         suppressFinalResponsePersistenceWhenActions: ['email.send'],
         invokeRuntimeAction: createChatRuntimeActionInvoker({
-          db,
+          db: context.db,
           message: inboundMessage,
           logger,
-          personaMailboxIdentity,
+          personaMailboxIdentity: selected.localMailboxIdentity,
         }),
         logger,
       });
@@ -380,7 +482,7 @@ export async function startChatRuntime(
       logger.error({
         event: 'chat.send.failed',
         context: {
-          personaId: persona.personaId,
+          personaId: selected.personaId,
           threadId: effect.threadId,
           errorName: errorObject.name,
           message: errorObject.message,
@@ -456,6 +558,72 @@ export async function startChatRuntime(
     render();
   }
 
+  /**
+   * Opens one selected inbox summary row.
+   */
+  async function openSelectedInboxThread(): Promise<void> {
+    const selected = summaries[selectedInboxIndex];
+    if (!selected) {
+      render();
+      return;
+    }
+    const transition = applyChatControllerAction({
+      state,
+      action: {
+        type: 'open_thread',
+        threadId: selected.threadKey,
+        isReadOnly: selected.isReadOnly,
+      },
+    });
+    state = transition.state;
+    composeInputState = createComposeInputState({
+      draft: state.draft,
+    });
+    shouldScrollThreadToBottom = true;
+    const shouldExit = await runEffects(transition.effects);
+    if (shouldExit) {
+      return;
+    }
+    render();
+  }
+
+  /**
+   * Creates one new local writable chat thread for one persona context.
+   */
+  async function createNewLocalThreadForPersona(
+    createNewLocalThreadForPersonaArgs: {
+      personaContext: ChatPersonaContext;
+    },
+  ): Promise<void> {
+    const seed = createLocalChatThreadSeed({
+      db: createNewLocalThreadForPersonaArgs.personaContext.db,
+      personaMailboxIdentity: createNewLocalThreadForPersonaArgs.personaContext.localMailboxIdentity,
+    });
+    refreshSummaries();
+    const createdThreadKey = `${createNewLocalThreadForPersonaArgs.personaContext.personaId}:${seed.threadId}`;
+    selectedInboxIndex = summaries.findIndex((item) => item.threadKey === createdThreadKey);
+    if (selectedInboxIndex < 0) {
+      selectedInboxIndex = 0;
+    }
+    const transition = applyChatControllerAction({
+      state,
+      action: {
+        type: 'new_local_thread',
+        threadId: createdThreadKey,
+      },
+    });
+    state = transition.state;
+    composeInputState = createComposeInputState({
+      draft: state.draft,
+    });
+    shouldScrollThreadToBottom = true;
+    const shouldExit = await runEffects(transition.effects);
+    if (shouldExit) {
+      return;
+    }
+    render();
+  }
+
   screen.on('keypress', async (
     ch: string,
     key: blessed.Widgets.Events.IKeyEventArg,
@@ -464,12 +632,73 @@ export async function startChatRuntime(
       ch,
       key,
     });
+    if (isNewThreadPersonaPickerVisible) {
+      if (normalized.binding === globalConfig.chat.keymap.quit) {
+        screen.destroy();
+        return;
+      }
+      if (normalized.binding === 'esc') {
+        isNewThreadPersonaPickerVisible = false;
+        render();
+        return;
+      }
+      if (normalized.binding === globalConfig.chat.keymap.move_selection_up) {
+        selectedNewThreadPersonaIndex = Math.max(0, selectedNewThreadPersonaIndex - 1);
+        render();
+        return;
+      }
+      if (normalized.binding === globalConfig.chat.keymap.move_selection_down) {
+        selectedNewThreadPersonaIndex = Math.min(
+          Math.max(0, filteredPersonas.length - 1),
+          selectedNewThreadPersonaIndex + 1,
+        );
+        render();
+        return;
+      }
+      if (normalized.binding === globalConfig.chat.keymap.open_thread) {
+        const targetPersona = filteredPersonas[selectedNewThreadPersonaIndex];
+        const targetContext = targetPersona
+          ? resolvePersonaContextById({
+            personaId: targetPersona.personaId,
+          })
+          : undefined;
+        isNewThreadPersonaPickerVisible = false;
+        if (!targetContext) {
+          statusMessage = 'Unable to create thread: persona context not found.';
+          render();
+          return;
+        }
+        await createNewLocalThreadForPersona({
+          personaContext: targetContext,
+        });
+        return;
+      }
+      return;
+    }
     if (state.view === 'thread' && state.mode === 'compose') {
       const shouldDispatchComposeBinding = normalized.binding === 'esc'
         || normalized.binding === globalConfig.chat.keymap.refresh
         || normalized.binding === globalConfig.chat.keymap.toggle_display_mode
         || normalized.binding === globalConfig.chat.keymap.quit;
       if (shouldDispatchComposeBinding) {
+        if (normalized.binding === 'esc') {
+          const transition = applyChatControllerAction({
+            state,
+            action: {
+              type: 'back_to_inbox',
+            },
+          });
+          state = transition.state;
+          composeInputState = createComposeInputState({
+            draft: state.draft,
+          });
+          const shouldExit = await runEffects(transition.effects);
+          if (shouldExit) {
+            return;
+          }
+          render();
+          return;
+        }
         state = {
           ...state,
           draft: composeInputState.text,
@@ -527,53 +756,19 @@ export async function startChatRuntime(
         return;
       }
       if (normalized.binding === globalConfig.chat.keymap.open_thread) {
-        const selected = summaries[selectedInboxIndex];
-        if (selected) {
-          const transition = applyChatControllerAction({
-            state,
-            action: {
-              type: 'open_thread',
-              threadId: selected.threadId,
-              isReadOnly: selected.isReadOnly,
-            },
-          });
-          state = transition.state;
-          composeInputState = createComposeInputState({
-            draft: state.draft,
-          });
-          shouldScrollThreadToBottom = true;
-          const shouldExit = await runEffects(transition.effects);
-          if (shouldExit) {
-            return;
-          }
-        }
-        render();
+        await openSelectedInboxThread();
         return;
       }
       if (normalized.binding === globalConfig.chat.keymap.new_local_thread) {
-        const seed = createLocalChatThreadSeed({
-          db,
-          personaMailboxIdentity,
-        });
-        refreshSummaries();
-        selectedInboxIndex = summaries.findIndex((item) => item.threadId === seed.threadId);
-        const transition = applyChatControllerAction({
-          state,
-          action: {
-            type: 'new_local_thread',
-            threadId: seed.threadId,
-          },
-        });
-        state = transition.state;
-        composeInputState = createComposeInputState({
-          draft: state.draft,
-        });
-        shouldScrollThreadToBottom = true;
-        const shouldExit = await runEffects(transition.effects);
-        if (shouldExit) {
+        if (personaContexts.length > 1 && !args.personaSelector) {
+          isNewThreadPersonaPickerVisible = true;
+          selectedNewThreadPersonaIndex = 0;
+          render();
           return;
         }
-        render();
+        await createNewLocalThreadForPersona({
+          personaContext: defaultPersonaContext,
+        });
         return;
       }
     }
@@ -611,10 +806,30 @@ export async function startChatRuntime(
     runtimeClosed = true;
     clearInterval(pollTimer);
     clearInterval(cursorBlinkTimer);
-    db.close();
+    for (const context of personaContexts) {
+      context.db.close();
+    }
   });
 
   refreshSummaries();
+  if (args.threadId) {
+    const thread = summaries.find((item) => item.threadId === args.threadId || item.threadKey === args.threadId);
+    if (thread) {
+      selectedInboxIndex = summaries.findIndex((item) => item.threadKey === thread.threadKey);
+      state = applyChatControllerAction({
+        state,
+        action: {
+          type: 'open_thread',
+          threadId: thread.threadKey,
+          isReadOnly: thread.isReadOnly,
+        },
+      }).state;
+      composeInputState = createComposeInputState({
+        draft: state.draft,
+      });
+      shouldScrollThreadToBottom = true;
+    }
+  }
   render();
   await new Promise<void>((resolve) => {
     screen.on('destroy', () => {

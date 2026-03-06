@@ -145,11 +145,11 @@ beforeAll(async (): Promise<void> => {
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-cli-env-',
   });
-  writeFileSync(join(workspace.tempRootPath, '.env'), [
+  writeFileSync(join(workspace.tempRootPath, '.secrets'), [
     'PROTEGE_ENV_LOAD_TEST=loaded-from-dotenv',
     'PROTEGE_ENV_LOCAL_OVERRIDE_TEST=from-dotenv',
   ].join('\n'), 'utf8');
-  writeFileSync(join(workspace.tempRootPath, '.env.local'), [
+  writeFileSync(join(workspace.tempRootPath, '.secrets.local'), [
     'PROTEGE_ENV_LOCAL_OVERRIDE_TEST=from-dotenv-local',
     'PROTEGE_ENV_OVERRIDE_TEST=from-dotenv-local',
   ].join('\n'), 'utf8');
@@ -170,8 +170,8 @@ afterAll((): void => {
   delete process.env.PROTEGE_ENV_OVERRIDE_TEST;
 });
 
-describe('cli dotenv loading behavior', () => {
-  it('loads dotenv values from cwd .env file', () => {
+describe('cli secrets loading behavior', () => {
+  it('loads secrets values from cwd .secrets file', () => {
     expect(loadedEnvValue).toBe('loaded-from-dotenv');
   });
 
@@ -179,7 +179,7 @@ describe('cli dotenv loading behavior', () => {
     expect(preservedEnvValue).toBe('pre-existing');
   });
 
-  it('allows .env.local to override .env for non-shell variables', () => {
+  it('allows .secrets.local to override .secrets for non-shell variables', () => {
     expect(envLocalOverrideValue).toBe('from-dotenv-local');
   });
 });
