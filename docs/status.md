@@ -73,6 +73,7 @@ Completed:
    - `harness.inference.completed` -> `memory.thread.updated` -> active-memory update
    - dirty-state persistence in DB
    - startup recovery re-dispatch for dirty personas
+8. Gateway access policy E2E matrix coverage (disabled/default allow/default deny/allow-match/deny-precedence).
 
 Open follow-ups:
 
