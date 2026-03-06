@@ -6,12 +6,21 @@ const githubPagesBase = repositoryName ? `/${repositoryName}/` : '/';
 const base = process.env.GITHUB_ACTIONS === 'true' ? githubPagesBase : '/';
 
 export default withMermaid(defineConfig({
-  title: 'Protege',
+  title: '🥚 Protege',
   description: 'Email-native AI agent framework',
   base,
   srcDir: '.',
+  head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
+    ['meta', { property: 'og:image', content: '/og-image.png' }],
+    ['meta', { name: 'twitter:image', content: '/og-image.png' }],
+  ],
   mermaid: {},
   themeConfig: {
+    logo: {
+      light: '/logo-dark-128.png',
+      dark: '/logo-light-128.png',
+    },
     search: {
       provider: 'local',
     },

@@ -8,6 +8,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 
+import { readCliBanner } from '@engine/cli/banner';
 import { runDoctorChecks } from '@engine/cli/doctor';
 import { runInitCommand } from '@engine/cli/init';
 import { emitCliOutput, renderCliKeyValueTable } from '@engine/cli/output';
@@ -787,6 +788,7 @@ export function renderSetupResult(
   },
 ): string {
   return [
+    readCliBanner(),
     'Setup Completed',
     renderCliKeyValueTable({
       rows: [

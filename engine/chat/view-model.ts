@@ -58,7 +58,7 @@ export function buildInboxViewModel(
   },
 ): ChatInboxViewModel {
   return {
-    title: 'Protege Chat Inbox',
+    title: '🥚 Protege Chat Inbox',
     modeLabel: args.state.displayMode.toUpperCase(),
     rows: args.summaries.map((summary) => ({
       threadId: summary.threadId,
@@ -98,8 +98,8 @@ export function buildThreadViewModel(
     title: args.detail.subject || 'Untitled Thread',
     modeLabel: args.state.displayMode.toUpperCase(),
     writeBanner: args.detail.isReadOnly
-      ? 'READ-ONLY THREAD (v1)'
-      : 'WRITABLE LOCAL CHAT THREAD',
+      ? '🥚 READ-ONLY THREAD (v1)'
+      : '',
     composeEnabled,
     messages: args.detail.messages.map((message) => buildThreadMessageModel({
       message,

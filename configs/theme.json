@@ -38,7 +38,7 @@
     "inbox": {
       "title_tag": [
         "bold",
-        "blue-fg"
+        "#f29f41-fg"
       ],
       "timestamp_tag": [
         "bold",
@@ -57,7 +57,7 @@
         "green-fg"
       ],
       "selected_marker_tag": [
-        "blue-bg"
+        "#f29f41-bg"
       ],
       "unselected_marker_tag": [
         "white-bg"
@@ -68,14 +68,14 @@
     "status": {
       "prefix_tag": [
         "bold",
-        "cyan-fg"
+        "#f29f41-fg"
       ],
       "divider_tag": [
         "gray-fg"
       ],
       "command_key_tag": [
         "bold",
-        "blue-fg"
+        "#f29f41-fg"
       ],
       "command_text_tag": [
         "white-fg"
@@ -90,7 +90,7 @@
     "thread": {
       "title_tag": [
         "bold",
-        "blue-fg"
+        "#f29f41-fg"
       ],
       "mode_tag": [
         "gray-fg"
@@ -99,7 +99,7 @@
         "yellow-fg"
       ],
       "message_dot_tag": [
-        "blue-fg"
+        "#f29f41-fg"
       ],
       "message_dot_glyph": "•",
       "message_header_tag": [

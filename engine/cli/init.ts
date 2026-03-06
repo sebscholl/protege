@@ -2,6 +2,7 @@ import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { readCliBanner } from '@engine/cli/banner';
 import { emitCliOutput, renderCliKeyValueTable, renderCliTable } from '@engine/cli/output';
 
 /**
@@ -122,6 +123,7 @@ export function renderInitResult(
   },
 ): string {
   const sections = [
+    readCliBanner(),
     'Init Completed',
     renderCliKeyValueTable({
       rows: [

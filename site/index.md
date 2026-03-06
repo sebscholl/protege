@@ -1,4 +1,4 @@
-# Protege
+# 🥚 Protege
 
 Protege is an email-native AI agent framework. It treats email as the primary open protocol for agent interaction and keeps runtime intelligence local by default.
 

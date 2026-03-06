@@ -156,8 +156,8 @@ describe('chat inbox view model', () => {
 });
 
 describe('chat thread view model', () => {
-  it('renders explicit writable banner for local chat threads', () => {
-    expect(writableBanner).toContain('WRITABLE');
+  it('does not render writable banner for local chat threads', () => {
+    expect(writableBanner).toBe('');
   });
 
   it('keeps draft text visible in writable thread view', () => {
