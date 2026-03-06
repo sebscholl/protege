@@ -12,6 +12,9 @@ export default withMermaid(defineConfig({
   srcDir: '.',
   mermaid: {},
   themeConfig: {
+    search: {
+      provider: 'local',
+    },
     nav: [
       { text: 'Introduction', link: '/' },
       { text: 'Getting Started', link: '/getting-started/' },
