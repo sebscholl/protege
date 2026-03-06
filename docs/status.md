@@ -74,6 +74,7 @@ Completed:
    - dirty-state persistence in DB
    - startup recovery re-dispatch for dirty personas
 8. Gateway access policy E2E matrix coverage (disabled/default allow/default deny/allow-match/deny-precedence).
+9. Gateway terminal-failure alert reliability E2E (one terminal failure -> one alert dispatch).
 
 Open follow-ups:
 
