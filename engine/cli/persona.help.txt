@@ -3,12 +3,14 @@ Persona Command
 Usage: protege persona <create|list|info|delete> ...
 
 Actions:
-  create [label] [--json]         Create persona and key material.
+  create [display_name] [--name <display_name>] [--json]
+                                  Create persona and key material.
   list [--json]                   List known personas.
   info <persona_id> [--json]      Show one persona record.
   delete <persona_id> [--json]    Hard-delete one persona.
 
 Examples:
   protege persona create "ops-assistant"
+  protege persona create --name "Ops Assistant"
   protege persona list
   protege persona info 68c33af4249a5647

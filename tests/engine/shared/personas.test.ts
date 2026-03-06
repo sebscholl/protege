@@ -36,6 +36,8 @@ let recipientAliasResolvedPersonaId = '';
 let recipientPlusAliasResolvedPersonaId = '';
 let barePlusAliasResolvedPersonaId = '';
 let wrongDomainRecipientResolved = false;
+let createdPersonaDomain = '';
+let createdPersonaDisplayName = '';
 
 beforeAll((): void => {
   workspace = createTestWorkspaceFromFixture({
@@ -47,8 +49,38 @@ beforeAll((): void => {
     personasDirPath: join(workspace.tempRootPath, 'personas'),
     memoryDirPath: join(workspace.tempRootPath, 'memory'),
   };
+  workspace.writeFile({
+    relativePath: 'configs/gateway.json',
+    payload: {
+      mode: 'local',
+      host: '127.0.0.1',
+      port: 2525,
+      mailDomain: 'mail.protege.bot',
+      relay: {
+        enabled: false,
+        relayWsUrl: 'ws://127.0.0.1:8080/ws',
+        reconnectBaseDelayMs: 250,
+        reconnectMaxDelayMs: 8000,
+        heartbeatTimeoutMs: 30000,
+      },
+      transport: {
+        host: '127.0.0.1',
+        port: 1025,
+        secure: false,
+      },
+      attachmentLimits: {
+        maxTotalAttachmentBytes: 5000000,
+      },
+      retry: {
+        maxAttempts: 3,
+        baseDelayMs: 200,
+      },
+    },
+  });
 
   createdPersona = createPersona({ roots, label: 'Test Persona' });
+  createdPersonaDomain = createdPersona.emailAddress.split('@')[1] ?? '';
+  createdPersonaDisplayName = createdPersona.displayName ?? '';
   listedPersonasCount = listPersonas({ roots }).length;
   resolvedPersonaId = resolvePersonaByEmailLocalPart({
     emailLocalPart: createdPersona.emailLocalPart,
@@ -141,14 +173,26 @@ beforeAll((): void => {
 });
 
 afterAll((): void => {
-  deletePersona({ personaId: secondPersona.personaId, roots });
-  deletePersona({ personaId: createdPersona.personaId, roots });
+  if (secondPersona?.personaId) {
+    deletePersona({ personaId: secondPersona.personaId, roots });
+  }
+  if (createdPersona?.personaId) {
+    deletePersona({ personaId: createdPersona.personaId, roots });
+  }
   workspace.cleanup();
 });
 
 describe('shared persona model', () => {
   it('creates one persona metadata record with deterministic ids', () => {
     expect(createdPersona.personaId.length).toBe(16);
+  });
+
+  it('defaults persona email domain from gateway mailDomain config', () => {
+    expect(createdPersonaDomain).toBe('mail.protege.bot');
+  });
+
+  it('stores displayName on persona metadata', () => {
+    expect(createdPersonaDisplayName).toBe('Test Persona');
   });
 
   it('materializes passport.key in persona config namespace', () => {

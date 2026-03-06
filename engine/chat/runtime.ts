@@ -39,6 +39,7 @@ export type StartChatRuntimeOptions = {
 type ChatPersonaContext = {
   personaId: string;
   emailAddress: string;
+  displayName?: string;
   localMailboxIdentity: string;
   db: ReturnType<typeof initializeDatabase>;
 };
@@ -49,6 +50,7 @@ type ChatPersonaContext = {
 type ChatRuntimeSummary = ReturnType<typeof listChatThreadSummaries>[number] & {
   threadKey: string;
   personaId: string;
+  personaDisplayName?: string;
   localMailboxIdentity: string;
 };
 
@@ -82,6 +84,7 @@ export async function startChatRuntime(
   const personaContexts = filteredPersonas.map((persona) => ({
     personaId: persona.personaId,
     emailAddress: persona.emailAddress,
+    displayName: persona.displayName,
     localMailboxIdentity: `${persona.emailLocalPart}@localhost`,
     db: initializeDatabase({
       databasePath: resolvePersonaMemoryPaths({
@@ -203,6 +206,7 @@ export async function startChatRuntime(
         ...summary,
         threadKey: `${context.personaId}:${summary.threadId}`,
         personaId: context.personaId,
+        personaDisplayName: context.displayName,
         localMailboxIdentity: context.localMailboxIdentity,
       })))
       .sort((left, right) => right.lastReceivedAt.localeCompare(left.lastReceivedAt));
@@ -249,7 +253,7 @@ export async function startChatRuntime(
     if (isNewThreadPersonaPickerVisible) {
       const personaRows = filteredPersonas.map((personaRow, index) => {
         const marker = index === selectedNewThreadPersonaIndex ? '>' : ' ';
-        const label = personaRow.label && personaRow.label.trim().length > 0 ? ` (${personaRow.label})` : '';
+        const label = personaRow.displayName && personaRow.displayName.trim().length > 0 ? ` (${personaRow.displayName})` : '';
         return `${marker} ${personaRow.personaId}${label} - ${personaRow.emailAddress}`;
       });
       inboxList.show();

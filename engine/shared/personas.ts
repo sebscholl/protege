@@ -18,6 +18,7 @@ export type PersonaMetadata = {
   emailLocalPart: string;
   emailAddress: string;
   createdAt: string;
+  displayName?: string;
   label?: string;
   aliases?: string[];
 };
@@ -98,6 +99,7 @@ export function resolvePersonaMemoryPaths(
  */
 export function createPersona(
   args: {
+    displayName?: string;
     label?: string;
     roots?: PersonaRoots;
     emailDomain?: string;
@@ -133,13 +135,17 @@ export function createPersona(
   writeFileSync(join(configDirPath, 'passport.key'), privateKeyPem);
   writeFileSync(memoryPaths.activeMemoryPath, '# Active Memory\n');
 
+  const effectiveEmailDomain = args.emailDomain
+    ?? readDefaultPersonaEmailDomain({
+      workspaceRootPath: args.roots ? join(args.roots.personasDirPath, '..') : undefined,
+    });
   const metadata: PersonaMetadata = {
     personaId,
     publicKeyBase32,
     emailLocalPart: publicKeyBase32,
-    emailAddress: `${publicKeyBase32}@${args.emailDomain ?? 'localhost'}`,
+    emailAddress: `${publicKeyBase32}@${effectiveEmailDomain}`,
     createdAt: new Date().toISOString(),
-    label: args.label,
+    displayName: args.displayName ?? args.label,
   };
   writeFileSync(
     join(configDirPath, 'persona.json'),
@@ -185,6 +191,12 @@ export function readPersonaMetadata(
   const parsed = JSON.parse(text) as PersonaMetadata;
   const metadata: PersonaMetadata = {
     ...parsed,
+    displayName: typeof parsed.displayName === 'string' && parsed.displayName.trim().length > 0
+      ? parsed.displayName.trim()
+      : typeof parsed.label === 'string' && parsed.label.trim().length > 0
+        ? parsed.label.trim()
+        : undefined,
+    label: undefined,
     aliases: normalizePersonaAliases({
       aliases: parsed.aliases,
     }),
@@ -197,6 +209,33 @@ export function readPersonaMetadata(
     ...metadata,
     emailAddress: `${metadata.emailLocalPart}@localhost`,
   };
+}
+
+/**
+ * Reads the default persona email domain from `configs/gateway.json`.
+ */
+export function readDefaultPersonaEmailDomain(
+  args: {
+    workspaceRootPath?: string;
+  } = {},
+): string {
+  const gatewayConfigPath = join(args.workspaceRootPath ?? process.cwd(), 'configs', 'gateway.json');
+  if (!existsSync(gatewayConfigPath)) {
+    return 'localhost';
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(gatewayConfigPath, 'utf8')) as {
+      mailDomain?: unknown;
+    };
+    if (typeof parsed.mailDomain === 'string' && parsed.mailDomain.trim().length > 0) {
+      return parsed.mailDomain.trim().toLowerCase();
+    }
+  } catch {
+    return 'localhost';
+  }
+
+  return 'localhost';
 }
 
 /**

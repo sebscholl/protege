@@ -25,7 +25,7 @@ export function runPersonaCli(
   if (action === 'create') {
     const parsed = parsePersonaCreateArgs({ argv: [maybeId ?? '', ...rest] });
     const persona = createPersona({
-      label: parsed.label,
+      displayName: parsed.displayName,
     });
     emitCliOutput({
       mode: json ? 'json' : 'pretty',
@@ -90,20 +90,27 @@ export function parsePersonaCreateArgs(
     argv: string[];
   },
 ): {
-  label?: string;
+  displayName?: string;
 } {
-  let label: string | undefined;
+  let displayName: string | undefined;
 
   for (let index = 0; index < args.argv.length; index += 1) {
     const token = args.argv[index];
+    if (!token) {
+      continue;
+    }
+    if (!token.startsWith('-') && !displayName) {
+      displayName = token;
+      continue;
+    }
     if (token === '--name') {
-      label = args.argv[index + 1] || undefined;
+      displayName = args.argv[index + 1] || undefined;
       index += 1;
     }
   }
 
   return {
-    label,
+    displayName,
   };
 }
 
@@ -121,7 +128,7 @@ export function renderPersonaCreateResult(
       rows: [
         { key: 'personaId', value: args.persona.personaId },
         { key: 'emailAddress', value: args.persona.emailAddress },
-        { key: 'label', value: args.persona.label ?? 'none' },
+        { key: 'displayName', value: args.persona.displayName ?? 'none' },
       ],
     }),
   ].join('\n');
@@ -142,11 +149,11 @@ export function renderPersonaListResult(
   return [
     'Personas',
     renderCliTable({
-      head: ['Persona ID', 'Email Address', 'Label'],
+      head: ['Persona ID', 'Email Address', 'Display Name'],
       rows: args.personas.map((persona) => [
         persona.personaId,
         persona.emailAddress,
-        persona.label ?? 'none',
+        persona.displayName ?? 'none',
       ]),
     }),
   ].join('\n');
@@ -168,7 +175,7 @@ export function renderPersonaInfoResult(
         { key: 'emailAddress', value: args.persona.emailAddress },
         { key: 'publicKeyBase32', value: args.persona.publicKeyBase32 },
         { key: 'createdAt', value: args.persona.createdAt },
-        { key: 'label', value: args.persona.label ?? 'none' },
+        { key: 'displayName', value: args.persona.displayName ?? 'none' },
       ],
     }),
   ].join('\n');

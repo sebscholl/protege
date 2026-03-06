@@ -1,6 +1,6 @@
 # Protege
 
-Protege is an email-native AI agent framework. It treats email as the primary open protocol for agent interaction and keeps runtime intelligence local by default.
+Protege is an email-native AI agent framework. It treats email as the primary open protocol for agent interaction and promotes keeping runtime and intelligence local by default.
 
 ## Framework Positioning
 
@@ -10,8 +10,11 @@ Protege is not a single hosted product workflow. It is a local framework with ex
 - providers
 - hooks
 - resolvers
+- and more...
 
 Core behavior lives in `engine/`, while extension behavior is loaded from `extensions/extensions.json`.
+
+Unlike other agentic tools, Protege aims to be "useful over engaging". What we mean by that is that most agentic tools glue the user to a terminal window or fancy UI, trying to keep them interested and engaged with for long working or messaging sessions. Protege was designed by a developer who wants to spend less time in front of the computer and phone screen, thus the ethos is around building agents you can asynchronously communicate with over email, like you would a colleague or friend.
 
 ## Why Email
 

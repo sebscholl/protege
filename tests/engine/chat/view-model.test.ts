@@ -26,6 +26,19 @@ const summaries: ChatThreadSummary[] = [
     messageCount: 2,
     isReadOnly: false,
   },
+  {
+    threadId: 'thread-persona',
+    subject: 'Persona Thread',
+    lastSender: 'agent@example.com',
+    lastReceivedAt: '2026-02-19T13:00:00.000Z',
+    preview: 'persona preview',
+    messageCount: 1,
+    isReadOnly: true,
+    ...( {
+      personaId: 'persona-a',
+      personaDisplayName: 'Ops Assistant',
+    } as Record<string, unknown> ),
+  } as ChatThreadSummary,
 ];
 
 const keymap: ChatKeymap = {
@@ -82,6 +95,7 @@ let selectedThreadRowCount = 0;
 let inboxTimestamp = '';
 let inboxParticipants = '';
 let inboxPreviewTruncated = false;
+let inboxPersonaParticipants = '';
 let writableBanner = '';
 let writableDraft = '';
 let writableFooter = '';
@@ -102,6 +116,7 @@ beforeAll((): void => {
   inboxTimestamp = inboxViewModel.rows[0]?.timestamp ?? '';
   inboxParticipants = inboxViewModel.rows[0]?.participants ?? '';
   inboxPreviewTruncated = (inboxViewModel.rows[0]?.preview.length ?? 0) <= 120;
+  inboxPersonaParticipants = inboxViewModel.rows[1]?.participants ?? '';
 
   const writableThreadViewModel = buildThreadViewModel({
     state: baseState,
@@ -152,6 +167,10 @@ describe('chat inbox view model', () => {
 
   it('caps inbox preview length for readable list rows', () => {
     expect(inboxPreviewTruncated).toBe(true);
+  });
+
+  it('prefers persona displayName in inbox participants when provided', () => {
+    expect(inboxPersonaParticipants).toContain('Ops Assistant');
   });
 });
 

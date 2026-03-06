@@ -95,6 +95,11 @@ export function formatInboxParticipants(
     summary: ChatThreadSummary;
   },
 ): string {
+  const personaDisplayName = (args.summary as Record<string, unknown>).personaDisplayName;
+  if (typeof personaDisplayName === 'string' && personaDisplayName.length > 0) {
+    return `${personaDisplayName} · ${args.lastSender}`;
+  }
+
   const personaId = (args.summary as Record<string, unknown>).personaId;
   if (typeof personaId !== 'string' || personaId.length === 0) {
     return args.lastSender;

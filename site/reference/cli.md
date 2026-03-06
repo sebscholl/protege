@@ -25,7 +25,7 @@ protege gateway <start|stop|restart> [--dev]
 ## `protege persona`
 
 ```bash
-protege persona create [label] [--json]
+protege persona create [display_name] [--name <display_name>] [--json]
 protege persona list [--json]
 protege persona info <persona_id_or_prefix> [--json]
 protege persona delete <persona_id_or_prefix> [--json]

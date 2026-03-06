@@ -19,7 +19,7 @@ Per persona directory (`personas/{persona_id}/`) includes:
 - `emailLocalPart`
 - `emailAddress`
 - `createdAt`
-- optional `label`
+- optional `displayName`
 - optional `aliases` (additional local-parts or addresses for inbound routing)
 
 Example:
@@ -31,6 +31,7 @@ Example:
   "emailLocalPart": "cep6474yx3wwbr5xwxgrc2wr5tpsyfxuk2vshsvnf5ib4vause3a",
   "emailAddress": "cep6474yx3wwbr5xwxgrc2wr5tpsyfxuk2vshsvnf5ib4vause3a@mail.protege.bot",
   "createdAt": "2026-03-04T20:59:02.277Z",
+  "displayName": "Ops Assistant",
   "aliases": [
     "charlie",
     "tech-support-charlie",
@@ -101,6 +102,7 @@ CLI persona selector resolution supports:
 
 ```bash
 protege persona create "ops-assistant"
+protege persona create --name "Ops Assistant"
 protege persona list
 protege persona info <persona_id_or_prefix>
 protege persona delete <persona_id_or_prefix>
