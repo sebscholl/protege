@@ -29,6 +29,7 @@ export default withMermaid(defineConfig({
         items: [
           { text: 'Quick Start', link: '/getting-started/' },
           { text: 'Relay vs Transport', link: '/getting-started/relay-vs-transport' },
+          { text: 'Relay Operations', link: '/getting-started/relay-operations' },
         ],
       },
       {
@@ -60,6 +61,8 @@ export default withMermaid(defineConfig({
         text: 'Reference',
         items: [
           { text: 'CLI Commands', link: '/reference/cli' },
+          { text: 'Chat Guide', link: '/reference/chat' },
+          { text: 'Troubleshooting', link: '/reference/troubleshooting' },
         ],
       },
     ],

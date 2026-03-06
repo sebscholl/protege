@@ -1,4 +1,4 @@
-# Relay Guide
+# Relay Operations
 
 Relay mode is the recommended onboarding path when inbound SMTP port 25 is not available on your local network.
 
@@ -16,9 +16,9 @@ Core agent logic and memory still run locally in your Protege runtime.
 ```bash
 protege relay bootstrap --relay-ws-url wss://relay.example.com/ws
 ```
-This bootstrap step also:
+This step also:
 1. Enables relay mode in `configs/gateway.json`.
-2. Replaces `mailDomain: localhost` with the inferred relay mail domain.
+2. Replaces `mailDomain: localhost` with inferred relay mail domain.
 3. Reconciles persona sender email domains to match `mailDomain`.
 2. Start gateway:
 ```bash
@@ -45,5 +45,3 @@ For direct-to-MX outbound from relay, configure:
 1. SPF for relay mail domain.
 2. PTR/rDNS for relay egress IP(s).
 3. DMARC (recommended baseline policy).
-
-If these are missing, large providers may reject or heavily spam-folder outbound messages.

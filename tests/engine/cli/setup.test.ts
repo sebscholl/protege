@@ -320,8 +320,16 @@ describe('setup arg parsing behavior', () => {
     expect(hasSetupConfigFlags({ argv: ['--path', '/tmp/x', '--force'] })).toBe(false);
   });
 
+  it('does not treat path and reset as setup config flags', () => {
+    expect(hasSetupConfigFlags({ argv: ['--path', '/tmp/x', '--reset'] })).toBe(false);
+  });
+
   it('marks parse as non-interactive when --non-interactive is set', () => {
     expect(parseSetupArgs({ argv: ['--non-interactive'] }).interactive).toBe(false);
+  });
+
+  it('maps --reset to force scaffold overwrite behavior', () => {
+    expect(parseSetupArgs({ argv: ['--reset'] }).options.force).toBe(true);
   });
 });
 

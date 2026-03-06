@@ -12,6 +12,7 @@ let projectPath = '';
 let firstCreatedCount = 0;
 let secondSkippedCount = 0;
 let forceCreatedCount = 0;
+let resetCreatedCount = 0;
 let gatewayConfigExists = false;
 let securityConfigExists = false;
 let toolsReadmeExists = false;
@@ -88,6 +89,15 @@ beforeAll(async (): Promise<void> => {
     createdFiles: string[];
   };
   forceCreatedCount = forceResult.createdFiles.length;
+
+  const resetResult = JSON.parse((await captureStdout({
+    run: async (): Promise<void> => runCli({
+      argv: ['init', '--path', projectPath, '--reset', '--json'],
+    }),
+  })).trim()) as {
+    createdFiles: string[];
+  };
+  resetCreatedCount = resetResult.createdFiles.length;
 });
 
 afterAll((): void => {
@@ -141,5 +151,9 @@ describe('init cli command', () => {
 
   it('recreates scaffold files when --force is used', () => {
     expect(forceCreatedCount > 5).toBe(true);
+  });
+
+  it('recreates scaffold files when --reset is used', () => {
+    expect(resetCreatedCount > 5).toBe(true);
   });
 });

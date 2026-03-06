@@ -73,7 +73,7 @@ protege doctor [--json]
 ## `protege init`
 
 ```bash
-protege init [--path <dir>] [--force] [--json]
+protege init [--path <dir>] [--reset|--force] [--json]
 ```
 
 Scaffold-only command.
@@ -87,7 +87,7 @@ protege setup [options] [--json]
 Primary options:
 
 - `--path <dir>`
-- `--force`
+- `--reset` (or `--force`)
 - `--provider <openai|anthropic|gemini|grok>`
 - `--inference-api-key <key>`
 - `--outbound <relay|local>`

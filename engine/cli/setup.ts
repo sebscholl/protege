@@ -136,13 +136,13 @@ export function parseSetupArgs(
     if (token === '--path') {
       const candidatePath = args.argv[index + 1];
       if (!candidatePath || candidatePath.trim().length === 0) {
-        throw new Error('Usage: protege setup [--path <dir>] [--force] [--provider <openai|anthropic|gemini|grok>] [--inference-api-key <key>] [--outbound <relay|local>] [--relay-ws-url <url>] [--web-search-provider <none|perplexity|tavily>] [--web-search-api-key <key>] [--admin-contact-email <email>] [--doctor]');
+        throw new Error('Usage: protege setup [--path <dir>] [--reset|--force] [--provider <openai|anthropic|gemini|grok>] [--inference-api-key <key>] [--outbound <relay|local>] [--relay-ws-url <url>] [--web-search-provider <none|perplexity|tavily>] [--web-search-api-key <key>] [--admin-contact-email <email>] [--doctor]');
       }
       targetPath = resolve(candidatePath);
       index += 1;
       continue;
     }
-    if (token === '--force') {
+    if (token === '--force' || token === '--reset') {
       force = true;
       continue;
     }

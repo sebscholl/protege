@@ -41,14 +41,14 @@ export function parseInitArgs(
   let force = false;
   for (let index = 0; index < args.argv.length; index += 1) {
     const token = args.argv[index];
-    if (token === '--force') {
+    if (token === '--force' || token === '--reset') {
       force = true;
       continue;
     }
     if (token === '--path') {
       const candidatePath = args.argv[index + 1];
       if (!candidatePath || candidatePath.trim().length === 0) {
-        throw new Error('Usage: protege init [--path <dir>] [--force]');
+        throw new Error('Usage: protege init [--path <dir>] [--reset|--force]');
       }
       targetPath = resolve(candidatePath);
       index += 1;

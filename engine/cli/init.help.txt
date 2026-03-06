@@ -1,10 +1,12 @@
 Init Command
 
-Usage: protege init [--path <dir>] [--force] [--json]
+Usage: protege init [--path <dir>] [--reset|--force] [--json]
 
 Description:
   Scaffolds a Protege project structure and default config files.
+  Use --reset to rewrite existing scaffold files to defaults.
 
 Examples:
   protege init
   protege init --path ./my-protege
+  protege init --reset

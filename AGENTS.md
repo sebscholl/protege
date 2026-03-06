@@ -46,6 +46,7 @@ If instructions conflict, priority is:
 Use these as canonical references:
 
 1. Product architecture and sequencing:
+   - `docs/README.md` (active vs archive docs map)
    - `docs/protege-final-specification-v1.1.md`
    - `docs/protege-development-sequencing-v2.md`
    - `docs/protege-implementation-plan-v3.md`

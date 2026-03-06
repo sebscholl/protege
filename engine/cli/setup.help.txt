@@ -6,6 +6,7 @@ Description:
   Guided first-run setup for provider credentials, outbound mode, persona bootstrap, and health checks.
 
 Common options:
+  --reset (rewrite existing scaffold files to defaults before applying setup)
   --provider <openai|anthropic|gemini|grok>
   --outbound <relay|local>
   --relay-ws-url <ws|wss url>
@@ -16,3 +17,4 @@ Common options:
 Examples:
   protege setup
   protege setup --non-interactive --provider openai --outbound relay --doctor
+  protege setup --reset --non-interactive

@@ -60,20 +60,21 @@ protege doctor
 6. `protege status [--json]`
 7. `protege logs [--follow] [--tail <n>] [--scope <scope>] [--json]`
 8. `protege doctor [--json]`
-9. `protege init [--path <dir>] [--force] [--json]`
-10. `protege setup [--path <dir>] [--force] [--provider <openai|anthropic|gemini|grok>] [--outbound <relay|local>] [--non-interactive] ... [--json]`
+9. `protege init [--path <dir>] [--reset|--force] [--json]`
+10. `protege setup [--path <dir>] [--reset|--force] [--provider <openai|anthropic|gemini|grok>] [--outbound <relay|local>] [--non-interactive] ... [--json]`
 11. `protege chat --persona <persona_id_or_prefix> [--thread <thread_id>]`
 12. `protege scheduler sync [--persona <persona_id_or_prefix>] [--json]`
 
 `protege setup` prompts interactively by default when setup config flags are omitted.
 Most CLI commands render pretty output by default and switch to raw JSON with `--json`.
 
-## User Guides
+## User Docs (Site)
 
-1. `guide/README.md`
-2. `guide/cli.md`
-3. `guide/relay.md`
-4. `guide/troubleshooting.md`
+1. `site/index.md`
+2. `site/getting-started/index.md`
+3. `site/reference/cli.md`
+4. `site/reference/chat.md`
+5. `site/reference/troubleshooting.md`
 
 ## Internal Docs
 

@@ -24,7 +24,7 @@
     "extensions/hooks/README.md",
     "personas/README.md",
     "memory/README.md",
-    "guide/",
+    "site/",
     ".env.example",
     "README.md"
   ],

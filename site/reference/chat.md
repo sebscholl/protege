@@ -20,16 +20,12 @@ protege chat --persona <persona_id_or_prefix> --thread <thread_id>
 3. Existing threads: read-only in v1.
 4. Writable threads: only threads created inside chat (`Ctrl+N`).
 
-This keeps v1 recipient handling deterministic and safe.
-
 ## Modes
 
 Thread view has two interaction modes:
 
 1. `COMPOSE`: typing edits the draft.
 2. `COMMAND`: typing does not append to the draft.
-
-The status line shows current mode, active key event, and recent status.
 
 ## Keybindings (Default)
 
@@ -57,10 +53,8 @@ All chat keybindings are configurable in `configs/system.json` under `chat.keyma
 ## Sending Behavior
 
 1. On submit (`Ctrl+S`), the local user message is persisted immediately.
-2. Chat auto-scrolls to bottom immediately on submit.
-3. Harness inference runs asynchronously.
-4. Tool-driven reply is persisted in the same thread.
-5. Chat auto-scrolls to bottom again when the response lands.
+2. Harness inference runs asynchronously.
+3. Tool-driven reply is persisted in the same thread.
 
 ## Display Modes
 
@@ -76,13 +70,9 @@ Writable local chat threads use synthetic local addressing:
 1. User side: `user@localhost`
 2. Persona side: `<persona_email_local_part>@localhost`
 
-This local path is intended for terminal workflows and debugging.
-
 ## Logging
 
 Chat writes structured events to `tmp/logs/protege.log` (or configured `logs_dir_path`) without printing runtime logs into the TUI surface.
-
-Use:
 
 ```bash
 protege logs --scope chat --tail 200
