@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -7,7 +7,6 @@ import { runCli } from '@engine/cli/index';
 import { listPersonas } from '@engine/shared/personas';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
 let firstBootstrapPersonaId = '';
 let firstBootstrapCreatedPersona = false;
 let firstBootstrapRelayUrl = '';
@@ -26,8 +25,6 @@ beforeAll(async (): Promise<void> => {
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-cli-relay-bootstrap-',
   });
-  tempRootPath = workspace.tempRootPath;
-
   const stdoutWrite = process.stdout.write.bind(process.stdout);
   const outputs: string[] = [];
   process.stdout.write = ((chunk: string | Uint8Array): boolean => {
@@ -73,7 +70,7 @@ beforeAll(async (): Promise<void> => {
   personaCountAfterSecondBootstrap = listPersonas().length;
 
   const gatewayConfig = JSON.parse(
-    readFileSync(join(tempRootPath, 'configs', 'gateway.json'), 'utf8'),
+    readFileSync(join(workspace.tempRootPath, 'configs', 'gateway.json'), 'utf8'),
   ) as {
     mailDomain?: string;
     relay?: {
@@ -135,6 +132,6 @@ describe('relay bootstrap cli', () => {
   });
 
   it('creates gateway config file when bootstrap runs', () => {
-    expect(existsSync(join(tempRootPath, 'configs', 'gateway.json'))).toBe(true);
+    expect(existsSync(join(workspace.tempRootPath, 'configs', 'gateway.json'))).toBe(true);
   });
 });

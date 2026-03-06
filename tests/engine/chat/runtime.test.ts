@@ -2,7 +2,7 @@ import type { InboundNormalizedMessage } from '@engine/gateway/types';
 import type { ProtegeDatabase } from '@engine/shared/database';
 
 import { readFileSync } from 'node:fs';
-import { chdir, cwd } from 'node:process';
+import { chdir } from 'node:process';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

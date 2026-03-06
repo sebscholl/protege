@@ -1,4 +1,3 @@
-import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -9,7 +8,6 @@ import { scaffoldProviderConfig } from '@tests/helpers/provider';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { captureStdout } from '@tests/helpers/stdout';
 
-let tempRootPath = '';
 let healthyStatus = '';
 let healthyChecksCount = 0;
 let unhealthyStatus = '';
@@ -25,8 +23,6 @@ beforeAll(async (): Promise<void> => {
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-cli-doctor-',
   });
-  tempRootPath = workspace.tempRootPath;
-
   workspace.patchConfigFiles({
     'gateway.json': {
       mode: 'dev',
@@ -47,7 +43,7 @@ beforeAll(async (): Promise<void> => {
       recursion_depth: 3,
     },
     'system.json': {
-      logs_dir_path: join(tempRootPath, 'tmp', 'logs'),
+      logs_dir_path: join(workspace.tempRootPath, 'tmp', 'logs'),
       console_log_format: 'json',
       admin_contact_email: 'ops@example.com',
     },

@@ -10,7 +10,6 @@ import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { loadNetworkFixture } from '@tests/network';
 import { networkServer } from '@tests/network/server';
 
-let tempRootPath = '';
 let emailProfileSystemMessage = '';
 let responsibilityProfileSystemMessage = '';
 let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
@@ -79,7 +78,6 @@ beforeAll(async (): Promise<void> => {
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-context-profile-e2e-',
   });
-  tempRootPath = workspace.tempRootPath;
   providerScaffold = scaffoldProviderConfig({
     workspace,
     providerName: 'openai',

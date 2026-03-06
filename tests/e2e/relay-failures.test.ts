@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { http, HttpResponse } from 'msw';
@@ -17,7 +17,6 @@ import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { loadNetworkFixture } from '@tests/network/index';
 import { networkServer } from '@tests/network/server';
 
-let tempRootPath = '';
 let missingPersonaRejected = false;
 let missingPersonaTemporalDbCreated = true;
 let relayToolFailureRaised = false;
@@ -31,7 +30,6 @@ beforeAll(async (): Promise<void> => {
     tempPrefix: 'protege-e2e-relay-failures-',
     symlinkExtensionsFromRepo: true,
   });
-  tempRootPath = workspace.tempRootPath;
   providerScaffold = scaffoldProviderConfig({
     workspace,
     providerName: 'openai',
@@ -97,7 +95,7 @@ beforeAll(async (): Promise<void> => {
   } catch {
     missingPersonaRejected = true;
   }
-  missingPersonaTemporalDbCreated = existsSync(join(tempRootPath, 'memory', 'unknown-persona', 'temporal.db'));
+  missingPersonaTemporalDbCreated = existsSync(join(workspace.tempRootPath, 'memory', 'unknown-persona', 'temporal.db'));
 
   networkServer.use(http.post(
     'https://api.openai.com/v1/chat/completions',

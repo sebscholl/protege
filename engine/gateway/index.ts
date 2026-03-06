@@ -1879,7 +1879,7 @@ export function runRipgrepCommand(
     file,
     commandArgs,
     options,
-  ) => execFileSync(file, commandArgs, options));
+  ): string => execFileSync(file, commandArgs, options));
   try {
     return execSync('rg', args.args, {
       cwd: args.cwd,

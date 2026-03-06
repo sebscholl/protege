@@ -4,7 +4,6 @@ import { createGatewayRuntimeActionInvoker } from '@engine/gateway/index';
 import { createInboundMessage } from '@tests/helpers/inbound-message';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
 let globPaths: string[] = [];
 let globTruncated = false;
 let globTotalMatches = -1;
@@ -27,7 +26,6 @@ beforeAll(async (): Promise<void> => {
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-runtime-discovery-actions-',
   });
-  tempRootPath = workspace.tempRootPath;
   workspace.writeFile({
     relativePath: 'src/alpha.ts',
     payload: 'const TODO = "ship";\n',

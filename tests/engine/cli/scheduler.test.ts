@@ -4,7 +4,6 @@ import { parseSchedulerArgs, resolvePersonaForScheduler, syncSchedulerAcrossPers
 import { createPersona } from '@engine/shared/personas';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
-let tempRootPath = '';
 let parsedAction = '';
 let resolvedPrefixPersonaId = '';
 let resolvedExactPersonaId = '';
@@ -16,8 +15,6 @@ beforeAll((): void => {
     fixtureName: 'minimal-protege',
     tempPrefix: 'protege-cli-scheduler-',
   });
-  tempRootPath = workspace.tempRootPath;
-
   const personaA = createPersona({});
   createPersona({});
   parsedAction = parseSchedulerArgs({

@@ -19,5 +19,14 @@
     },
     "types": ["node", "vitest/globals"]
   },
-  "include": ["engine", "relay", "extensions", "tests", "vitest.config.ts", "tsup.config.ts"]
+  "include": [
+    "engine",
+    "relay",
+    "extensions",
+    "demo",
+    "site/.vitepress/**/*.ts",
+    "tests",
+    "vitest.config.ts",
+    "tsup.config.ts"
+  ]
 }

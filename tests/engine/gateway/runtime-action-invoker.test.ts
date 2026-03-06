@@ -44,7 +44,7 @@ function createInvokerInboundMessage(
     cc?: string[];
     subject?: string;
   } = {},
-) {
+): ReturnType<typeof createInboundMessage> {
   return createInboundMessage({
     personaId: 'persona-test',
     messageId: '<inbound@example.com>',
