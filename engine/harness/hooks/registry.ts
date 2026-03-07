@@ -10,6 +10,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { onEvent as activeMemoryUpdaterOnEvent } from '@extensions/hooks/active-memory-updater/index';
+import { onEvent as threadMemoryUpdaterOnEvent } from '@extensions/hooks/thread-memory-updater/index';
 import { normalizeEnabledHookEntries, readExtensionManifest, resolveDefaultExtensionsManifestPath } from '@engine/harness/tools/registry';
 
 /**
@@ -201,6 +203,13 @@ export async function loadHookDefinition(
     hooksBaseDirPath: string;
   },
 ): Promise<HarnessHookDefinition> {
+  const builtInDefinition = getBuiltInHookDefinition({
+    hookName: args.hookName,
+  });
+  if (builtInDefinition) {
+    return builtInDefinition;
+  }
+
   const modulePath = resolveHookModulePath({
     hookName: args.hookName,
     hooksBaseDirPath: args.hooksBaseDirPath,
@@ -219,6 +228,28 @@ export async function loadHookDefinition(
   return {
     onEvent: onEvent as HarnessHookOnEvent,
   };
+}
+
+/**
+ * Returns one built-in hook definition when shipped in core runtime.
+ */
+export function getBuiltInHookDefinition(
+  args: {
+    hookName: string;
+  },
+): HarnessHookDefinition | undefined {
+  if (args.hookName === 'thread-memory-updater') {
+    return {
+      onEvent: threadMemoryUpdaterOnEvent as HarnessHookOnEvent,
+    };
+  }
+  if (args.hookName === 'active-memory-updater') {
+    return {
+      onEvent: activeMemoryUpdaterOnEvent as HarnessHookOnEvent,
+    };
+  }
+
+  return undefined;
 }
 
 /**

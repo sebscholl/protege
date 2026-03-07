@@ -7,8 +7,18 @@
   "bin": {
     "protege": "dist/main.js"
   },
+  "exports": {
+    ".": {
+      "import": "./dist/main.js"
+    },
+    "./toolkit": {
+      "import": "./dist/toolkit.js",
+      "types": "./dist/toolkit.d.ts"
+    }
+  },
   "files": [
     "dist/",
+    "engine/toolkit/README.md",
     "engine/cli/*.help.txt",
     "configs/*.json",
     "prompts/*.md",
@@ -45,6 +55,7 @@
     "relay:deploy:sync": "bash relay/deploy/scripts/sync-to-server.sh",
     "relay:deploy:remote": "bash relay/deploy/scripts/deploy-remote.sh",
     "relay:deploy": "bash relay/deploy/scripts/deploy-via-ssh.sh",
+    "relay:server:bootstrap": "bash relay/deploy/scripts/server-bootstrap.sh",
     "relay:server:restart": "bash relay/deploy/scripts/server-restart.sh",
     "relay:server:status": "bash relay/deploy/scripts/server-status.sh",
     "relay:server:logs": "bash relay/deploy/scripts/server-logs.sh",

@@ -100,7 +100,7 @@ Base fields are always present: `level`, `scope`, `event`, `timestamp`.
 ## TypeScript Usage
 
 ```ts
-import type { HarnessHookOnEvent } from '@engine/harness/hooks/events';
+import type { HarnessHookOnEvent } from 'protege/toolkit';
 
 export const onEvent: HarnessHookOnEvent = async (event, payload, config) => {
   if (event === 'harness.tool.call.failed') {

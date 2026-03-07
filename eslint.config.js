@@ -3,8 +3,10 @@ import tsParser from '@typescript-eslint/parser';
 
 export default [
   {
+    ignores: ['node_modules/**', 'dist/**', 'site/.vitepress/cache/**']
+  },
+  {
     files: ['**/*.ts'],
-    ignores: ['node_modules/**', 'dist/**'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -18,6 +20,22 @@ export default [
       '@typescript-eslint/explicit-function-return-type': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { 'argsIgnorePattern': '^_' }]
+    }
+  },
+  {
+    files: ['extensions/**/*.ts', 'demo/extensions/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@engine/*', '@extensions/*', '@configs/*', '@memory/*', '@relay/*'],
+              message: 'Extension code must import only from protege/toolkit for framework APIs.'
+            }
+          ]
+        }
+      ]
     }
   }
 ];

@@ -1,4 +1,4 @@
-import type { HarnessResolverDefinition } from '@engine/harness/resolvers/types';
+import type { HarnessResolverDefinition } from 'protege/toolkit';
 
 /**
  * Emits routing and invocation metadata note for deterministic email tool calls.
