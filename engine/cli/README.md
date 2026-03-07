@@ -9,15 +9,16 @@ The TUI operates as a thin client over standard agent messaging flows.
 Key commands:
 
 1. `protege gateway start|stop|restart [--dev]`
-2. `protege persona create|list|info|delete ... [--json]`
-3. `protege relay bootstrap [--relay-ws-url <ws://...>] [--json]`
-4. `protege init [--path <dir>] [--force] [--json]`
-5. `protege setup [--path <dir>] [--force] [--provider <openai|anthropic|gemini|grok>] [--outbound <relay|local>] [--non-interactive] ... [--json]`
-6. `protege status [--json]`
-7. `protege logs [--follow] [--tail <n>] [--scope <gateway|harness|relay|scheduler|chat|all>] [--json]`
-8. `protege doctor [--json]`
-9. `protege chat [--persona <persona_id_or_prefix>] [--thread <thread_id>]`
-10. `protege scheduler sync [--persona <persona_id_or_prefix>] [--json]`
+2. `protege daemon install|reinstall|uninstall|start|stop|restart|status|info|logs|enable|disable [options]`
+3. `protege persona create|list|info|delete ... [--json]`
+4. `protege relay bootstrap [--relay-ws-url <ws://...>] [--json]`
+5. `protege init [--path <dir>] [--force] [--json]`
+6. `protege setup [--path <dir>] [--force] [--provider <openai|anthropic|gemini|grok>] [--outbound <relay|local>] [--non-interactive] ... [--json]`
+7. `protege status [--json]`
+8. `protege logs [--follow] [--tail <n>] [--scope <gateway|harness|relay|scheduler|chat|all>] [--json]`
+9. `protege doctor [--json]`
+10. `protege chat [--persona <persona_id_or_prefix>] [--thread <thread_id>]`
+11. `protege scheduler sync [--persona <persona_id_or_prefix>] [--json]`
 
 Command roles:
 

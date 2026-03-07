@@ -22,6 +22,30 @@ protege gateway <start|stop|restart> [--dev]
 - `restart`: stop + start
 - `--dev`: force runtime mode `dev`
 
+## `protege daemon`
+
+```bash
+protege daemon <install|reinstall|uninstall|start|stop|restart|status|info|logs|enable|disable> [options]
+```
+
+Common options:
+
+- `--user` (default)
+- `--system`
+- `--cwd <path>`
+- `--name <base>`
+- `--json` (status/info/install/uninstall)
+
+Install/reinstall options:
+
+- `--env-file <path>`
+- `--force` (install only)
+
+Logs options:
+
+- `--follow`
+- `--lines <n>`
+
 ## `protege persona`
 
 ```bash

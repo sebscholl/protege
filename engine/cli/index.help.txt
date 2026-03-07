@@ -4,6 +4,7 @@ Usage: protege <command> [options]
 
 Commands:
   protege gateway <start|stop|restart> [--dev]
+  protege daemon <install|reinstall|uninstall|start|stop|restart|status|info|logs|enable|disable> [options]
   protege persona <create|list|info|delete> ... [--json]
   protege relay <bootstrap> [options]
   protege scheduler sync [--persona <persona_id_or_prefix>] [--json]
@@ -19,8 +20,10 @@ Flags:
   -v, --version  Show installed CLI version
 
 Examples:
+  protege help daemon
   protege help gateway
   protege gateway start --dev
+  protege daemon install
   protege setup
   protege chat
   protege chat --persona 68c33af4249a5647
