@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { runChatCommand } from '@engine/cli/chat';
+import { runDaemonCli } from '@engine/cli/daemon';
 import { runDoctorCommand } from '@engine/cli/doctor';
 import { runGatewayCli } from '@engine/cli/gateway';
 import { runInitCli } from '@engine/cli/init';
@@ -60,6 +61,11 @@ export async function runCli(
 
   if (area === 'gateway') {
     await runGatewayCli({ argv: rest });
+    return;
+  }
+
+  if (area === 'daemon') {
+    runDaemonCli({ argv: rest });
     return;
   }
 
@@ -205,7 +211,7 @@ export function stripDotEnvQuotes(
  * Returns top-level CLI usage text shown for help and unknown command errors.
  */
 export function getCliUsageText(): string {
-  return 'Usage: protege <gateway|persona|relay|scheduler|status|logs|doctor|init|setup|chat> ...';
+  return 'Usage: protege <gateway|daemon|persona|relay|scheduler|status|logs|doctor|init|setup|chat> ...';
 }
 
 /**
@@ -228,6 +234,7 @@ export function isKnownCliCommand(
   },
 ): boolean {
   return args.value === 'gateway'
+    || args.value === 'daemon'
     || args.value === 'persona'
     || args.value === 'relay'
     || args.value === 'scheduler'

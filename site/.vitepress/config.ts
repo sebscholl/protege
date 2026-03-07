@@ -85,6 +85,7 @@ export default withMermaid(defineConfig({
         text: 'Reference',
         items: [
           { text: 'CLI Commands', link: '/reference/cli' },
+          { text: 'Daemon Operations', link: '/reference/daemon' },
           { text: 'Chat Guide', link: '/reference/chat' },
           { text: 'Release Runbook', link: '/reference/release' },
           { text: 'Troubleshooting', link: '/reference/troubleshooting' },

@@ -68,6 +68,7 @@ let helpOutput = '';
 let shortHelpOutput = '';
 let topicHelpOutput = '';
 let gatewayFlagHelpOutput = '';
+let daemonHelpOutput = '';
 let relayBootstrapHelpOutput = '';
 let relayBootstrapActionHelpOutput = '';
 let versionOutput = '';
@@ -90,6 +91,9 @@ beforeAll(async (): Promise<void> => {
   });
   gatewayFlagHelpOutput = await captureStdout({
     run: async (): Promise<void> => runCli({ argv: ['gateway', '--help'] }),
+  });
+  daemonHelpOutput = await captureStdout({
+    run: async (): Promise<void> => runCli({ argv: ['daemon', '--help'] }),
   });
   relayBootstrapHelpOutput = await captureStdout({
     run: async (): Promise<void> => runCli({ argv: ['help', 'relay', 'bootstrap'] }),
@@ -121,6 +125,10 @@ describe('top-level cli flags', () => {
 
   it('prints command-specific help for <command> --help', () => {
     expect(gatewayFlagHelpOutput).toContain('Usage: protege gateway');
+  });
+
+  it('prints daemon command help for daemon --help', () => {
+    expect(daemonHelpOutput).toContain('Usage: protege daemon');
   });
 
   it('prints subcommand help for help <command> <action>', () => {

@@ -44,18 +44,34 @@ New command group:
 8. `protege daemon info [--user|--system] [--name ...] [--json]`
 9. `protege daemon enable [--user|--system] [--name ...]`
 10. `protege daemon disable [--user|--system] [--name ...]`
+11. `protege daemon reinstall [--user|--system] [--cwd <path>] [--env-file <path>]`
 
 Behavior notes:
 
 1. default scope is `--user` for local developer installs.
 2. status/info/logs should fail with actionable message if service is not installed.
 3. `--json` parity with other CLI commands.
+4. daemon units are workspace-scoped (not global-singleton).
+
+## Workspace-Scoped Unit Model
+
+One unit is generated per workspace path.
+
+1. Unit name format: `protege-gateway-<workspace-hash>.service`.
+2. `--cwd` defaults to current working directory.
+3. All lifecycle commands resolve workspace first, then map to that workspace unit.
+4. `reinstall` semantics:
+   1. stop + uninstall workspace unit if present,
+   2. regenerate unit from current flags,
+   3. daemon-reload + install + start (optional auto-start per command flag).
+
+This allows multiple Protege workspaces on one machine without naming collisions.
 
 ## Service Unit Design
 
 Generated unit template (`~/.config/systemd/user/protege-gateway.service` for user scope):
 
-1. `ExecStart=<node> <repo>/dist/main.js gateway start`
+1. `ExecStart=<absolute-path-to-protege-binary> gateway start`
 2. `WorkingDirectory=<workspace>`
 3. `EnvironmentFile=<workspace>/.secrets` (if present)
 4. `Restart=on-failure`
@@ -67,6 +83,28 @@ Generated unit template (`~/.config/systemd/user/protege-gateway.service` for us
 10. `NoNewPrivileges=true`
 11. `ProtectSystem=strict` (phase 2, after file-write path validation)
 12. `ReadWritePaths=<workspace>`
+
+`ExecStart` resolution policy during `protege daemon install`:
+
+1. resolve `protege` via `command -v protege`,
+2. store absolute resolved path in unit file (do not rely on shell `PATH` inside systemd),
+3. fail install with actionable message when binary cannot be resolved.
+
+`WorkingDirectory` and `EnvironmentFile` policy:
+
+1. both are pinned to the target workspace resolved from `--cwd` (or `pwd`),
+2. moving a workspace requires `protege daemon reinstall` for that workspace,
+3. multiple workspaces produce separate units, each with its own working directory and secrets file.
+
+## Port Ownership Rule (Important)
+
+For direct SMTP ingress on one host/interface:
+
+1. only one process can bind one `<host>:<port>` at a time,
+2. when running in port-25 mode, treat Protege as single-process per host for that bind,
+3. startup must fail fast on bind collision with explicit remediation text.
+
+Relay connections are independent per persona identity, but local SMTP listener binds are shared OS resources.
 
 ## Runtime Changes Required
 
@@ -99,6 +137,8 @@ Generated unit template (`~/.config/systemd/user/protege-gateway.service` for us
 2. CLI wrappers around `systemctl --user` (or `sudo systemctl` for system scope).
 3. status parser with pretty and json output.
 4. tests for command construction and parsing.
+5. workspace-hash unit naming and `reinstall` path.
+6. startup preflight: detect SMTP bind conflicts and emit actionable error.
 
 ### Phase D2: Logs/info/enable-disable + hardening
 
@@ -148,6 +188,7 @@ Manual acceptance checklist:
 1. Confirm CLI naming (`daemon` vs `service`).
 2. Confirm Linux-only scope for v1 daemon support.
 3. Confirm whether to retire PID-file stop flow immediately or in one transition release.
+4. Confirm auto-start behavior for `reinstall`.
 
 ## Research references
 

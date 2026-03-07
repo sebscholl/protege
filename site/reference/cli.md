@@ -3,7 +3,7 @@
 Top-level usage:
 
 ```bash
-protege <gateway|persona|relay|scheduler|status|logs|doctor|init|setup|chat> ...
+protege <gateway|daemon|persona|relay|scheduler|status|logs|doctor|init|setup|chat> ...
 ```
 
 ## Global Flags
@@ -21,6 +21,33 @@ protege gateway <start|stop|restart> [--dev]
 - `stop`: stop tracked gateway process
 - `restart`: stop + start
 - `--dev`: force runtime mode `dev`
+
+## `protege daemon`
+
+```bash
+protege daemon <install|reinstall|uninstall|start|stop|restart|status|info|logs|enable|disable> [options]
+```
+
+Common options:
+
+- `--user` (default)
+- `--system`
+- `--cwd <path>`
+- `--unit <name>` (explicit unit override)
+- `--name <base>`
+- `--json` (status/info/install/uninstall)
+
+Install/reinstall options:
+
+- `--env-file <path>`
+- `--force` (install only)
+
+Logs options:
+
+- `--follow`
+- `--lines <n>`
+
+See `Daemon Operations` for lifecycle semantics, unit resolution, and troubleshooting details.
 
 ## `protege persona`
 

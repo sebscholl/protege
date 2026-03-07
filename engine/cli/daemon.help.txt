@@ -1,0 +1,26 @@
+Daemon Command
+
+Usage: protege daemon <install|reinstall|uninstall|start|stop|restart|status|info|logs|enable|disable> [options]
+
+Common options:
+  --user                    Manage user-scoped systemd service (default).
+  --system                  Manage system-scoped systemd service.
+  --cwd <path>              Target workspace path (default: current directory).
+  --unit <name>             Explicit unit name override (for multi-workspace hosts).
+  --name <base>             Base service name (default: protege-gateway).
+  --json                    Print structured output for status/info/install/uninstall.
+
+Install/reinstall options:
+  --env-file <path>         Environment file path (default: <cwd>/.secrets).
+  --force                   Overwrite existing unit on install.
+
+Logs options:
+  --follow                  Follow logs continuously.
+  --lines <n>               Tail line count (default: 200).
+
+Examples:
+  protege daemon install
+  protege daemon status --json
+  protege daemon logs --unit protege-gateway-abc123.service --follow
+  protege daemon logs --follow
+  protege daemon reinstall --cwd /srv/protege-workspace
