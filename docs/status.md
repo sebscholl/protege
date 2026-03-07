@@ -80,6 +80,16 @@ Open follow-ups:
 
 1. Continue E2E reliability expansion where needed.
 
+## Next Session Focus (2026-03-08)
+
+1. Deep site/docs quality pass for developer learning and exploration flow.
+2. Daemonization design + CLI ops workflow (start/stop/restart/status/logs/info):
+   - see `docs/milestones/daemon-runtime-and-ops-plan.md`.
+3. Relay security/reliability hardening roadmap:
+   - see `docs/milestones/relay-security-and-reliability-plan.md`.
+4. Fresh mini-PC validation with multi-persona responsibilities + custom hooks/resolvers.
+5. Introspection and observability expansion (token/spend/context metrics + richer debugging events).
+
 ## Active ADR Coverage
 
 Latest active ADR sequence includes:

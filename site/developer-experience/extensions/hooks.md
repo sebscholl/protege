@@ -1,76 +1,34 @@
 # Hooks
 
-Hooks are async observers for runtime events. They do not gate request completion.
+Hooks are asynchronous observers. They do not block the main request lifecycle.
 
-## Hook Contract
+## Contract
+
+Source of truth: `engine/harness/hooks/events.ts`
 
 ```ts
-import type {
-  HarnessHookOnEvent,
-  HookEventName,
-  HookEventPayloadByName,
-} from '@engine/harness/hooks/events';
-
-export type HarnessHookOnEvent = <TEvent extends HookEventName>(
+export type HarnessHookOnEvent = <
+  TEvent extends HookEventName,
+>(
   event: TEvent,
   payload: HookEventPayloadByName[TEvent],
   config: Record<string, unknown>,
-) => Promise<void> | void;
+) => Promise<HarnessHookResult> | HarnessHookResult;
 ```
 
-## Manifest Registration
-
-```json
-{
-  "hooks": [
-    "log-to-slack",
-    {
-      "name": "audit-hook",
-      "events": ["harness.tool.call.failed", "scheduler.run.failed"],
-      "config": {
-        "channel": "#ops"
-      }
-    }
-  ]
-}
-```
-
-## Dispatch Behavior
-
-- dispatch is fire-and-forget
-- ordering is manifest order
-- hook failures are isolated and logged
-- wildcard `"*"` subscribes to all events
-
-## Event Names and Payloads
-
-Hook events come from `engine/harness/hooks/events.ts` and include typed base fields:
-
-- `level`
-- `scope`
-- `event`
-- `timestamp`
-
-Plus event-specific fields such as `personaId`, `threadId`, `runId`, `toolName`, `message`, and others depending on event.
-
-The complete v1 event catalog is documented in `extensions/hooks/EVENTS.md`.
-
-## Build a Custom Hook
+Hooks may return chained emissions:
 
 ```ts
-import type { HarnessHookOnEvent } from '@engine/harness/hooks/events';
-
-export const onEvent: HarnessHookOnEvent = async (event, payload, config) => {
-  if (event !== 'harness.tool.call.failed') {
-    return;
-  }
-
-  const toolName = String(payload.toolName ?? 'unknown');
-  const message = String(payload.message ?? 'unknown error');
-  const sink = String(config.sink ?? 'stdout');
-
-  void toolName;
-  void message;
-  void sink;
+export type HarnessHookResult = void | {
+  emit?: Array<{
+    event: HookEventName;
+    payload: HookEventPayloadByName[HookEventName];
+  }>;
 };
 ```
+
+## Read Next
+
+1. [Built-in hooks and configuration](/developer-experience/extensions/hooks-built-ins)
+2. [Hook events and payload reference](/developer-experience/extensions/hooks-events)
+3. [Build a custom hook](/developer-experience/extensions/hooks-custom)
