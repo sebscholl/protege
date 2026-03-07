@@ -3,7 +3,7 @@
 Top-level usage:
 
 ```bash
-protege <gateway|persona|relay|scheduler|status|logs|doctor|init|setup|chat> ...
+protege <gateway|daemon|persona|relay|scheduler|status|logs|doctor|init|setup|chat> ...
 ```
 
 ## Global Flags
@@ -33,6 +33,7 @@ Common options:
 - `--user` (default)
 - `--system`
 - `--cwd <path>`
+- `--unit <name>` (explicit unit override)
 - `--name <base>`
 - `--json` (status/info/install/uninstall)
 
@@ -45,6 +46,8 @@ Logs options:
 
 - `--follow`
 - `--lines <n>`
+
+See `Daemon Operations` for lifecycle semantics, unit resolution, and troubleshooting details.
 
 ## `protege persona`
 

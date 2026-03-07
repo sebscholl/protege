@@ -2,7 +2,7 @@ import type { CliOutputMode } from '@engine/cli/output';
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
@@ -32,6 +32,7 @@ export type DaemonTargetOptions = {
   scope: DaemonScope;
   baseName: string;
   workspacePath: string;
+  unitName?: string;
   outputMode: CliOutputMode;
 };
 
@@ -42,6 +43,7 @@ export type DaemonShellCommand = {
   command: string;
   argv: string[];
   captureStdout?: boolean;
+  suppressStderr?: boolean;
 };
 
 /**
@@ -78,6 +80,10 @@ export type DaemonCliDeps = {
     command: DaemonShellCommand,
   ) => string;
   resolveProtegeBinaryPath: () => string;
+  resolveNodeBinaryPath: () => string;
+  resolveRealPath: (
+    path: string,
+  ) => string;
 };
 
 /**
@@ -245,6 +251,7 @@ export function parseDaemonTargetArgs(
   let scope: DaemonScope = 'user';
   let baseName = 'protege-gateway';
   let workspacePath = resolve(args.cwdPath);
+  let unitName: string | undefined;
   let outputMode: CliOutputMode = 'pretty';
 
   for (let index = 0; index < args.argv.length; index += 1) {
@@ -267,6 +274,11 @@ export function parseDaemonTargetArgs(
       index += 1;
       continue;
     }
+    if (token === '--unit') {
+      unitName = args.argv[index + 1];
+      index += 1;
+      continue;
+    }
     if (token === '--json') {
       outputMode = 'json';
     }
@@ -276,6 +288,7 @@ export function parseDaemonTargetArgs(
     scope,
     baseName,
     workspacePath,
+    unitName,
     outputMode,
   };
 }
@@ -340,6 +353,13 @@ export function installDaemon(
   }
 
   const protegeBinaryPath = args.deps.resolveProtegeBinaryPath();
+  const nodeBinaryPath = args.deps.resolveNodeBinaryPath();
+  const execStart = resolveDaemonExecStartCommand({
+    protegeBinaryPath,
+    nodeBinaryPath,
+    resolveRealPath: args.deps.resolveRealPath,
+    readFileSync: args.deps.readFileSync,
+  });
   args.deps.mkdirSync(dirname(unitFilePath), { recursive: true });
   args.deps.writeFileSync(
     unitFilePath,
@@ -347,7 +367,7 @@ export function installDaemon(
       unitName,
       workspacePath: args.options.workspacePath,
       envFilePath: args.options.envFilePath,
-      protegeBinaryPath,
+      execStart,
     }),
   );
   runSystemctlDaemonReload({
@@ -365,6 +385,8 @@ export function installDaemon(
       workspacePath: args.options.workspacePath,
       envFilePath: args.options.envFilePath,
       protegeBinaryPath,
+      nodeBinaryPath,
+      execStart,
     },
     prettyText: [
       'Daemon Installed',
@@ -376,6 +398,8 @@ export function installDaemon(
           { key: 'workspacePath', value: args.options.workspacePath },
           { key: 'envFilePath', value: args.options.envFilePath },
           { key: 'protegeBinaryPath', value: protegeBinaryPath },
+          { key: 'nodeBinaryPath', value: nodeBinaryPath },
+          { key: 'execStart', value: execStart },
         ],
       }),
     ].join('\n'),
@@ -415,15 +439,46 @@ export function uninstallDaemon(
     suppressOutput?: boolean;
   },
 ): void {
-  const unitName = resolveWorkspaceDaemonUnitName({
-    baseName: args.options.baseName,
-    workspacePath: args.options.workspacePath,
+  const unitName = resolveTargetDaemonUnitName({
+    options: args.options,
+    deps: args.deps,
   });
   const unitFilePath = resolveDaemonUnitFilePath({
     scope: args.options.scope,
     unitName,
     homeDirPath: args.deps.homeDir(),
   });
+  const unitInstalled = args.deps.existsSync(unitFilePath);
+  if (!unitInstalled) {
+    if (args.suppressOutput) {
+      return;
+    }
+    emitCliOutput({
+      mode: args.options.outputMode,
+      jsonValue: {
+        action: 'uninstall_skipped',
+        reason: 'unit_not_installed',
+        scope: args.options.scope,
+        unitName,
+        unitFilePath,
+        workspacePath: args.options.workspacePath,
+      },
+      prettyText: [
+        'Daemon Uninstall Skipped',
+        'Reason: Unit is not installed.',
+        renderCliKeyValueTable({
+          rows: [
+            { key: 'scope', value: args.options.scope },
+            { key: 'unitName', value: unitName },
+            { key: 'unitFilePath', value: unitFilePath },
+            { key: 'workspacePath', value: args.options.workspacePath },
+          ],
+        }),
+      ].join('\n'),
+    });
+    return;
+  }
+
   const systemctlArgsPrefix = resolveSystemctlScopeArgs({
     scope: args.options.scope,
   });
@@ -484,7 +539,11 @@ export function runShellCommandIgnoringFailure(
   },
 ): void {
   try {
-    args.deps.runShellCommand(args.command);
+    args.deps.runShellCommand({
+      ...args.command,
+      captureStdout: true,
+      suppressStderr: true,
+    });
   } catch {
     // Teardown commands may fail when the unit does not exist; removal remains idempotent.
   }
@@ -500,9 +559,9 @@ export function runSystemctlUnitAction(
     deps: DaemonCliDeps;
   },
 ): void {
-  const unitName = resolveWorkspaceDaemonUnitName({
-    baseName: args.options.baseName,
-    workspacePath: args.options.workspacePath,
+  const unitName = resolveTargetDaemonUnitName({
+    options: args.options,
+    deps: args.deps,
   });
   args.deps.runShellCommand({
     command: 'systemctl',
@@ -529,9 +588,9 @@ export function showDaemonStatus(
     deps: DaemonCliDeps;
   },
 ): void {
-  const unitName = resolveWorkspaceDaemonUnitName({
-    baseName: args.options.baseName,
-    workspacePath: args.options.workspacePath,
+  const unitName = resolveTargetDaemonUnitName({
+    options: args.options,
+    deps: args.deps,
   });
   const output = args.deps.runShellCommand({
     command: 'systemctl',
@@ -582,9 +641,9 @@ export function showDaemonInfo(
     deps: DaemonCliDeps;
   },
 ): void {
-  const unitName = resolveWorkspaceDaemonUnitName({
-    baseName: args.options.baseName,
-    workspacePath: args.options.workspacePath,
+  const unitName = resolveTargetDaemonUnitName({
+    options: args.options,
+    deps: args.deps,
   });
   const output = args.deps.runShellCommand({
     command: 'systemctl',
@@ -641,9 +700,9 @@ export function showDaemonLogs(
     deps: DaemonCliDeps;
   },
 ): void {
-  const unitName = resolveWorkspaceDaemonUnitName({
-    baseName: args.options.baseName,
-    workspacePath: args.options.workspacePath,
+  const unitName = resolveTargetDaemonUnitName({
+    options: args.options,
+    deps: args.deps,
   });
   const journalArgs = [
     ...resolveJournalctlScopeArgs({
@@ -726,6 +785,95 @@ export function resolveJournalctlScopeArgs(
 }
 
 /**
+ * Resolves one target daemon unit name from explicit selection, installed units, or workspace hash.
+ */
+export function resolveTargetDaemonUnitName(
+  args: {
+    options: DaemonTargetOptions;
+    deps: DaemonCliDeps;
+  },
+): string {
+  if (args.options.unitName && args.options.unitName.trim().length > 0) {
+    return normalizeDaemonUnitName({
+      value: args.options.unitName,
+    });
+  }
+
+  const workspaceUnitName = resolveWorkspaceDaemonUnitName({
+    baseName: args.options.baseName,
+    workspacePath: args.options.workspacePath,
+  });
+  const installedUnitNames = listInstalledDaemonUnitNames({
+    scope: args.options.scope,
+    baseName: args.options.baseName,
+    deps: args.deps,
+  });
+  if (installedUnitNames.length === 1) {
+    return installedUnitNames[0];
+  }
+  if (installedUnitNames.length === 0 || installedUnitNames.includes(workspaceUnitName)) {
+    return workspaceUnitName;
+  }
+
+  throw new Error([
+    'Multiple daemon units found for this base name.',
+    'Specify --cwd <workspace> or --unit <unit-name>.',
+    `Units: ${installedUnitNames.join(', ')}`,
+  ].join(' '));
+}
+
+/**
+ * Lists installed daemon unit names for one scope and base-name prefix.
+ */
+export function listInstalledDaemonUnitNames(
+  args: {
+    scope: DaemonScope;
+    baseName: string;
+    deps: DaemonCliDeps;
+  },
+): string[] {
+  let output = '';
+  try {
+    output = args.deps.runShellCommand({
+      command: 'systemctl',
+      argv: [
+        ...resolveSystemctlScopeArgs({
+          scope: args.scope,
+        }),
+        'list-unit-files',
+        `${normalizeDaemonBaseName({ value: args.baseName })}-*.service`,
+        '--no-legend',
+        '--no-pager',
+      ],
+      captureStdout: true,
+    });
+  } catch {
+    return [];
+  }
+  return output
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => line.split(/\s+/u)[0] ?? '')
+    .filter((value) => value.endsWith('.service'));
+}
+
+/**
+ * Normalizes explicit daemon unit names to include `.service`.
+ */
+export function normalizeDaemonUnitName(
+  args: {
+    value: string;
+  },
+): string {
+  const trimmed = args.value.trim();
+  if (trimmed.length === 0) {
+    throw new Error('Daemon unit name cannot be empty.');
+  }
+  return trimmed.endsWith('.service') ? trimmed : `${trimmed}.service`;
+}
+
+/**
  * Resolves workspace-scoped daemon unit file name.
  */
 export function resolveWorkspaceDaemonUnitName(
@@ -792,7 +940,7 @@ export function renderSystemdUnitFile(
     unitName: string;
     workspacePath: string;
     envFilePath: string;
-    protegeBinaryPath: string;
+    execStart: string;
   },
 ): string {
   return [
@@ -804,7 +952,7 @@ export function renderSystemdUnitFile(
     'Type=simple',
     `WorkingDirectory=${args.workspacePath}`,
     `EnvironmentFile=-${args.envFilePath}`,
-    `ExecStart=${args.protegeBinaryPath} gateway start`,
+    `ExecStart=${args.execStart}`,
     'Restart=on-failure',
     'RestartSec=2s',
     'StartLimitIntervalSec=60',
@@ -883,15 +1031,20 @@ export function createDefaultDaemonCliDeps(): DaemonCliDeps {
       if (command.captureStdout) {
         return execFileSync(command.command, command.argv, {
           encoding: 'utf8',
+          stdio: command.suppressStderr ? ['ignore', 'pipe', 'ignore'] : undefined,
         });
       }
 
       execFileSync(command.command, command.argv, {
-        stdio: 'inherit',
+        stdio: command.suppressStderr ? ['ignore', 'inherit', 'ignore'] : 'inherit',
       });
       return '';
     },
     resolveProtegeBinaryPath: (): string => resolveProtegeBinaryPath(),
+    resolveNodeBinaryPath: (): string => resolveNodeBinaryPath(),
+    resolveRealPath: (
+      path,
+    ): string => realpathSync(path),
   };
 }
 
@@ -907,4 +1060,67 @@ export function resolveProtegeBinaryPath(): string {
   }
 
   return output;
+}
+
+/**
+ * Resolves one absolute installed `node` binary path from shell lookup.
+ */
+export function resolveNodeBinaryPath(): string {
+  const output = execFileSync('bash', ['-lc', 'command -v node'], {
+    encoding: 'utf8',
+  }).trim();
+  if (output.length === 0) {
+    throw new Error('Unable to resolve node binary path. Ensure `node` is on PATH.');
+  }
+
+  return output;
+}
+
+/**
+ * Resolves one systemd-safe ExecStart command for the installed Protege CLI.
+ */
+export function resolveDaemonExecStartCommand(
+  args: {
+    protegeBinaryPath: string;
+    nodeBinaryPath: string;
+    resolveRealPath: (
+      path: string,
+    ) => string;
+    readFileSync: (
+      path: string,
+      encoding: BufferEncoding,
+    ) => string;
+  },
+): string {
+  const resolvedProtegePath = args.resolveRealPath(args.protegeBinaryPath);
+  const shebangLine = readFirstFileLine({
+    filePath: resolvedProtegePath,
+    readFileSync: args.readFileSync,
+  });
+  if (shebangLine.includes('node')) {
+    return `${args.nodeBinaryPath} ${resolvedProtegePath} gateway start`;
+  }
+
+  return `${resolvedProtegePath} gateway start`;
+}
+
+/**
+ * Reads one first line from a file for launcher shebang detection.
+ */
+export function readFirstFileLine(
+  args: {
+    filePath: string;
+    readFileSync: (
+      path: string,
+      encoding: BufferEncoding,
+    ) => string;
+  },
+): string {
+  try {
+    const text = args.readFileSync(args.filePath, 'utf8');
+    const firstLine = text.split(/\r?\n/u, 1)[0] ?? '';
+    return firstLine.startsWith('#!') ? firstLine : '';
+  } catch {
+    return '';
+  }
 }

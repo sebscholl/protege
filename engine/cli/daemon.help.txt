@@ -6,6 +6,7 @@ Common options:
   --user                    Manage user-scoped systemd service (default).
   --system                  Manage system-scoped systemd service.
   --cwd <path>              Target workspace path (default: current directory).
+  --unit <name>             Explicit unit name override (for multi-workspace hosts).
   --name <base>             Base service name (default: protege-gateway).
   --json                    Print structured output for status/info/install/uninstall.
 
@@ -20,5 +21,6 @@ Logs options:
 Examples:
   protege daemon install
   protege daemon status --json
+  protege daemon logs --unit protege-gateway-abc123.service --follow
   protege daemon logs --follow
   protege daemon reinstall --cwd /srv/protege-workspace
