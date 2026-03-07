@@ -55,7 +55,7 @@ Behavior notes:
 
 Generated unit template (`~/.config/systemd/user/protege-gateway.service` for user scope):
 
-1. `ExecStart=<node> <repo>/dist/main.js gateway start`
+1. `ExecStart=<absolute-path-to-protege-binary> gateway start`
 2. `WorkingDirectory=<workspace>`
 3. `EnvironmentFile=<workspace>/.secrets` (if present)
 4. `Restart=on-failure`
@@ -67,6 +67,12 @@ Generated unit template (`~/.config/systemd/user/protege-gateway.service` for us
 10. `NoNewPrivileges=true`
 11. `ProtectSystem=strict` (phase 2, after file-write path validation)
 12. `ReadWritePaths=<workspace>`
+
+`ExecStart` resolution policy during `protege daemon install`:
+
+1. resolve `protege` via `command -v protege`,
+2. store absolute resolved path in unit file (do not rely on shell `PATH` inside systemd),
+3. fail install with actionable message when binary cannot be resolved.
 
 ## Runtime Changes Required
 
