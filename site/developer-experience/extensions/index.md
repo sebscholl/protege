@@ -1,77 +1,77 @@
-# Extensions Overview
+# Extensions
 
-Protege extension loading is manifest-driven through `extensions/extensions.json`.
+Protege is extension-first. The engine orchestrates behavior, and extension modules provide the capabilities.
 
-## Manifest Shape
+This section is organized by extension type:
 
-```ts
-export type ExtensionManifest = {
-  providers: Array<
-    string | {
-      name: string;
-      enabled?: boolean;
-      config?: Record<string, unknown>;
+1. what ships built-in,
+2. how to configure it in `extensions/extensions.json`,
+3. how to build your own implementation.
+
+## Manifest
+
+All extension loading is driven by `extensions/extensions.json`.
+
+```json
+{
+  "providers": ["openai"],
+  "tools": ["shell", "send-email"],
+  "hooks": [
+    {
+      "name": "thread-memory-updater",
+      "events": ["harness.inference.completed"],
+      "config": {
+        "max_output_tokens": 600
+      }
     }
-  >;
-  tools: Array<
-    string | {
-      name: string;
-      enabled?: boolean;
-      config?: Record<string, unknown>;
-    }
-  >;
-  hooks: Array<
-    string | {
-      name: string;
-      events?: string[];
-      config?: Record<string, unknown>;
-    }
-  >;
-  resolvers: Array<
-    string | {
-      name: string;
-      enabled?: boolean;
-      config?: Record<string, unknown>;
-    }
-  >;
-};
+  ],
+  "resolvers": [
+    "load-file",
+    "thread-history",
+    "current-input"
+  ]
+}
 ```
 
-## Entry Semantics
+## Entry Forms
 
-- **String entry**: enables extension by name with default config.
-- **Object entry**: enables extension with optional config override.
-- `enabled: false` disables only for types that support it (`providers`, `tools`, `resolvers`).
+Each extension list supports string and object entries.
+
+String entry:
+
+```json
+"web-search"
+```
+
+Object entry:
+
+```json
+{
+  "name": "web-search",
+  "enabled": true,
+  "config": {
+    "provider": "tavily"
+  }
+}
+```
 
 ## Merge Semantics
 
-Runtime uses deep merge for object config overrides:
+Config merge behavior is consistent across providers/tools/hooks/resolvers:
 
-- object keys: recursive merge
-- scalar values: override
-- arrays: replace
+1. object values: deep merge,
+2. scalar values: override,
+3. arrays: replace.
 
-This behavior is shared by provider/tool/hook/resolver loaders.
+## Contracts and Isolation
 
-## Directory Contracts
-
-- providers: `extensions/providers/{name}/index.ts` + `config.json`
-- tools: `extensions/tools/{name}/index.ts` or `index.js`
-- hooks: `extensions/hooks/{name}/index.ts` or `index.js`
-- resolvers: `extensions/resolvers/{name}/index.ts` or `index.js`
-
-Resolution order for runtime-loaded modules is `index.js` first, then `index.ts`.
-
-## Built-In Extension Sets
-
-- tools: `shell`, `glob`, `search`, `read-file`, `write-file`, `edit-file`, `web-fetch`, `web-search`, `send-email`
-- providers: `openai`, `anthropic`, `gemini`, `grok`
-- resolvers: `load-file`, `thread-memory-state`, `invocation-metadata`, `thread-history`, `current-input`
-- hooks: none enabled by default
+1. extension code lives under `extensions/{type}/{name}/`.
+2. each extension exports one typed entry point from `index.ts` (or `index.js` at runtime).
+3. engine modules may load and run extensions, but extension-specific behavior should stay in extension directories.
 
 ## Next
 
-- [Tools](/developer-experience/extensions/tools)
-- [Providers](/developer-experience/extensions/providers)
-- [Hooks](/developer-experience/extensions/hooks)
-- [Resolvers](/developer-experience/extensions/resolvers)
+1. [Tools overview](/developer-experience/extensions/tools)
+2. [Providers overview](/developer-experience/extensions/providers)
+3. [Hooks overview](/developer-experience/extensions/hooks)
+4. [Resolvers overview](/developer-experience/extensions/resolvers)

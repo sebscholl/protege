@@ -1,39 +1,29 @@
 # Developer Experience
 
-This section documents Protege as a framework API surface, not only as end-user commands.
+This section documents Protege as a framework surface for building and operating agents.
 
-## Source-Verified Extension Model
+## How to Use This Section
 
-Protege runtime loads extension entries from `extensions/extensions.json`:
+If you are new to extension authoring, use this order:
 
-- `providers`
-- `tools`
-- `hooks`
-- `resolvers`
+1. [Extensions](/developer-experience/extensions/)
+2. [Tools: built-ins](/developer-experience/extensions/tools-built-ins)
+3. [Tools: custom](/developer-experience/extensions/tools-custom)
+4. [Hooks events and payloads](/developer-experience/extensions/hooks-events)
+5. [Resolvers: built-ins](/developer-experience/extensions/resolvers-built-ins)
+6. [Resolvers: custom](/developer-experience/extensions/resolvers-custom)
 
-Each extension type supports string and object entries.
+## Runtime Surfaces
 
-Object entries support config override and deep-merge semantics in loaders.
+1. engine orchestration: `engine/`
+2. extension modules: `extensions/`
+3. persona identity and prompts: `personas/`
+4. runtime memory and artifacts: `memory/{persona_id}/`
+5. user-editable configuration: `configs/`
 
-## Runtime Boundaries
+## Key References
 
-- Engine orchestration: `engine/`
-- Extensions: `extensions/`
-- Persona identity and prompts: `personas/`
-- Runtime memory: `memory/{persona_id}/`
-- User-editable config: `configs/`
-
-## Key Principles
-
-- explicit config over hidden defaults
-- provider-agnostic inference contract
-- tool/hook/resolver isolation by directory
-- file-first operator ergonomics
-
-## Explore
-
-- [Extensions Overview](/developer-experience/extensions/)
-- [Personas and Memory](/developer-experience/personas-memory)
-- [.secrets and Secrets](/developer-experience/environment)
-- [Config Files](/developer-experience/configuration)
-- [Security and Risk Model](/developer-experience/security)
+1. [Personas and memory](/developer-experience/personas-memory)
+2. [Environment and secrets](/developer-experience/environment)
+3. [Config files](/developer-experience/configuration)
+4. [Security and risk model](/developer-experience/security)
