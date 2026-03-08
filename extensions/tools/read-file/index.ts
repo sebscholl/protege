@@ -1,7 +1,7 @@
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from 'protege/toolkit';
+} from '@protege-pack/toolkit';
 
 /**
  * Represents accepted input payload for read_file tool execution.

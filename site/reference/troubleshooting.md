@@ -1,125 +1,196 @@
 # Troubleshooting
 
-## `status` Shows `gateway.running: false` Unexpectedly
+Common issues and how to resolve them.
 
-1. Ensure gateway process is running:
-```bash
-protege gateway start
-```
-2. Re-check:
-```bash
-protege status
-```
-3. If stale pid state exists:
-```bash
-protege gateway stop
-```
+## Setup and Configuration
 
-## `logs` Fails with Log File Not Found
+### `protege doctor` returns unhealthy
 
-1. Confirm `configs/system.json` and `logs_dir_path`.
-2. Start gateway to generate runtime events.
-3. Retry:
-```bash
-protege logs --tail 50
-```
+Run the detailed check:
 
-## `doctor` Returns `unhealthy`
-
-Run:
 ```bash
 protege doctor --json
 ```
 
-Common failures:
+Common causes:
+- **Missing config file** — run `protege setup` or `protege init` to regenerate
+- **No personas created** — create one with `protege persona create "My Agent"`
+- **Missing API key** — check that the required env var is set in `.secrets` (e.g., `ANTHROPIC_API_KEY=sk-ant-...`)
+- **Invalid `extensions/extensions.json`** — verify JSON syntax and that all referenced extensions exist
 
-1. Missing or invalid `configs/gateway.json`.
-2. No personas created.
-3. Missing provider API key in env.
-4. Missing or invalid `extensions/extensions.json`.
+### Web search fails with "missing environment variable"
 
-## Relay Receives Inbound but No Outbound Delivery
+The `web-search` tool needs an API key for its configured provider:
 
-1. Check local runtime logs:
 ```bash
-protege logs --scope gateway --tail 200
+# Add to .secrets
+TAVILY_API_KEY=tvly-...
+# or
+PERPLEXITY_API_KEY=pplx-...
 ```
-2. Check relay server logs via deployment scripts.
-3. Verify SPF/PTR configuration for relay sender domain/IPs.
 
-## Gmail Replies Not Threading
+Then restart any running gateway process so the new env is loaded.
 
-1. Default behavior uses same-thread reply mode.
-2. Ensure tool calls are not intentionally using `threadingMode: "new_thread"`.
-3. Confirm outbound headers include expected `In-Reply-To` and `References`.
+## Gateway
 
-## Chat Says Persona Not Found
+### `protege status` shows gateway not running
 
-1. List personas:
 ```bash
+# Start it
+protege gateway start
+
+# If a stale PID file is the issue, stop first
+protege gateway stop
+protege gateway start
+```
+
+### Gateway starts but no emails arrive
+
+1. Check if relay is connected:
+   ```bash
+   protege logs --scope gateway --tail 50
+   ```
+   Look for `gateway.relay.authenticated` events.
+
+2. If using local SMTP, verify `configs/gateway.json` has correct `host` and `port` settings and that the port is reachable.
+
+3. Verify the sender isn't blocked by the access policy:
+   ```bash
+   # Check configs/security.json
+   # Make sure the sender address matches an allow rule
+   ```
+
+### Outbound emails aren't delivered
+
+1. Check logs for delivery events:
+   ```bash
+   protege logs --scope gateway --tail 100
+   ```
+   Look for `gateway.outbound.sent` or `gateway.outbound.sent_via_relay`.
+
+2. Verify outbound transport is configured — either `transport` block in `configs/gateway.json` or `relay.enabled: true`.
+
+3. If using relay, check that the relay server is running and the connection is active.
+
+4. If using direct SMTP, verify your transport credentials and that the SMTP server is reachable.
+
+## Email Threading
+
+### Gmail replies create new threads instead of continuing
+
+1. The default behavior uses same-thread reply mode — this should work correctly.
+2. Check if the LLM is explicitly requesting `threadingMode: "new_thread"`.
+3. Verify outbound emails include `In-Reply-To` and `References` headers:
+   ```bash
+   protege logs --scope gateway --tail 100
+   ```
+
+### Emails land in spam
+
+If using relay mode with your own relay server:
+- Configure **SPF** for the relay domain
+- Set **PTR/rDNS** for the relay IP
+- Publish a **DMARC** policy
+- Check your relay IP isn't on any blocklists
+
+## Chat
+
+### "Persona not found" error
+
+```bash
+# List available personas
 protege persona list
+
+# Use the full ID or an unambiguous prefix
+protege chat --persona 5d5291bc3285362f
+protege chat --persona 5d52
 ```
-2. Retry chat using full `persona_id` or an unambiguous prefix:
+
+### Sending does nothing in an existing thread
+
+Existing threads (from real email) are **read-only** in chat v1. To chat with your agent:
+
+1. Press `Ctrl+N` to create a new writable thread
+2. Press `i` to enter compose mode
+3. Type and press `Ctrl+S` to send
+
+### `Ctrl+Enter` doesn't send
+
+Terminal emulators handle `Ctrl+Enter` inconsistently. Use `Ctrl+S` as the primary send shortcut.
+
+## Scheduler
+
+### Scheduler won't start
+
 ```bash
-protege chat [--persona <persona_id_or_prefix>]
-```
-
-## Chat Send Does Nothing in Existing Threads
-
-1. Existing threads are read-only in chat v1.
-2. Create a local writable thread from inbox with `Ctrl+N`.
-3. Send with `Ctrl+S`.
-
-## Chat `Ctrl+Enter` Does Not Trigger Send
-
-1. Terminal apps emit `Ctrl+Enter` inconsistently.
-2. Use `Ctrl+S` as the primary send shortcut.
-
-## Scheduler Fails to Start with `node-cron` Error
-
-1. Ensure scheduler dependency is installed:
-```bash
+# Check if node-cron is installed
 npm ls node-cron
-```
-2. If missing, install:
-```bash
+
+# If missing
 npm install node-cron@4.2.1
 ```
 
-## Scheduler Runs but No Emails Are Delivered
+### Scheduled tasks run but no emails arrive
 
-1. Ensure gateway runtime is running:
-```bash
-protege gateway start
+1. The gateway must be running for outbound email:
+   ```bash
+   protege gateway start
+   ```
+2. Verify outbound transport is configured (either `transport` or `relay.enabled: true` in `configs/gateway.json`).
+3. Check scheduler logs:
+   ```bash
+   protege logs --scope scheduler --tail 100
+   ```
+
+### Tasks appear backlogged
+
+Check the concurrency limit in `configs/system.json`:
+
+```json
+{
+  "scheduler": {
+    "max_global_concurrent_runs": 5
+  }
+}
 ```
-2. Ensure `configs/gateway.json` has either:
-   - a valid `transport` block, or
-   - `relay.enabled: true` with connected relay clients.
-3. Check runtime logs:
+
+If runs are consistently queuing, increase the limit carefully. Also check if individual runs are taking too long (e.g., slow LLM responses or tool calls).
+
+## Failure Alerts
+
+### Alert emails aren't sent
+
+1. Set `admin_contact_email` in `configs/system.json`:
+   ```json
+   {
+     "admin_contact_email": "admin@example.com"
+   }
+   ```
+2. Verify with `protege doctor --json`
+3. Check for `gateway.alert.*` and `scheduler.alert.*` events in logs
+
+## Daemon (Linux)
+
+### Daemon restarts in a loop (exit code 127)
+
+The `ExecStart` path in the systemd unit is stale (e.g., Node.js or Protege was reinstalled to a different location):
+
 ```bash
-protege logs --scope scheduler --tail 200
+protege daemon reinstall --user
+protege daemon start --user
 ```
 
-## Runtime Failure Alerts Are Not Sent
+### Multiple workspaces cause ambiguity
 
-1. Set `admin_contact_email` in `configs/system.json`.
-2. Run:
+Use `--unit` to pin the exact unit:
+
 ```bash
-protege doctor --json
+protege daemon status --user --unit protege-gateway-abc123.service
+protege daemon logs --user --unit protege-gateway-abc123.service --follow
 ```
-3. Check for `gateway.alert.*` and `scheduler.alert.*` events in logs.
 
-## Web Search Fails with Missing Environment Variable
+Or check which units exist:
 
-1. Configure provider env keys in `.secrets` or shell:
 ```bash
-TAVILY_API_KEY=tvly-...
-PERPLEXITY_API_KEY=pplx-...
+protege daemon info --user --json
 ```
-2. Restart running processes so env changes are loaded.
-
-## Scheduler Appears Backlogged
-
-1. Check `configs/system.json`:
-   - `scheduler.max_global_concurrent_runs`
-2. Increase carefully if runs are consistently queued.

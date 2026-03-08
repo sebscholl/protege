@@ -3,12 +3,12 @@ import type {
   HarnessProviderGenerateRequest,
   HarnessProviderGenerateResponse,
   HarnessProviderMessage,
-} from 'protege/toolkit';
+} from '@protege-pack/toolkit';
 
 import {
   HarnessProviderError,
   parseProviderModelId,
-} from 'protege/toolkit';
+} from '@protege-pack/toolkit';
 
 /**
  * Represents one Anthropic adapter runtime dependency configuration.

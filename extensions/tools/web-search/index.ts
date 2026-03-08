@@ -1,7 +1,7 @@
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from 'protege/toolkit';
+} from '@protege-pack/toolkit';
 
 /**
  * Represents the supported web search provider names in v1.

@@ -1,5 +1,5 @@
 {
-  "name": "protege",
+  "name": "@protege-pack/toolkit",
   "version": "0.1.0",
   "description": "Email-native AI agent CLI focused on simplicity, interoperability, and self-sovereignty.",
   "private": false,
@@ -9,12 +9,16 @@
   },
   "exports": {
     ".": {
-      "import": "./dist/main.js"
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     },
-    "./toolkit": {
-      "import": "./dist/toolkit.js",
-      "types": "./dist/toolkit.d.ts"
+    "./cli": {
+      "import": "./dist/main.js",
+      "types": "./dist/main.d.ts"
     }
+  },
+  "publishConfig": {
+    "access": "restricted"
   },
   "files": [
     "dist/",
@@ -29,7 +33,6 @@
     "extensions/resolvers/**",
     "personas/README.md",
     "memory/README.md",
-    "site/",
     ".secrets.example",
     "README.md"
   ],

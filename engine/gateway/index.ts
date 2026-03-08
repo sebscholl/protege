@@ -447,11 +447,13 @@ export function startGatewayRelayClients(
       },
       callbacks: {
         onAuthenticated: (): void => {
+          const status = controller.readStatus();
           args.logger.info({
             event: 'gateway.relay.authenticated',
             context: {
               personaId: persona.personaId,
               publicKeyBase32: persona.publicKeyBase32,
+              reconnectAttempt: status.reconnectAttempt,
             },
           });
         },

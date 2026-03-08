@@ -7,10 +7,31 @@ import { join } from 'node:path';
 export type RelayRuntimeConfig = {
   host: string;
   port: number;
+  logging: {
+    consoleLogFormat: 'json' | 'pretty';
+    prettyLogThemePath: string;
+  };
   smtp: {
     enabled: boolean;
     host: string;
     port: number;
+    maxMessageBytes: number;
+    maxRecipients: number;
+  };
+  rateLimits: {
+    smtpConnectionsPerMinutePerIp: number;
+    smtpMessagesPerMinutePerIp: number;
+    wsAuthAttemptsPerMinutePerIp: number;
+    denyWindowMs: number;
+  };
+  auth: {
+    challengeTtlSeconds: number;
+    maxChallengeRecords: number;
+    challengeGcIntervalMs: number;
+  };
+  ws: {
+    heartbeatIntervalMs: number;
+    idleTimeoutMs: number;
   };
 };
 
@@ -34,10 +55,31 @@ export function readRelayRuntimeConfig(
     return {
       host: '127.0.0.1',
       port: 8080,
+      logging: {
+        consoleLogFormat: 'json',
+        prettyLogThemePath: join(process.cwd(), 'relay', 'theme.json'),
+      },
       smtp: {
         enabled: true,
         host: '127.0.0.1',
         port: 2526,
+        maxMessageBytes: 10 * 1024 * 1024,
+        maxRecipients: 1,
+      },
+      rateLimits: {
+        smtpConnectionsPerMinutePerIp: 60,
+        smtpMessagesPerMinutePerIp: 30,
+        wsAuthAttemptsPerMinutePerIp: 20,
+        denyWindowMs: 5 * 60 * 1000,
+      },
+      auth: {
+        challengeTtlSeconds: 60,
+        maxChallengeRecords: 10_000,
+        challengeGcIntervalMs: 60 * 1000,
+      },
+      ws: {
+        heartbeatIntervalMs: 30 * 1000,
+        idleTimeoutMs: 120 * 1000,
       },
     };
   }
@@ -77,14 +119,50 @@ export function validateRelayRuntimeConfig(
     configPath: args.configPath,
   });
   if (!isRecord({
+    value: parsed.logging,
+  })) {
+    throw new Error(`Relay config at ${args.configPath} field logging must be an object.`);
+  }
+  const logging = parsed.logging as Record<string, unknown>;
+  if (!isRecord({
     value: parsed.smtp,
   })) {
     throw new Error(`Relay config at ${args.configPath} field smtp must be an object.`);
   }
   const smtp = parsed.smtp as Record<string, unknown>;
+  if (!isRecord({
+    value: parsed.rateLimits,
+  })) {
+    throw new Error(`Relay config at ${args.configPath} field rateLimits must be an object.`);
+  }
+  const rateLimits = parsed.rateLimits as Record<string, unknown>;
+  if (!isRecord({
+    value: parsed.auth,
+  })) {
+    throw new Error(`Relay config at ${args.configPath} field auth must be an object.`);
+  }
+  const auth = parsed.auth as Record<string, unknown>;
+  if (!isRecord({
+    value: parsed.ws,
+  })) {
+    throw new Error(`Relay config at ${args.configPath} field ws must be an object.`);
+  }
+  const ws = parsed.ws as Record<string, unknown>;
   return {
     host,
     port,
+    logging: {
+      consoleLogFormat: readRelayConsoleLogFormat({
+        value: logging.consoleLogFormat,
+        fieldPath: 'logging.consoleLogFormat',
+        configPath: args.configPath,
+      }),
+      prettyLogThemePath: readNonEmptyString({
+        value: logging.prettyLogThemePath,
+        fieldPath: 'logging.prettyLogThemePath',
+        configPath: args.configPath,
+      }),
+    },
     smtp: {
       enabled: readBoolean({
         value: smtp.enabled,
@@ -101,8 +179,88 @@ export function validateRelayRuntimeConfig(
         fieldPath: 'smtp.port',
         configPath: args.configPath,
       }),
+      maxMessageBytes: readPositiveInteger({
+        value: smtp.maxMessageBytes,
+        fieldPath: 'smtp.maxMessageBytes',
+        configPath: args.configPath,
+      }),
+      maxRecipients: readPositiveInteger({
+        value: smtp.maxRecipients,
+        fieldPath: 'smtp.maxRecipients',
+        configPath: args.configPath,
+      }),
+    },
+    rateLimits: {
+      smtpConnectionsPerMinutePerIp: readPositiveInteger({
+        value: rateLimits.smtpConnectionsPerMinutePerIp,
+        fieldPath: 'rateLimits.smtpConnectionsPerMinutePerIp',
+        configPath: args.configPath,
+      }),
+      smtpMessagesPerMinutePerIp: readPositiveInteger({
+        value: rateLimits.smtpMessagesPerMinutePerIp,
+        fieldPath: 'rateLimits.smtpMessagesPerMinutePerIp',
+        configPath: args.configPath,
+      }),
+      wsAuthAttemptsPerMinutePerIp: readPositiveInteger({
+        value: rateLimits.wsAuthAttemptsPerMinutePerIp,
+        fieldPath: 'rateLimits.wsAuthAttemptsPerMinutePerIp',
+        configPath: args.configPath,
+      }),
+      denyWindowMs: readPositiveInteger({
+        value: rateLimits.denyWindowMs,
+        fieldPath: 'rateLimits.denyWindowMs',
+        configPath: args.configPath,
+      }),
+    },
+    auth: {
+      challengeTtlSeconds: readPositiveInteger({
+        value: auth.challengeTtlSeconds,
+        fieldPath: 'auth.challengeTtlSeconds',
+        configPath: args.configPath,
+      }),
+      maxChallengeRecords: readPositiveInteger({
+        value: auth.maxChallengeRecords,
+        fieldPath: 'auth.maxChallengeRecords',
+        configPath: args.configPath,
+      }),
+      challengeGcIntervalMs: readPositiveInteger({
+        value: auth.challengeGcIntervalMs,
+        fieldPath: 'auth.challengeGcIntervalMs',
+        configPath: args.configPath,
+      }),
+    },
+    ws: {
+      heartbeatIntervalMs: readPositiveInteger({
+        value: ws.heartbeatIntervalMs,
+        fieldPath: 'ws.heartbeatIntervalMs',
+        configPath: args.configPath,
+      }),
+      idleTimeoutMs: readPositiveInteger({
+        value: ws.idleTimeoutMs,
+        fieldPath: 'ws.idleTimeoutMs',
+        configPath: args.configPath,
+      }),
     },
   };
+}
+
+/**
+ * Reads one relay console log format value.
+ */
+export function readRelayConsoleLogFormat(
+  args: {
+    value: unknown;
+    fieldPath: string;
+    configPath: string;
+  },
+): 'json' | 'pretty' {
+  if (args.value === 'json' || args.value === 'pretty') {
+    return args.value;
+  }
+
+  throw new Error(
+    `Relay config at ${args.configPath} field ${args.fieldPath} must be "json" or "pretty".`,
+  );
 }
 
 /**

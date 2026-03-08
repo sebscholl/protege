@@ -15,6 +15,8 @@ Production deployment assets for running the optional Relay service on a VPS wit
 2. `systemd/protege-relay.service`: systemd unit file for relay runtime.
 3. `scripts/sync-to-server.sh`: pushes local repo files to VPS with `rsync`.
 4. `scripts/deploy-remote.sh`: runs on VPS to install deps, run checks, and restart systemd.
+5. `scripts/host-setup-remote.sh`: runs on VPS to install host packages and wire systemd/nginx.
+6. `scripts/server-bootstrap.sh`: local wrapper that syncs and executes host setup over SSH.
 
 ## One-Time Server Setup
 
@@ -33,34 +35,32 @@ sudo apt update
 sudo apt install -y nginx nodejs npm rsync
 ```
 
-3. Install and enable systemd unit:
+3. Configure scoped passwordless sudo for non-interactive deploy/setup commands:
 
 ```bash
-sudo cp /opt/protege/relay/deploy/systemd/protege-relay.service /etc/systemd/system/protege-relay.service
-sudo systemctl daemon-reload
-sudo systemctl enable protege-relay
+sudo tee /etc/sudoers.d/protege-relay >/dev/null <<'EOF'
+protege ALL=(root) NOPASSWD: /usr/bin/cp, /usr/bin/systemctl, /usr/sbin/nginx, /usr/bin/ln, /usr/bin/apt, /usr/bin/apt-get, /usr/bin/certbot
+EOF
+sudo chmod 440 /etc/sudoers.d/protege-relay
+sudo visudo -cf /etc/sudoers.d/protege-relay
 ```
 
-4. Install Nginx site config:
+4. Set relay domain in `.relay.env`:
 
 ```bash
-sudo cp /opt/protege/relay/deploy/nginx/relay.protege.bot.conf /etc/nginx/sites-available/relay.protege.bot.conf
-sudo ln -s /etc/nginx/sites-available/relay.protege.bot.conf /etc/nginx/sites-enabled/relay.protege.bot.conf
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-5. Issue TLS cert (example with certbot):
-
-```bash
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d relay.protege.bot
+RELAY_DOMAIN=relay.protege.bot
 ```
 
 ## Deploy Flow
 
 Environment variables are loaded from repository `.relay.env` automatically by deploy scripts.
 You can still export variables in your shell to override defaults.
+
+Sync behavior (`sync-to-server.sh`) intentionally excludes:
+
+1. VCS/CI internals (`.git`, `.github`).
+2. Local dependency/runtime folders (`node_modules`, `/tmp`, `/memory`).
+3. Local secret/env files (`.env*`, `.secrets*`, `.relay.env`).
 
 Suggested `.relay.env` keys:
 
@@ -70,6 +70,7 @@ RELAY_SSH_USER=root
 RELAY_REMOTE_DIR=/opt/protege
 APP_DIR=/opt/protege
 SERVICE_NAME=protege-relay
+RELAY_DOMAIN=relay.protege.bot
 ```
 
 From local machine:
@@ -89,6 +90,18 @@ Full sync + remote deploy in one command:
 
 ```bash
 npm run relay:deploy
+```
+
+First-time host bootstrap (sync + package install + systemd/nginx wiring):
+
+```bash
+npm run relay:server:bootstrap
+```
+
+TLS certificate is still one-time manual:
+
+```bash
+ssh "${RELAY_SSH_USER}@${RELAY_SSH_HOST}" "sudo certbot --nginx -d ${RELAY_DOMAIN}"
 ```
 
 Server operation wrappers (from local, via SSH):

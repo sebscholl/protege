@@ -1,49 +1,85 @@
-# Protege
+---
+layout: home
 
-Protege is an email-native AI agent framework. It treats email as the primary open protocol for agent interaction and promotes keeping runtime and intelligence local by default.
+hero:
+  name: Protege
+  text: Email-native AI agent framework
+  tagline: Build AI agents you communicate with over email — like a colleague, not a chatbot.
+  actions:
+    - theme: brand
+      text: Get Started
+      link: /getting-started/
+    - theme: alt
+      text: Why Email?
+      link: '#why-email'
 
-## Framework Positioning
+features:
+  - title: Email as the Interface
+    details: Your agent sends and receives real email. No proprietary chat protocol. Works with Gmail, Outlook, Apple Mail, or any SMTP client.
+  - title: Local-First Runtime
+    details: Agent logic, memory, and data stay on your machine. You choose the LLM provider. Nothing is hosted unless you opt into the relay.
+  - title: Extension-First Design
+    details: Swap LLM providers, add tools, hook into events, and customize context assembly — all through a simple JSON manifest.
+  - title: Scheduled Responsibilities
+    details: Define recurring tasks in markdown with a cron schedule. Your agent executes them asynchronously and emails you the results.
+---
 
-Protege is not a single hosted product workflow. It is a local framework with explicit extension boundaries for:
+## What is Protege?
 
-- tools
-- providers
-- hooks
-- resolvers
-- and more...
+Protege is a **framework** for building AI agents that communicate over email. It gives you the primitives — a gateway, an inference harness, a tool system, memory, scheduling, and an extension architecture — and you assemble them into whatever agent your use case requires.
 
-Core behavior lives in `engine/`, while extension behavior is loaded from `extensions/extensions.json`.
+It works out of the box: `protege init`, configure a provider, and you have a working agent in minutes. But the real value is what you build on top of it. Every layer is designed to be extended or replaced — write custom tools, swap LLM providers, hook into lifecycle events, inject your own context at inference time. Protege is the foundation; the agent you build is yours.
 
-Unlike other agentic tools, Protege aims to be "useful over engaging". What we mean by that is that most agentic tools glue the user to a terminal window or fancy UI, trying to keep them interested and engaged with for long working or messaging sessions. Protege was designed by a developer who wants to spend less time in front of the computer and phone screen, thus the ethos is around building agents you can asynchronously communicate with over email, like you would a colleague or friend.
+::: tip Protege is a framework, not a product
+If you want something that just works out of the box without writing code or learning an extension system, check out [OpenClaw](https://openclaw.com) or [ChatGPT](https://chatgpt.com). Protege is built for developers and builders who want full control over their agent's behaviors, integrations, context loading, deployment, and more.
+:::
 
-## Why Email
+```
+You (Gmail/Outlook/etc.)
+   │
+   ▼
+┌───────────────────────────────┐
+│  Protege Gateway (local)      │
+│  ┌─────────┐  ┌──────────────┐│
+│  │ Harness │──│ LLM Provider ││
+│  │ (tools, │  │ (OpenAI,     ││
+│  │ context)│  │ Anthropic,   ││
+│  └─────────┘  │ Gemini,      ││
+│               │ Grok)        ││
+│               └──────────────┘│
+└───────────────────────────────┘
+   │
+   ▼
+You receive a reply email
+```
 
-Protege centers on SMTP-compatible message flow rather than a proprietary chat protocol. This gives:
+## Why Email? {#why-email}
 
-- protocol interoperability with standard email clients and servers
-- asynchronous delivery semantics that fit long-running inference and tool loops
-- thread-aware history without introducing a second conversation protocol
+Most agent providers lock you into a proprietary chat interface or require 3rd party owned communication channel (e.g. WhatsApp, Discord, Telegram, Slack) to communcate. Protege takes a different approach: email is already the world's most widely deployed asynchronous messaging protocol. By building on SMTP, Protege gets several things for free:
 
-## LOGI Architecture
+- **Universal compatibility** — your agent works with every email client that exists
+- **Asynchronous by default** — no need to sit and watch your agent think. Send a message, close your laptop, get a reply later
+- **Thread-aware history** — email threading gives agents conversational memory without building a second protocol
+- **Agent-to-agent communication** — agents can email each other using the same open protocol
 
-Protege is organized around LOGI:
+## How It Works
 
-- **Loop**: bounded model/tool iteration in the harness (`engine/harness/runtime.ts`)
-- **Orchestrator**: runtime flow coordination (gateway ingress, scheduler dispatch, context assembly)
-- **Gateway**: SMTP ingress/egress and runtime action surface (`engine/gateway/`)
-- **Inference**: provider-agnostic prompt/tool execution (`engine/harness/`)
+1. **You email your agent** at its address (e.g., `charlie@mail.protege.bot`)
+2. **The gateway receives the message** via SMTP (directly or through the relay bridge)
+3. **The harness assembles context** — your agent's persona, memory, conversation history, and the incoming message
+4. **The LLM generates a response**, optionally calling tools (web search, file I/O, shell, sending emails)
+5. **The agent replies by email** back to you, continuing the thread
 
-Reference essay: [The era of agentic application frameworks](https://blog.sebastian.cloud/a/the-era-of-agentic-application-frameworks)
+## What Can You Build?
 
-## Current Runtime Model
+- A **customer support agent** that receives support emails, looks up account data, troubleshoots issues, and replies — without a human in the loop
+- A **sales assistant** that qualifies inbound leads, answers product questions, and forwards hot prospects to your team
+- A **research assistant** that searches the web and emails you summaries on a schedule
+- A **billing & invoicing agent** that processes invoice requests, generates line items, and emails confirmations to customers
+- A network of **collaborating agents** — e.g., a triage agent routes incoming mail to specialized agents for support, sales, and ops
 
-- Inbound gateway flow persists and acknowledges quickly, then enqueues async harness work.
-- Scheduler runs are synthetic inbound messages and share the same harness path as email/chat turns.
-- Chat is a terminal inbox client over the same thread/message store, not a separate protocol.
-- Relay is optional. It exists for users who cannot receive inbound SMTP directly.
+## Next Steps
 
-## Read Next
-
-- [Getting Started](/getting-started/)
-- [Developer Experience](/developer-experience/)
-- [Internal Architecture](/internal-architecture/)
+- [Get started in 5 minutes](/getting-started/) — install, configure, and send your first email
+- [Learn the extension system](/developer-experience/) — customize tools, providers, hooks, and resolvers
+- [Understand the architecture](/internal-architecture/) — see how the gateway, harness, and scheduler fit together

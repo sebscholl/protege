@@ -12,7 +12,7 @@ cd "${APP_DIR}"
 
 npm ci
 npm run typecheck
-npm run test
+npm run test -- tests/relay/index.test.ts tests/relay/src/*.test.ts tests/relay/src/auth/*.test.ts tests/relay/scripts/*.test.ts
 
 sudo systemctl daemon-reload
 sudo systemctl restart "${SERVICE_NAME}"

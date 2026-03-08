@@ -1,21 +1,21 @@
-import type { HookEventPayloadByName, HarnessHookResult } from 'protege/toolkit';
-import type { PersonaMemorySynthesisState, ThreadMemoryState } from 'protege/toolkit';
-import type { ProtegeDatabase } from 'protege/toolkit';
+import type { HookEventPayloadByName, HarnessHookResult } from '@protege-pack/toolkit';
+import type { PersonaMemorySynthesisState, ThreadMemoryState } from '@protege-pack/toolkit';
+import type { ProtegeDatabase } from '@protege-pack/toolkit';
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
-import { initializeDatabase } from 'protege/toolkit';
-import { resolvePersonaMemoryPaths } from 'protege/toolkit';
-import { HOOK_EVENT } from 'protege/toolkit';
+import { initializeDatabase } from '@protege-pack/toolkit';
+import { resolvePersonaMemoryPaths } from '@protege-pack/toolkit';
+import { HOOK_EVENT } from '@protege-pack/toolkit';
 import {
   clearPersonaMemoryDirty,
   listThreadMemoryStatesByPersona,
   markPersonaMemoryDirty,
   readPersonaMemorySynthesisState,
   setPersonaMemoryDirtyFailure,
-} from 'protege/toolkit';
-import { synthesizeMemoryText } from 'protege/toolkit';
-import { resolveMigrationsDirPath } from 'protege/toolkit';
+} from '@protege-pack/toolkit';
+import { synthesizeMemoryText } from '@protege-pack/toolkit';
+import { resolveMigrationsDirPath } from '@protege-pack/toolkit';
 
 /**
  * Represents one resolved active-memory updater config payload.

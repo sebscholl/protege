@@ -1,147 +1,182 @@
 # Security and Risk Model
 
-This page documents Protege v1 security behavior, practical hardening patterns, and common failure modes.
+Protege is intentionally powerful. Your agent can read and write files, execute shell commands, fetch web content, and send emails — all with the same permissions as the process running it. This page documents the threat model, built-in controls, and how to harden your deployment.
 
-## Threat Model (v1)
+## Threat Model
 
-Protege is intentionally powerful and minimally sandboxed in v1.
+Protege v1 operates under these assumptions:
 
-1. Tools execute with local process permissions.
-2. Extensions are trusted in-process code.
-3. Local filesystem data is user-owned and not encrypted by Protege.
-4. Relay is optional infrastructure, not a trust boundary replacement.
+1. **Tools run unsandboxed** — they execute with the Protege process's OS permissions
+2. **Extensions are trusted code** — hooks, tools, providers, and resolvers run in-process
+3. **Local data is unencrypted** — persona keys, memory, and databases are stored as regular files
+4. **The relay is a transport bridge, not a trust boundary** — it tunnels email but doesn't isolate your runtime
 
-## Core Controls Implemented
+## Built-In Security Controls
 
-## Gateway sender access policy
+### Gateway sender access policy
 
-Config: `configs/security.json`
-
-Policy fields:
-
-1. `enabled`
-2. `default_decision` (`allow` or `deny`)
-3. `allow` wildcard rules
-4. `deny` wildcard rules
-
-Evaluation order:
-
-1. deny rules
-2. allow rules
-3. default decision
-
-This means deny always wins if both match.
-
-## Recursion guard for agent-to-agent loops
-
-Config: `configs/inference.json -> recursion_depth`
-
-Runtime behavior:
-
-1. Outbound `email.send` stamps `X-Protege-Recursion` on every outbound message.
-2. Inbound messages with `X-Protege-Recursion: 0` (or lower) are rejected before persistence/execution.
-3. Inbound `X-Protege-Recursion: N` is decremented to `N-1` and carried forward.
-
-This caps cross-agent reply loops at gateway ingress.
-
-## Failure visibility
-
-Config: `configs/system.json -> admin_contact_email`
-
-1. Terminal runtime failures are logged.
-2. If admin contact is configured and outbound channel is available, failure alert emails are attempted.
-3. `protege doctor` reports missing/invalid alert config.
-
-## Recommended Security Profiles
-
-## Baseline (single user, low exposure)
-
-1. Keep relay enabled only when needed.
-2. Set `admin_contact_email`.
-3. Keep `gateway_access.enabled: true` with explicit rules.
-4. Use `default_decision: deny` unless you intentionally accept broad inbound.
-
-Suggested policy:
+The access policy in `configs/security.json` controls who can email your agent:
 
 ```json
 {
   "gateway_access": {
     "enabled": true,
     "default_decision": "deny",
-    "allow": ["trusted-user@example.com"],
+    "allow": ["alice@example.com", "*@mycompany.com"],
+    "deny": ["noisy-bot@mycompany.com"]
+  }
+}
+```
+
+**Evaluation order:**
+1. Check deny rules — if a deny rule matches, the message is rejected
+2. Check allow rules — if an allow rule matches, the message is accepted
+3. Fall through to `default_decision`
+
+Deny always wins when both deny and allow rules match the same sender.
+
+**Wildcard matching:** `*` matches any sequence of characters. `*@example.com` matches every sender from that domain. Rules are case-insensitive.
+
+### Agent-to-agent recursion guard
+
+When agents email each other, there's a risk of infinite reply loops. Protege prevents this with a recursion counter:
+
+1. Every outbound email includes an `X-Protege-Recursion` header set to `recursion_depth` (default: `3`)
+2. Inbound messages carrying this header have their value decremented
+3. Messages arriving with `X-Protege-Recursion: 0` (or lower) are rejected before processing
+
+Configure the depth in `configs/inference.json`:
+
+```json
+{
+  "recursion_depth": 3
+}
+```
+
+A depth of 3 means agents can exchange up to 3 rounds of replies before the chain is cut.
+
+### Failure alerting
+
+When a runtime failure occurs (tool error, scheduler failure, etc.), Protege can send an alert email to a designated admin:
+
+```json
+// configs/system.json
+{
+  "admin_contact_email": "admin@example.com"
+}
+```
+
+You can also set a scheduler-specific override:
+
+```json
+{
+  "scheduler": {
+    "admin_contact_email": "ops@example.com"
+  }
+}
+```
+
+Run `protege doctor` to verify that your alert configuration is valid and that the outbound channel can deliver.
+
+## Security Profiles
+
+### Personal use (single user, minimal exposure)
+
+You're the only one emailing your agent. Low risk, but still worth basic hardening:
+
+```json
+{
+  "gateway_access": {
+    "enabled": true,
+    "default_decision": "deny",
+    "allow": ["your-email@gmail.com"],
     "deny": []
   }
 }
 ```
 
-## Controlled multi-sender
+- Enable the access policy and allowlist only your own address
+- Set `admin_contact_email` so you hear about failures
+- Keep the tool set minimal — only enable tools your agent actually needs
 
-1. Start from deny-by-default.
-2. Add narrow allow rules per domain or sender.
-3. Add broad deny overrides for known noisy ranges.
+### Team or multi-user
 
-Example:
+Multiple people email your agent. You need tighter controls:
 
 ```json
 {
   "gateway_access": {
     "enabled": true,
     "default_decision": "deny",
-    "allow": ["*@partner.example"],
-    "deny": ["blocked-user@partner.example"]
+    "allow": ["*@yourcompany.com"],
+    "deny": ["noisy-bot@yourcompany.com"]
   }
 }
 ```
 
-## Relay-first internet exposure
+- Start with `default_decision: deny` and add narrow allow rules
+- Use deny overrides for known problematic senders
+- Monitor logs for unexpected inbound traffic
 
-1. Keep gateway policy enabled; do not rely on obscurity of persona addresses.
-2. Configure SPF/DKIM/PTR correctly for relay domain operations.
-3. Set conservative recursion depth (`3` to `6`) to constrain loops.
+### Internet-facing (via relay)
 
-## Risks You Must Account For
+Your agent has a public email address. Highest risk profile:
 
-## Unsandboxed tools (`file.*`, `shell.exec`, `web.fetch`)
+```json
+{
+  "gateway_access": {
+    "enabled": true,
+    "default_decision": "deny",
+    "allow": ["specific-user@example.com"],
+    "deny": []
+  }
+}
+```
 
-Impact:
+- **Never** use `default_decision: allow` with public exposure
+- Don't rely on address obscurity — assume the address will be discovered
+- Set a conservative `recursion_depth` (3-6)
+- Configure SPF, DKIM, and DMARC for your relay domain
+- Run Protege under a dedicated OS user with restricted permissions
 
-1. Arbitrary file reads/writes.
-2. Arbitrary shell execution.
-3. External HTTP fetch side effects and content poisoning risks.
+## Risks to Understand
 
-Mitigation:
+### Unsandboxed tool execution
 
-1. Run Protege under a dedicated OS user.
-2. Restrict filesystem permissions of that user.
-3. Avoid running against privileged directories.
+The `shell`, `read-file`, `write-file`, and `edit-file` tools have full filesystem and shell access. A prompt injection attack via an inbound email could trick the LLM into:
 
-## Trusted extension execution
+- Reading sensitive files
+- Writing or deleting files
+- Running arbitrary shell commands
+- Exfiltrating data via `web-fetch` or `send-email`
 
-Impact:
+**Mitigation:**
+- Run Protege under a dedicated OS user with minimal filesystem permissions
+- Don't run Protege in directories containing sensitive data
+- Disable tools you don't need (remove them from the manifest)
+- Use the gateway access policy to restrict who can email your agent
 
-1. Third-party hooks/tools/providers/resolvers run with full process capability.
+### Trusted extension code
 
-Mitigation:
+Extensions (tools, providers, hooks, resolvers) run with full process permissions. A malicious extension could do anything the Protege process can do.
 
-1. Treat extension installation as code execution.
-2. Review extension source before enabling it.
-3. Keep `extensions/extensions.json` minimal and explicit.
+**Mitigation:**
+- Review extension source code before enabling it
+- Treat `extensions/extensions.json` as a security-sensitive file
+- Keep your extension list explicit and minimal
 
-## Over-permissive gateway policy
+### Costly model invocations
 
-Impact:
+Every inbound email that passes the access policy triggers an LLM inference run (which costs money). Without access controls, anyone who discovers your agent's address can rack up API costs.
 
-1. Unwanted inbound traffic can trigger costly model/tool runs.
-
-Mitigation:
-
-1. Prefer `default_decision: deny`.
-2. Keep allowlist narrow.
-3. Use deny overrides for known abusive patterns.
+**Mitigation:**
+- Enable the gateway access policy with `default_decision: deny`
+- Monitor your LLM provider's usage dashboard
 
 ## Operational Checklist
 
-1. Run `protege doctor` after config changes.
-2. Tail logs with `protege logs --scope gateway --follow` during exposure tests.
-3. Confirm `admin_contact_email` is set and valid.
-4. Validate gateway policy behavior with real sender addresses before broad rollout.
+1. Run `protege doctor` after any config change
+2. Watch logs during initial exposure: `protege logs --scope gateway --follow`
+3. Verify `admin_contact_email` is set and reachable
+4. Test your access policy with real sender addresses before going public
+5. Review which tools are enabled and remove any you don't need

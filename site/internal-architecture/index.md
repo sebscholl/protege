@@ -1,46 +1,82 @@
 # Internal Architecture
 
-This section documents how runtime components are split and coordinated.
+This section explains how Protege's runtime components are structured and how they coordinate. You don't need to read this to use Protege, but it helps if you're building custom extensions, debugging issues, or contributing to the framework.
 
 ## Component Map
 
-- Gateway (`engine/gateway/`): SMTP ingress/egress, relay tunnel client, runtime actions.
-- Harness (`engine/harness/`): context assembly, provider loop, tool orchestration, persistence hooks.
-- Scheduler (`engine/scheduler/`): responsibility sync, cron enqueue, run execution.
-- Chat (`engine/chat/`): TUI inbox/thread client over shared temporal storage.
-- Relay (`relay/`): optional external SMTP↔WS bridge service.
+Protege has five major components:
 
-## High-Level Runtime Flow
+```
+┌──────────────────────────────────────────────────────────┐
+│                      Your Machine                        │
+│                                                          │
+│  ┌───────────────┐   ┌──────────────┐   ┌─────────────┐  │
+│  │   Gateway     │───│   Harness    │───│  Scheduler  │  │
+│  │ (SMTP edge,   │   │ (context,    │   │ (cron,      │  │
+│  │  relay client,│   │  LLM calls,  │   │  run queue, │  │
+│  │  actions)     │   │  tool loop)  │   │  execution) │  │
+│  └───────────────┘   └──────────────┘   └─────────────┘  │
+│          │                                               │
+│  ┌───────────────┐                      ┌─────────────┐  │
+│  │    Chat       │                      │  Extensions │  │
+│  │ (terminal UI  │                      │ (tools,     │  │
+│  │  over shared  │                      │  providers, │  │
+│  │  storage)     │                      │  hooks,     │  │
+│  └───────────────┘                      │  resolvers) │  │
+│                                         └─────────────┘  │
+└──────────────────────────────────────────────────────────┘
+          │
+          ▼ (optional)
+┌───────────────────┐
+│   Relay Server    │  ← External, public SMTP bridge
+│ (SMTP ↔ WebSocket)│
+└───────────────────┘
+```
+
+| Component | Directory | Role |
+|-----------|-----------|------|
+| **Gateway** | `engine/gateway/` | SMTP ingress/egress, relay tunnel, runtime actions |
+| **Harness** | `engine/harness/` | Context assembly, LLM provider loop, tool orchestration |
+| **Scheduler** | `engine/scheduler/` | Responsibility sync, cron, run queue, execution |
+| **Chat** | `engine/chat/` | Terminal inbox/thread client over shared storage |
+| **Relay** | `relay/` | Optional external SMTP-to-WebSocket bridge |
+
+## Request Lifecycle
+
+Here's what happens when your agent receives an email:
 
 ```mermaid
 flowchart TD
-    A[Inbound Email or Scheduler Tick] --> B[Gateway Parse and Persist]
-    B --> C[Async Harness Run]
-    C --> D[Context Pipeline]
-    D --> E[Provider Generate]
-    E --> F{Tool Calls?}
-    F -- Yes --> G[Tool Execute via Runtime Actions]
-    G --> E
-    F -- No --> H[Final Response Persistence]
-    G --> I[Optional email.send]
+    A[Inbound Email] --> B[Gateway: Parse SMTP]
+    B --> C[Gateway: Route to Persona]
+    C --> D[Gateway: Check Access Policy]
+    D --> E[Gateway: Persist Message]
+    E --> F[Harness: Assemble Context]
+    F --> G[Harness: Call LLM Provider]
+    G --> H{LLM Returns Tool Calls?}
+    H -- Yes --> I[Harness: Execute Tools]
+    I --> J[Gateway: Invoke Runtime Actions]
+    J --> G
+    H -- No --> K[Harness: Persist Response]
+    K --> L[Gateway: Send Outbound Email]
+    L --> M[Hooks: Post-inference Events]
 ```
+
+Scheduled responsibilities follow the same path, but instead of a real inbound email, the scheduler creates a synthetic message from the responsibility's prompt text.
 
 ## Storage Model
 
-Per persona:
+Each persona has isolated storage:
 
-- configs/identity in `personas/{persona_id}/`
-- runtime DB and memory in `memory/{persona_id}/`
+- **Identity and config** → `personas/{persona_id}/` (persona.json, keys, PERSONA.md, responsibilities, knowledge)
+- **Runtime data** → `memory/{persona_id}/` (SQLite database, active memory, attachments, logs)
 
-Thread timeline continuity uses:
+The SQLite database (`temporal.db`) stores threads, messages, tool traces, and scheduler run records. Chat, gateway, and scheduler all read/write from the same database.
 
-- `messages`
-- `thread_tool_events`
+## Read More
 
-## Read Next
-
-- [LOGI Model](/internal-architecture/logi)
-- [Gateway](/internal-architecture/gateway)
-- [Inference Harness](/internal-architecture/harness)
-- [Scheduler](/internal-architecture/scheduler)
-- [Relay Service](/internal-architecture/relay)
+- [LOGI Model](/internal-architecture/logi) — the architectural pattern behind Protege
+- [Gateway](/internal-architecture/gateway) — protocol edge and runtime actions
+- [Inference Harness](/internal-architecture/harness) — context assembly and the LLM tool loop
+- [Scheduler](/internal-architecture/scheduler) — responsibility execution
+- [Relay Service](/internal-architecture/relay) — the optional SMTP bridge

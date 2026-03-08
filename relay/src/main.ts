@@ -1,88 +1,111 @@
+import { getDefaultPrettyLogTheme, readPrettyLogTheme } from '@engine/shared/runtime-config';
+import { readRelayRuntimeConfig } from '@relay/src/config';
 import { startRelayServer } from '@relay/src/index';
+import { createRelayConsoleLogger } from '@relay/src/logger';
 
 /**
  * Starts the relay HTTP runtime process and reports bind details to stdout.
  */
 async function main(): Promise<void> {
+  const config = readRelayRuntimeConfig();
+  const logger = createRelayConsoleLogger({
+    consoleLogFormat: config.logging.consoleLogFormat,
+    prettyLogTheme: readPrettyLogTheme({
+      themeConfigPath: config.logging.prettyLogThemePath,
+    }) ?? getDefaultPrettyLogTheme(),
+  });
   const started = await startRelayServer({
+    config,
     callbacks: {
+      onWsAuthEvent: (args): void => {
+        logger.info({
+          event: `relay.ws.auth.${args.event}`,
+          context: {
+            remoteAddress: args.remoteAddress,
+            publicKeyBase32: args.publicKeyBase32 ?? null,
+            sessionRole: args.sessionRole ?? null,
+            code: args.code ?? null,
+          },
+        });
+      },
       onIngressAccepted: (args): void => {
-        process.stdout.write(`${JSON.stringify({
-          scope: 'relay',
+        logger.info({
           event: 'relay.ingress.accepted',
-          recipientAddress: args.recipientAddress,
-          streamId: args.streamId,
-          timestamp: new Date().toISOString(),
-        })}\n`);
+          context: {
+            recipientAddress: args.recipientAddress,
+            streamId: args.streamId,
+          },
+        });
       },
       onIngressRejected: (args): void => {
-        process.stdout.write(`${JSON.stringify({
-          scope: 'relay',
+        logger.error({
           event: 'relay.ingress.rejected',
-          recipientAddress: args.recipientAddress,
-          reason: args.reason,
-          timestamp: new Date().toISOString(),
-        })}\n`);
+          context: {
+            recipientAddress: args.recipientAddress,
+            reason: args.reason,
+            stage: args.stage,
+          },
+        });
       },
       onOutboundQueued: (args): void => {
-        process.stdout.write(`${JSON.stringify({
-          scope: 'relay',
+        logger.info({
           event: 'relay.outbound.queued',
-          streamKey: args.streamKey,
-          mailFrom: args.mailFrom,
-          rcptTo: args.rcptTo,
-          socketId: args.socketId,
-          publicKeyBase32: args.publicKeyBase32,
-          timestamp: new Date().toISOString(),
-        })}\n`);
+          context: {
+            streamKey: args.streamKey,
+            mailFrom: args.mailFrom,
+            rcptTo: args.rcptTo,
+            socketId: args.socketId,
+            publicKeyBase32: args.publicKeyBase32,
+          },
+        });
       },
       onOutboundSent: (args): void => {
-        process.stdout.write(`${JSON.stringify({
-          scope: 'relay',
+        logger.info({
           event: 'relay.outbound.sent',
-          streamKey: args.streamKey,
-          mailFrom: args.mailFrom,
-          rcptTo: args.rcptTo,
-          attemptCount: args.attemptCount,
-          messageId: args.messageId,
-          socketId: args.socketId,
-          publicKeyBase32: args.publicKeyBase32,
-          timestamp: new Date().toISOString(),
-        })}\n`);
+          context: {
+            streamKey: args.streamKey,
+            mailFrom: args.mailFrom,
+            rcptTo: args.rcptTo,
+            attemptCount: args.attemptCount,
+            messageId: args.messageId,
+            socketId: args.socketId,
+            publicKeyBase32: args.publicKeyBase32,
+          },
+        });
       },
       onOutboundFailed: (args): void => {
-        process.stdout.write(`${JSON.stringify({
-          scope: 'relay',
+        logger.error({
           event: 'relay.outbound.failed',
-          streamKey: args.streamKey,
-          mailFrom: args.mailFrom,
-          rcptTo: args.rcptTo,
-          message: args.message,
-          socketId: args.socketId,
-          publicKeyBase32: args.publicKeyBase32,
-          timestamp: new Date().toISOString(),
-        })}\n`);
+          context: {
+            streamKey: args.streamKey,
+            mailFrom: args.mailFrom,
+            rcptTo: args.rcptTo,
+            message: args.message,
+            socketId: args.socketId,
+            publicKeyBase32: args.publicKeyBase32,
+          },
+        });
       },
       onOutboundIgnored: (args): void => {
-        process.stdout.write(`${JSON.stringify({
-          scope: 'relay',
+        logger.info({
           event: 'relay.outbound.ignored',
-          streamId: args.streamId,
-          reason: args.reason,
-          socketId: args.socketId,
-          publicKeyBase32: args.publicKeyBase32,
-          timestamp: new Date().toISOString(),
-        })}\n`);
+          context: {
+            streamId: args.streamId,
+            reason: args.reason,
+            socketId: args.socketId,
+            publicKeyBase32: args.publicKeyBase32,
+          },
+        });
       },
     },
   });
-  process.stdout.write(`${JSON.stringify({
-    scope: 'relay',
+  logger.info({
     event: 'relay.started',
-    baseUrl: started.baseUrl,
-    smtpEnabled: Boolean(started.smtpServer),
-    timestamp: new Date().toISOString(),
-  })}\n`);
+    context: {
+      baseUrl: started.baseUrl,
+      smtpEnabled: Boolean(started.smtpServer),
+    },
+  });
 }
 
 void main();

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { RelayChallengeRecord, RelayStore } from '@relay/src/storage';
-import { saveRelayChallenge } from '@relay/src/storage';
+import { saveRelayChallenge, sweepRelayChallengeRecords } from '@relay/src/storage';
 
 /**
  * Represents one issued relay challenge payload.
@@ -33,6 +33,7 @@ export function issueRelayChallenge(
     nowIso?: string;
     ttlSeconds?: number;
     challengeId?: string;
+    maxChallengeRecords?: number;
   },
 ): RelayIssuedChallenge {
   const now = args.nowIso ? new Date(args.nowIso) : new Date();
@@ -53,6 +54,11 @@ export function issueRelayChallenge(
   saveRelayChallenge({
     store: args.store,
     challenge: record,
+  });
+  sweepRelayChallengeRecords({
+    store: args.store,
+    nowIso: now.toISOString(),
+    maxRecords: args.maxChallengeRecords ?? 10_000,
   });
   return {
     challengeId,

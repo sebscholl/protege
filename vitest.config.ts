@@ -16,7 +16,7 @@ function resolveFromRoot(
 export default defineConfig({
   resolve: {
     alias: {
-      'protege/toolkit': resolveFromRoot({ relativePath: './engine/toolkit/index.ts' }),
+      '@protege-pack/toolkit': resolveFromRoot({ relativePath: './engine/toolkit/index.ts' }),
       '@engine': resolveFromRoot({ relativePath: './engine' }),
       '@relay': resolveFromRoot({ relativePath: './relay' }),
       '@extensions': resolveFromRoot({ relativePath: './extensions' }),

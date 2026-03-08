@@ -18,9 +18,15 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 
 rsync -az --delete \
   --exclude ".git" \
+  --exclude ".github" \
   --exclude "node_modules" \
-  --exclude "memory" \
-  --exclude "tmp" \
+  --exclude ".env" \
+  --exclude ".env.*" \
+  --exclude ".secrets" \
+  --exclude ".secrets.*" \
+  --exclude ".relay.env" \
+  --exclude "/memory" \
+  --exclude "/tmp" \
   "${REPO_ROOT}/" \
   "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/"
 

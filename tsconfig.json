@@ -10,7 +10,7 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "protege/toolkit": ["engine/toolkit/index.ts"],
+      "@protege-pack/toolkit": ["engine/toolkit/index.ts"],
       "@engine/*": ["engine/*"],
       "@relay/*": ["relay/*"],
       "@extensions/*": ["extensions/*"],

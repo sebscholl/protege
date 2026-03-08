@@ -1,39 +1,91 @@
-# .secrets and Secrets
+# Environment and Secrets
 
-Protege CLI loads environment variables at startup from:
+Protege loads API keys and other sensitive values from environment files at startup. This keeps secrets out of your configuration files and version control.
 
-1. `.secrets`
+## Secret Files
+
+Protege reads environment variables from two files in your project root:
+
+| File | Purpose |
+|------|---------|
+| `.secrets` | Primary secrets file |
+| `.secrets.local` | Local overrides (higher priority) |
+
+Both use standard `KEY=value` format, one variable per line:
+
+```bash
+# .secrets
+ANTHROPIC_API_KEY=sk-ant-api03-...
+OPENAI_API_KEY=sk-proj-...
+TAVILY_API_KEY=tvly-...
+```
+
+**Priority order** (highest to lowest):
+1. Shell environment variables (already set in your terminal)
 2. `.secrets.local`
+3. `.secrets`
 
-Shell-defined env vars are preserved and not overwritten by files.
+If a variable is already set in your shell, Protege won't overwrite it from the files.
 
-## Current Secret Keys
+## Required Keys
 
-From `.secrets.example`:
+Which keys you need depends on your configuration:
 
-- `OPENAI_API_KEY`
-- `ANTHROPIC_API_KEY`
-- `GEMINI_API_KEY`
-- `GROK_API_KEY`
-- `PERPLEXITY_API_KEY`
-- `TAVILY_API_KEY`
+### LLM provider (required — pick one)
 
-## Why These Matter
+| Provider | Environment Variable |
+|----------|---------------------|
+| OpenAI | `OPENAI_API_KEY` |
+| Anthropic | `ANTHROPIC_API_KEY` |
+| Gemini | `GEMINI_API_KEY` |
+| Grok | `GROK_API_KEY` |
 
-- inference provider adapters resolve credentials via provider config (`api_key_env` or direct `api_key`)
-- `web_search` provider adapters resolve credentials from env keys in its tool config
+### Web search (optional — if `web-search` tool is enabled)
 
-## Credential Resolution Notes
+| Provider | Environment Variable |
+|----------|---------------------|
+| Tavily | `TAVILY_API_KEY` |
+| Perplexity | `PERPLEXITY_API_KEY` |
 
-Provider runtime config resolution supports:
+## How Credentials Are Resolved
 
-- `api_key` direct value in manifest config
-- `api_key_env` indirection to env variable
+Provider adapters resolve their API key through a chain:
 
-Web search runtime config resolves key from configured provider env field.
+1. **Direct value** — `api_key` field in the manifest config (not recommended)
+2. **Environment variable** — name specified by `api_key_env` in the manifest config
+3. **Default env var** — the standard variable for that provider (e.g., `OPENAI_API_KEY`)
 
-## Recommended Practice
+For example, this manifest entry:
 
-- keep behavior config in `configs/*.json`
-- keep secrets only in `.secrets` / `.secrets.local` or process environment
-- avoid committing credential files
+```json
+{
+  "name": "openai",
+  "config": {
+    "api_key_env": "MY_CUSTOM_OPENAI_KEY"
+  }
+}
+```
+
+Would look for `MY_CUSTOM_OPENAI_KEY` instead of the default `OPENAI_API_KEY`.
+
+## Scaffolding
+
+`protege init` and `protege setup` create a `.secrets.example` file showing all supported keys:
+
+```bash
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
+GROK_API_KEY=
+PERPLEXITY_API_KEY=
+TAVILY_API_KEY=
+```
+
+Copy it to `.secrets` and fill in the values you need.
+
+## Best Practices
+
+- **Never commit `.secrets`** — add it to your `.gitignore`
+- **Use `.secrets.local`** for machine-specific overrides when working across environments
+- **Use `api_key_env`** indirection in the manifest rather than putting keys directly in JSON
+- **Run `protege doctor`** after changing keys — it validates that required credentials are present

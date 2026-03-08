@@ -4,12 +4,12 @@ import type {
   HarnessProviderGenerateResponse,
   HarnessProviderMessage,
   HarnessProviderToolCall,
-} from 'protege/toolkit';
+} from '@protege-pack/toolkit';
 
 import {
   HarnessProviderError,
   parseProviderModelId,
-} from 'protege/toolkit';
+} from '@protege-pack/toolkit';
 
 /**
  * Represents one Gemini adapter runtime dependency configuration.

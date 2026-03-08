@@ -120,3 +120,40 @@ export function readRelayIdentity(
 ): RelayIdentityRecord | undefined {
   return args.store.identitiesByPublicKey.get(args.publicKeyBase32);
 }
+
+/**
+ * Removes expired/used challenges and enforces one maximum challenge-record cap.
+ */
+export function sweepRelayChallengeRecords(
+  args: {
+    store: RelayStore;
+    nowIso: string;
+    maxRecords: number;
+  },
+): number {
+  const nowMs = new Date(args.nowIso).getTime();
+  let removedCount = 0;
+  for (const [challengeId, challenge] of args.store.challengesById.entries()) {
+    const expired = new Date(challenge.expiresAt).getTime() <= nowMs;
+    const used = Boolean(challenge.usedAt);
+    if (!expired || used) {
+      continue;
+    }
+    args.store.challengesById.delete(challengeId);
+    removedCount += 1;
+  }
+
+  if (args.store.challengesById.size <= args.maxRecords) {
+    return removedCount;
+  }
+
+  const overflowCount = args.store.challengesById.size - args.maxRecords;
+  const sortedByCreatedAt = [...args.store.challengesById.values()].sort((left, right) =>
+    left.createdAt.localeCompare(right.createdAt));
+  for (const challenge of sortedByCreatedAt.slice(0, overflowCount)) {
+    args.store.challengesById.delete(challenge.challengeId);
+    removedCount += 1;
+  }
+
+  return removedCount;
+}

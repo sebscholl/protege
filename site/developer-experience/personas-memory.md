@@ -1,28 +1,48 @@
 # Personas and Memory
 
-Protege is persona-scoped for identity and runtime data.
+Every Protege agent has at least one **persona** — an identity with its own email address, personality, memory, and responsibilities (scheduled tasks). You can run multiple personas from a single Protege instance, each acting as an independent agent.
 
-## Persona Layout
+## Creating a Persona
 
-Per persona directory (`personas/{persona_id}/`) includes:
+```bash
+protege persona create "Research Assistant"
+```
 
-- `persona.json`
-- `passport.key`
-- optional `PERSONA.md`
-- optional `responsibilities/`
-- optional `knowledge/`
+This generates:
+- A unique persona ID (e.g., `5d5291bc3285362f`)
+- An Ed25519 key pair for relay authentication
+- An email address derived from the public key
 
-`persona.json` fields currently persisted by runtime include:
+```bash
+protege persona list
+```
 
-- `personaId`
-- `publicKeyBase32`
-- `emailLocalPart`
-- `emailAddress`
-- `createdAt`
-- optional `displayName`
-- optional `aliases` (additional local-parts or addresses for inbound routing)
+```
+┌──────────────────┬──────────────────────┬────────────────────────────────────┐
+│ Persona ID       │ Display Name         │ Email Address                      │
+├──────────────────┼──────────────────────┼────────────────────────────────────┤
+│ 5d5291bc3285362f │ Research Assistant   │ cep647...@mail.protege.bot         │
+└──────────────────┴──────────────────────┴────────────────────────────────────┘
+```
 
-Example:
+## Persona Directory Structure
+
+Each persona lives in `personas/{persona_id}/`:
+
+```
+personas/5d5291bc3285362f/
+├── persona.json                  # Identity metadata
+├── passport.key                  # Private key (never share this)
+├── PERSONA.md                    # Persona-specific instructions
+├── responsibilities/             # Scheduled tasks
+│   └── daily-summary.md
+└── knowledge/
+    └── CONTENT.md                # Reference documents the agent can see
+```
+
+### `persona.json`
+
+Contains the persona's identity:
 
 ```json
 {
@@ -31,79 +51,139 @@ Example:
   "emailLocalPart": "cep6474yx3wwbr5xwxgrc2wr5tpsyfxuk2vshsvnf5ib4vause3a",
   "emailAddress": "cep6474yx3wwbr5xwxgrc2wr5tpsyfxuk2vshsvnf5ib4vause3a@mail.protege.bot",
   "createdAt": "2026-03-04T20:59:02.277Z",
-  "displayName": "Ops Assistant",
+  "displayName": "Research Assistant",
+  "aliases": ["research", "researcher"]
+}
+```
+
+### `PERSONA.md`
+
+This file is loaded into the LLM context for every inference run (via the `load-file` resolver). Use it to give your agent a personality, instructions, or domain knowledge:
+
+```markdown
+You are a research assistant. Your job is to help the user find, summarize,
+and organize information from the web.
+
+When asked a question:
+1. Use web_search to find relevant sources
+2. Synthesize the results into a clear summary
+3. Reply by email with your findings
+
+Always cite your sources with URLs.
+Be concise — aim for 2-3 paragraphs unless asked for more detail.
+```
+
+### `knowledge/CONTENT.md`
+
+Static reference material loaded into context. Good for company info, style guides, or domain-specific knowledge that doesn't change often.
+
+## Email Aliases
+
+By default, your persona's email address is a long public-key-derived string. **Aliases** let people reach your agent with friendlier addresses.
+
+```json
+{
   "aliases": [
     "charlie",
-    "tech-support-charlie",
+    "tech-support",
     "support@example.com"
   ]
 }
 ```
 
-Alias routing behavior:
+**How aliases work:**
 
-- Non-qualified aliases (for example `charlie`) are interpreted as `charlie@<gateway.mailDomain>`.
-- Recipient domain must match configured `gateway.mailDomain`; mismatched domains do not route.
-- Fully-qualified aliases (for example `support@example.com`) are only valid when they exactly match the inbound recipient address and the recipient domain matches configured `gateway.mailDomain`.
-- Alias matching is case-insensitive after normalization.
-- Plus-addressed recipients (for example `charlie+123@...`) route to the same base alias/root mailbox (`charlie@...`).
-- Domainless recipients (for example `charlie+123`) are interpreted against configured `gateway.mailDomain`.
-- Aliases must be unique across personas; collisions are treated as configuration errors.
+- A simple alias like `charlie` becomes `charlie@<mailDomain>` (e.g., `charlie@mail.protege.bot`)
+- **Plus-addressing** works automatically: `charlie+project-x@mail.protege.bot` routes to `charlie`
+- Aliases are case-insensitive
+- Aliases must be unique across all personas — if two personas claim the same alias, it's a configuration error
+- The recipient domain must match your configured `mailDomain`
 
-## Key Material
+## How Memory Works
 
-`passport.key` is raw private key material (PEM) for relay auth signature flow. If compromised/lost, the identity is rotated by creating a new persona.
+Protege gives each persona two layers of memory:
 
-## Memory Layout
+### Temporal database (`memory/{persona_id}/temporal.db`)
 
-Per persona memory namespace (`memory/{persona_id}/`) includes:
+A SQLite database that stores everything about the persona's interactions:
 
-- `temporal.db`
-- `active.md`
-- `attachments/`
-- `logs/`
+| Table | Contents |
+|-------|----------|
+| `threads` | Thread metadata (subject, participants, timestamps) |
+| `messages` | Every inbound, outbound, and synthetic message |
+| `thread_tool_events` | Tool call and result traces for each run |
+| `responsibilities` | Indexed responsibility metadata |
+| `responsibility_runs` | Scheduler run records and outcomes |
 
-## Temporal DB
+This is the source of truth for conversation history. The `thread-history` resolver queries it to build context for each inference run.
 
-SQLite stores:
+### Active memory (`memory/{persona_id}/active.md`)
 
-- thread metadata (`threads`)
-- inbound/outbound/synthetic messages (`messages`)
-- tool trace events (`thread_tool_events`)
-- scheduler responsibilities/run records (`responsibilities`, `responsibility_runs`)
+A short, synthesized summary of recent activity. This file is refreshed automatically by the memory synthesis hooks after each inference run:
 
-## Active Memory
+1. `thread-memory-updater` summarizes the latest conversation
+2. `active-memory-updater` reads recent thread summaries and writes `active.md`
 
-`active.md` is short-horizon editable memory loaded into context by resolver pipeline.
+The active memory is loaded into every inference run via `load-file(memory/{persona_id}/active.md)` in the context pipeline. It gives your agent a sense of what it's been working on recently — without needing to load full conversation histories.
 
-## Responsibilities
+You can also edit `active.md` manually to give your agent specific context or instructions that persist across conversations.
 
-Responsibilities are file-first markdown definitions under:
+## Scheduled Responsibilities
 
-`personas/{persona_id}/responsibilities/*.md`
+Personas can have recurring tasks defined as markdown files in `personas/{persona_id}/responsibilities/`:
 
-Frontmatter required keys:
+```markdown
+---
+name: daily-news-digest
+schedule: "0 8 * * *"
+enabled: true
+---
 
-- `name`
-- `schedule`
-- `enabled`
+Search the web for the top 5 technology news stories from the past 24 hours.
+Summarize each story in 2-3 sentences. Email the digest to admin@example.com
+with the subject "Daily Tech Digest - [today's date]".
+```
 
-Body content is prompt text for scheduled execution.
+**Frontmatter fields:**
 
-## Selector Behavior
+| Field | Description |
+|-------|-------------|
+| `name` | Unique identifier for this responsibility |
+| `schedule` | Cron expression (standard 5-field format) |
+| `enabled` | `true` or `false` |
 
-CLI persona selector resolution supports:
+The **body** is the prompt text. When the cron schedule fires, the scheduler creates a synthetic inbound message from this prompt and runs it through the same harness as a normal email.
 
-- exact `personaId`
-- unique `personaId` prefix
-- exact `emailLocalPart`
-
-## Commands
+After creating or modifying responsibility files, sync them to the database:
 
 ```bash
-protege persona create "ops-assistant"
-protege persona create --name "Ops Assistant"
-protege persona list
-protege persona info <persona_id_or_prefix>
-protege persona delete <persona_id_or_prefix>
+protege scheduler sync --persona 5d52
 ```
+
+## Persona Selection in CLI Commands
+
+Many commands accept a `--persona` flag. You can use:
+
+- **Full persona ID**: `--persona 5d5291bc3285362f`
+- **Unique prefix**: `--persona 5d52` (as long as it's unambiguous)
+- **Email local part**: `--persona cep6474yx3wwbr5x...`
+
+## Managing Personas
+
+```bash
+# Create a new persona with a display name
+protege persona create "Ops Monitor"
+
+# List all personas
+protege persona list
+
+# Show detailed info about a persona
+protege persona info 5d52
+
+# Delete a persona (removes identity files, not memory)
+protege persona delete 5d52
+```
+
+::: warning Passport key security
+`passport.key` contains the persona's private key used for relay authentication. If this key is lost or compromised, create a new persona — there's no key recovery mechanism.
+:::

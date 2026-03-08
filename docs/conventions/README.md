@@ -26,6 +26,11 @@ These conventions apply to:
 5. `tests/`
 6. CLI/TUI code
 
+Boundary note:
+
+1. Extension code under `extensions/**` uses `@protege-pack/toolkit` as its framework import surface.
+2. Core/runtime code uses internal aliases (`@engine/*`, `@extensions/*`, etc.).
+
 ## Change Policy
 
 1. Conventions can evolve.

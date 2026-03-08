@@ -25,53 +25,77 @@ export default withMermaid(defineConfig({
       provider: 'local',
     },
     nav: [
-      { text: 'Introduction', link: '/' },
-      { text: 'Getting Started', link: '/getting-started/' },
-      { text: 'Developer Experience', link: '/developer-experience/' },
-      { text: 'Internal Architecture', link: '/internal-architecture/' },
-      { text: 'CLI Reference', link: '/reference/cli' },
+      { text: 'Home', link: '/' },
+      { text: 'Quick Start', link: '/getting-started/' },
+      { text: 'Guide', link: '/developer-experience/' },
+      { text: 'Architecture', link: '/internal-architecture/' },
+      { text: 'Reference', link: '/reference/cli' },
     ],
     sidebar: [
-      {
-        text: 'Introduction',
-        items: [
-          { text: 'Protege Framework', link: '/' },
-        ],
-      },
       {
         text: 'Getting Started',
         items: [
           { text: 'Quick Start', link: '/getting-started/' },
-          { text: 'Relay vs Transport', link: '/getting-started/relay-vs-transport' },
+          { text: 'Relay vs Local SMTP', link: '/getting-started/relay-vs-transport' },
           { text: 'Relay Operations', link: '/getting-started/relay-operations' },
         ],
       },
       {
-        text: 'Developer Experience',
+        text: 'Building Your Agent',
         items: [
           { text: 'Overview', link: '/developer-experience/' },
-          { text: 'Extensions Overview', link: '/developer-experience/extensions/' },
-          { text: 'Tools', link: '/developer-experience/extensions/tools' },
-          { text: 'Tools: Built-Ins', link: '/developer-experience/extensions/tools-built-ins' },
-          { text: 'Tools: Custom', link: '/developer-experience/extensions/tools-custom' },
-          { text: 'Providers', link: '/developer-experience/extensions/providers' },
-          { text: 'Providers: Built-Ins', link: '/developer-experience/extensions/providers-built-ins' },
-          { text: 'Providers: Custom', link: '/developer-experience/extensions/providers-custom' },
-          { text: 'Hooks', link: '/developer-experience/extensions/hooks' },
-          { text: 'Hooks: Built-Ins', link: '/developer-experience/extensions/hooks-built-ins' },
-          { text: 'Hooks: Events', link: '/developer-experience/extensions/hooks-events' },
-          { text: 'Hooks: Custom', link: '/developer-experience/extensions/hooks-custom' },
-          { text: 'Resolvers', link: '/developer-experience/extensions/resolvers' },
-          { text: 'Resolvers: Built-Ins', link: '/developer-experience/extensions/resolvers-built-ins' },
-          { text: 'Resolvers: Custom', link: '/developer-experience/extensions/resolvers-custom' },
+          {
+            text: 'Extensions',
+            link: '/developer-experience/extensions/',
+            collapsed: false,
+            items: [
+              {
+                text: 'Tools',
+                link: '/developer-experience/extensions/tools',
+                collapsed: true,
+                items: [
+                  { text: 'Custom Tools', link: '/developer-experience/extensions/tools-custom' },
+                ],
+              },
+              {
+                text: 'Providers',
+                link: '/developer-experience/extensions/providers',
+                collapsed: true,
+                items: [
+                  { text: 'Custom Providers', link: '/developer-experience/extensions/providers-custom' },
+                ],
+              },
+              {
+                text: 'Hooks',
+                link: '/developer-experience/extensions/hooks',
+                collapsed: true,
+                items: [
+                  { text: 'Custom Hooks', link: '/developer-experience/extensions/hooks-custom' },
+                ],
+              },
+              {
+                text: 'Resolvers',
+                link: '/developer-experience/extensions/resolvers',
+                collapsed: true,
+                items: [
+                  { text: 'Custom Resolvers', link: '/developer-experience/extensions/resolvers-custom' },
+                ],
+              },
+            ],
+          },
           { text: 'Personas and Memory', link: '/developer-experience/personas-memory' },
-          { text: '.env and Secrets', link: '/developer-experience/environment' },
-          { text: 'Config Files', link: '/developer-experience/configuration' },
-          { text: 'Security and Risk Model', link: '/developer-experience/security' },
         ],
       },
       {
-        text: 'Internal Architecture',
+        text: 'Configuration',
+        items: [
+          { text: 'Config Files', link: '/developer-experience/configuration' },
+          { text: 'Environment and Secrets', link: '/developer-experience/environment' },
+          { text: 'Security', link: '/developer-experience/security' },
+        ],
+      },
+      {
+        text: 'Architecture',
         items: [
           { text: 'Overview', link: '/internal-architecture/' },
           { text: 'LOGI Model', link: '/internal-architecture/logi' },
@@ -85,10 +109,10 @@ export default withMermaid(defineConfig({
         text: 'Reference',
         items: [
           { text: 'CLI Commands', link: '/reference/cli' },
-          { text: 'Daemon Operations', link: '/reference/daemon' },
-          { text: 'Chat Guide', link: '/reference/chat' },
-          { text: 'Release Runbook', link: '/reference/release' },
+          { text: 'Daemon (systemd)', link: '/reference/daemon' },
+          { text: 'Chat TUI', link: '/reference/chat' },
           { text: 'Troubleshooting', link: '/reference/troubleshooting' },
+          { text: 'Release Runbook', link: '/reference/release' },
         ],
       },
     ],

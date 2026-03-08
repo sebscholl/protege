@@ -13,7 +13,7 @@ Contract (v1):
 3. Hook execution is non-blocking and failure-isolated.
 4. Hook ordering is deterministic by `extensions/extensions.json` hook manifest order.
 5. Hook callback signature is `onEvent(event, payload, config)`.
-6. Event and payload types are exported from `protege/toolkit`.
+6. Event and payload types are exported from `@protege-pack/toolkit`.
 7. Hooks may return `{ emit: [...] }` to trigger additional typed hook events.
 
 Entry point resolution order is `index.js` first, then `index.ts`.
@@ -39,7 +39,7 @@ Guidance:
 Typed signature example (TypeScript):
 
 ```ts
-import type { HarnessHookOnEvent } from 'protege/toolkit';
+import type { HarnessHookOnEvent } from '@protege-pack/toolkit';
 
 export const onEvent: HarnessHookOnEvent = async (event, payload, config) => {
   if (event === 'harness.inference.completed') {

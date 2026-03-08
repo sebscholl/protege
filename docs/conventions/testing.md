@@ -38,12 +38,13 @@ See `network-testing.md` for fixture shape and naming conventions.
 ## File and Path Rules
 
 1. Use path aliases (for example `@engine/*`, `@tests/*`) instead of deep relative paths between major top-level modules.
-2. Configure aliases consistently in both `tsconfig` and Vitest config.
-3. Test files MUST mirror the path of the source file under `tests/`.
-4. Source-to-test mapping format:
+2. Extension-source tests should assert extension imports use `@protege-pack/toolkit`, not internal aliases.
+3. Configure aliases consistently in both `tsconfig` and Vitest config.
+4. Test files MUST mirror the path of the source file under `tests/`.
+5. Source-to-test mapping format:
    - source: `engine/gateway/index.ts`
    - test: `tests/engine/gateway/index.test.ts`
-5. Keep any shared test-only utilities in dedicated helper modules and not mixed into mirrored source test files.
+6. Keep any shared test-only utilities in dedicated helper modules and not mixed into mirrored source test files.
 
 ## Minimum Coverage Expectations
 

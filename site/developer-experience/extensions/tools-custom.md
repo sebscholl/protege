@@ -1,115 +1,234 @@
-# Build a Custom Tool
+# Custom Tools
 
-This page documents the complete tool authoring flow.
+To add a capability Protege doesn't ship with, create a custom tool.
 
-## Directory Layout
+## Execution Flow
 
-Create one folder under `extensions/tools/`:
+You implement `tool.execute(...)`. You do **not** implement `context.runtime.invoke(...)` — that's provided by the harness at runtime and routes actions to gateway/runtime handlers.
 
 ```text
-extensions/tools/ping-service/
-  index.ts
-  config.json
-  README.md
+LLM decides to call tool
+        |
+        v
+Harness tool registry resolves tool by name
+        |
+        v
+tool.execute({ input, context })
+        |
+        +--> (optional) context.runtime.invoke({ action, payload })
+                |
+                v
+         Gateway/runtime action handler
+         (file.read, file.write, email.send, web.fetch, shell.exec, ...)
+                |
+                v
+         Action result (Record<string, unknown>)
+                |
+                v
+tool.execute returns result to harness
+        |
+        v
+Harness passes tool result back to LLM
 ```
 
-## `index.ts` Contract
+## Example: GitHub Issue Creator
+
+### 1. Create the directory
+
+```
+extensions/tools/github-issue/
+├── index.ts
+├── config.json
+└── README.md
+```
+
+### 2. Implement the tool contract
+
+Your `index.ts` must export a `tool` object matching the `HarnessToolDefinition` type.
+This primary example calls GitHub directly and returns the final tool result object:
 
 ```ts
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from '@engine/harness/tools/contract';
+} from '@protege-pack/toolkit';
 
-type PingInput = {
-  target: string;
-};
+import { request } from 'node:https';
 
 export const tool: HarnessToolDefinition = {
-  name: 'ping_service',
-  description: 'Pings one target through a runtime action.',
+  name: 'create_github_issue',
+  description: 'Create a new GitHub issue in the specified repository.',
   inputSchema: {
     type: 'object',
-    required: ['target'],
+    required: ['repo', 'title', 'body'],
     additionalProperties: false,
     properties: {
-      target: { type: 'string' },
+      repo: { type: 'string', description: 'Repository in owner/name format' },
+      title: { type: 'string', description: 'Issue title' },
+      body: { type: 'string', description: 'Issue body in markdown' },
+      labels: { type: 'array', items: { type: 'string' } },
     },
   },
-  execute: async (
-    args: {
-      input: Record<string, unknown>;
-      context: HarnessToolExecutionContext;
-    },
-  ): Promise<Record<string, unknown>> => {
-    const input = parsePingInput({ input: args.input });
+  execute: async (args: {
+    input: Record<string, unknown>;
+    context: HarnessToolExecutionContext;
+  }): Promise<Record<string, unknown>> => {
+    const repo = String(args.input.repo);
+    const title = String(args.input.title);
+    const body = String(args.input.body);
+    const labels = Array(args.input.labels)
 
-    return args.context.runtime.invoke({
-      action: 'service.ping',
-      payload: {
-        target: input.target,
+    // Secrets get added to process.env[ENV_VAR_NAME]
+    const githubToken = process.env.GITHUB_TOKEN;
+
+    if (!githubToken || githubToken.trim().length === 0) {
+      throw new Error('Missing GITHUB_TOKEN. Set it in .secrets or your shell env.');
+    }
+
+    args.context.logger?.info({
+      event: 'tool.github_issue.create.started',
+      context: {
+        repo,
+        title,
+        labelCount: labels.length,
       },
     });
+
+    const issue = await createGithubIssue({
+      repo,
+      title,
+      body,
+      labels,
+      token: githubToken,
+    });
+
+    args.context.logger?.info({
+      event: 'tool.github_issue.create.completed',
+      context: {
+        repo,
+        issueId: issue.id,
+      },
+    });
+
+    return {
+      ok: true,
+      repo,
+      issueId: issue.id,
+      url: issue.html_url,
+    };
   },
 };
 
-function parsePingInput(
-  args: {
-    input: Record<string, unknown>;
-  },
-): PingInput {
-  const target = args.input.target;
-  if (typeof target !== 'string' || target.trim().length === 0) {
-    throw new Error('ping_service input.target is required.');
-  }
 
+/**
+ * Creates one GitHub issue via REST API.
+ */
+async function createGithubIssue(
+  args: {
+    repo: string;
+    title: string;
+    body: string;
+    labels: string[];
+    token: string;
+  },
+): Promise<{
+  id: number;
+  html_url: string;
+}> {
+  /**
+   * Call the github API...
+   */
   return {
-    target,
-  };
+    id,
+    html_url
+  }
 }
 ```
 
-## `config.json`
+### 2.1 Optional: delegate to runtime actions with `context.runtime.invoke(...)`
 
-Keep extension-local defaults here. They are merged with manifest overrides.
+Use `runtime.invoke(...)` when you want to reuse existing runtime capabilities (email/file/shell/web actions) instead of calling external APIs directly inside the tool.
+
+```ts
+const result = await args.context.runtime.invoke({
+  action: 'file.write',
+  payload: {
+    path: '/tmp/issue-summary.txt',
+    content: `Created issue ${issue.id}: ${issue.html_url}`,
+  },
+});
+```
+
+`runtime.invoke(...)` only works for actions your runtime/gateway actually implements.
+
+### 3. Add default configuration
+
+`config.json`:
 
 ```json
 {
-  "timeoutMs": 3000,
-  "defaultTarget": "localhost"
+  "defaultLabels": ["agent-created"],
+  "apiTokenEnv": "GITHUB_TOKEN"
 }
 ```
 
-## Register in Manifest
+### 4. Register in the manifest
 
 ```json
 {
   "tools": [
+    "send-email",
     {
-      "name": "ping-service",
+      "name": "github-issue",
       "config": {
-        "timeoutMs": 1000
+        "defaultLabels": ["agent-created", "needs-triage"]
       }
     }
   ]
 }
 ```
 
-## Runtime Behavior
+## Key Points
 
-1. harness loads enabled tool entries from `extensions/extensions.json`,
-2. validates exported `tool` contract,
-3. exposes tool to provider adapter during inference,
-4. executes tool through the uniform runtime action interface.
+- **Input validation** — always validate and type-narrow `args.input` before using it. The LLM may send unexpected shapes.
+- **Secrets access** — read API keys from `process.env` (for example `process.env.GITHUB_TOKEN`). In Protege workflows these are typically loaded from `.secrets` / `.secrets.local` or exported in the shell environment.
+- **Runtime actions** — use `args.context.runtime.invoke()` only for implemented runtime actions. For custom external APIs, call them directly inside your tool unless you also add a runtime action handler.
+- **Tool logging** — tool-call start/completion is logged by harness automatically. Use `args.context.logger?.info/error(...)` only for tool-specific internal milestones you want surfaced.
+- **Deterministic output** — return a consistent JSON shape so the LLM can reliably parse results.
+- **Error handling** — if your tool throws, the error is wrapped as a structured `{ ok: false, error: ... }` result and fed back to the LLM. The model gets a chance to retry or adjust. Only certain errors (like "tool not found") are terminal.
 
-## Failure Semantics
+## Tool Return Type
 
-Tool failures are fed back into the run as structured tool-result failures (`ok: false`), allowing the model to adjust strategy in the same run loop when possible.
+Every tool returns `Promise<Record<string, unknown>>`. This object is fed back to the model as tool result context.
 
-## Checklist
+Recommended pattern:
 
-1. strict input validation in tool module,
-2. deterministic output shape,
-3. explicit runtime action usage,
-4. README with behavior and examples,
-5. tests for parse/execute/failure paths.
+1. Return a stable object shape on success (for example `{ ok: true, issueId, url }`).
+2. Include machine-readable fields the model can use in the next step.
+3. Throw for hard failures (missing required auth, invalid input after validation, runtime-action failure) so the harness can pass structured error context back to the model.
+
+## The Tool Contract
+
+For reference, here's the full type interface:
+
+```ts
+type HarnessToolDefinition = {
+  name: string;                              // snake_case name the LLM sees
+  description: string;                       // Natural language description for the LLM
+  inputSchema: Record<string, unknown>;      // JSON Schema for input validation
+  execute: (args: {
+    input: Record<string, unknown>;          // Parsed input from the LLM
+    context: HarnessToolExecutionContext;     // Runtime action invoker + logger
+  }) => Promise<Record<string, unknown>>;    // Result fed back to the LLM
+};
+
+type HarnessToolExecutionContext = {
+  runtime: {
+    invoke: (args: {
+      action: string;                        // e.g., "email.send", "file.read"
+      payload: Record<string, unknown>;
+    }) => Promise<Record<string, unknown>>;
+  };
+  logger?: GatewayLogger;
+};
+```

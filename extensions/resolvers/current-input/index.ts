@@ -1,4 +1,4 @@
-import type { HarnessResolverDefinition } from 'protege/toolkit';
+import type { HarnessResolverDefinition } from '@protege-pack/toolkit';
 
 /**
  * Injects latest inbound text as current input for terminal provider turn.

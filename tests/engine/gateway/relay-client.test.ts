@@ -45,6 +45,7 @@ let binaryIgnoredBeforeAuth = true;
 let blobDeliveredAfterAuth = false;
 let binaryMessageCount = 0;
 let bufferControlMessageAccepted = false;
+let reconnectAfterPreOpenClose = false;
 
 /**
  * Creates one manual clock with inspectable timeout scheduling.
@@ -306,6 +307,29 @@ beforeAll(async (): Promise<void> => {
   unauthenticatedHandshakeTimeoutCloseCode = timeoutSockets[0].closed[0]?.code ?? 0;
   timeoutClient.stop();
 
+  const preOpenCloseClock = createManualClock();
+  const preOpenCloseSockets: ManualSocket[] = [];
+  const preOpenCloseClient = startRelayClient({
+    config: {
+      relayWsUrl: 'ws://relay.local/ws',
+      publicKeyBase32,
+      privateKeyPem,
+      reconnectBaseDelayMs: 10,
+      reconnectMaxDelayMs: 40,
+      heartbeatTimeoutMs: 25,
+    },
+    clock: preOpenCloseClock.clock,
+    socketFactory: (): ManualSocket => {
+      const socket = createManualSocket();
+      preOpenCloseSockets.push(socket);
+      return socket;
+    },
+  });
+  preOpenCloseSockets[0].emitClose(1006, 'connect_failed');
+  preOpenCloseClock.runTimerByDelay(10);
+  reconnectAfterPreOpenClose = preOpenCloseSockets.length === 2;
+  preOpenCloseClient.stop();
+
   void challengeRequestPayload;
 });
 
@@ -360,6 +384,10 @@ describe('gateway relay client reconnect and heartbeat', () => {
 
   it('uses computed reconnect delay for first disconnect', () => {
     expect(reconnectDelayCaptured).toBe(10);
+  });
+
+  it('reconnects after a socket closes before open completes', () => {
+    expect(reconnectAfterPreOpenClose).toBe(true);
   });
 
   it('does not close authenticated idle sockets on heartbeat timeout interval', () => {
