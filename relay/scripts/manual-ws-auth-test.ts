@@ -23,6 +23,14 @@ export type RelayWsControlPayload = {
 };
 
 /**
+ * Represents one manual websocket auth script result payload.
+ */
+export type RelayWsManualAuthResult = {
+  status: 'ok' | 'auth_error';
+  code?: string;
+};
+
+/**
  * Builds one lowercase base32 public key identity from one ed25519 public key.
  */
 export function buildRelayPublicKeyBase32(
@@ -96,7 +104,7 @@ export async function runRelayWsManualAuthTest(
     config: RelayWsManualTestConfig;
     writeLine: (line: string) => void;
   },
-): Promise<void> {
+): Promise<RelayWsManualAuthResult> {
   if (typeof WebSocket === 'undefined') {
     throw new Error('Global WebSocket is unavailable in this Node runtime.');
   }
@@ -108,7 +116,7 @@ export async function runRelayWsManualAuthTest(
   args.writeLine(`CONNECT ${args.config.url}`);
   args.writeLine(`PUBLIC_KEY ${publicKeyBase32}`);
 
-  await new Promise<void>((resolve, reject): void => {
+  return new Promise<RelayWsManualAuthResult>((resolve, reject): void => {
     const socket = new WebSocket(args.config.url);
     const timeout = setTimeout((): void => {
       socket.close();
@@ -162,14 +170,21 @@ export async function runRelayWsManualAuthTest(
           args.writeLine('AUTH SUCCESS');
           clearTimeout(timeout);
           socket.close();
-          resolve();
+          resolve({
+            status: 'ok',
+          });
           return;
         }
 
         if (payload.type === 'auth_error') {
+          const code = String(payload.code ?? 'unknown');
+          args.writeLine(`AUTH ERROR code=${code}`);
           clearTimeout(timeout);
           socket.close();
-          reject(new Error(`Relay returned auth_error: ${String(payload.code ?? 'unknown')}`));
+          resolve({
+            status: 'auth_error',
+            code,
+          });
           return;
         }
       } catch (error) {
@@ -195,14 +210,20 @@ async function main(): Promise<void> {
   const config = resolveRelayWsManualTestConfig({
     argv: process.argv,
   });
-  await runRelayWsManualAuthTest({
+  const result = await runRelayWsManualAuthTest({
     config,
     writeLine: (line: string): void => {
       process.stdout.write(`${line}\n`);
     },
   });
+  if (result.status === 'auth_error') {
+    process.exitCode = 1;
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  void main();
+  void main().catch((error: Error): void => {
+    process.stderr.write(`${error.message}\n`);
+    process.exitCode = 1;
+  });
 }

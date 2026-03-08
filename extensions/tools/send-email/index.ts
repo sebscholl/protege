@@ -1,12 +1,12 @@
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from '@engine/harness/tools/contract';
+} from '@protege-pack/toolkit';
 
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
-import { isValidEmailAddress } from '@engine/shared/email';
+import { isValidEmailAddress } from '@protege-pack/toolkit';
 
 /**
  * Represents the accepted input payload schema for send_email execution.

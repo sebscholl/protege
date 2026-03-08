@@ -1,29 +1,80 @@
-# Developer Experience
+# Building Your Agent
 
-This section documents Protege as a framework surface for building and operating agents.
+Protege is designed as a framework, not an application. The engine handles orchestration — receiving emails, assembling context, running inference, delivering replies — while **extensions** provide the actual capabilities your agent has.
 
-## How to Use This Section
+This section covers everything you need to customize and extend your agent.
 
-If you are new to extension authoring, use this order:
+## Your Agent's Project Structure
 
-1. [Extensions](/developer-experience/extensions/)
-2. [Tools: built-ins](/developer-experience/extensions/tools-built-ins)
-3. [Tools: custom](/developer-experience/extensions/tools-custom)
-4. [Hooks events and payloads](/developer-experience/extensions/hooks-events)
-5. [Resolvers: built-ins](/developer-experience/extensions/resolvers-built-ins)
-6. [Resolvers: custom](/developer-experience/extensions/resolvers-custom)
+```
+my-agent/
+├── configs/           # Runtime behavior configuration
+│   ├── context.json   # What context the LLM sees (resolver pipeline)
+│   ├── gateway.json   # Email transport and relay settings
+│   ├── inference.json # LLM provider, model, and generation params
+│   ├── security.json  # Who can email your agent
+│   ├── system.json    # Logging, scheduler, chat settings
+│   └── theme.json     # Terminal UI colors
+├── extensions/
+│   ├── extensions.json  # Master manifest — what's enabled
+│   ├── tools/           # Tool implementations
+│   ├── providers/       # LLM provider adapters
+│   ├── hooks/           # Event observers
+│   └── resolvers/       # Context builders
+├── personas/            # Agent identities
+│   └── {persona_id}/
+│       ├── persona.json
+│       ├── passport.key
+│       ├── PERSONA.md          # Persona-specific instructions
+│       ├── responsibilities/   # Scheduled tasks
+│       └── knowledge/          # Reference documents
+├── memory/              # Runtime data (auto-managed)
+│   └── {persona_id}/
+│       ├── temporal.db         # Thread history, tool traces
+│       └── active.md           # Short-horizon working memory
+├── prompts/
+│   └── system.md        # Base system prompt
+└── .secrets             # API keys (git-ignored)
+```
 
-## Runtime Surfaces
+## The Extension System
 
-1. engine orchestration: `engine/`
-2. extension modules: `extensions/`
-3. persona identity and prompts: `personas/`
-4. runtime memory and artifacts: `memory/{persona_id}/`
-5. user-editable configuration: `configs/`
+Everything your agent can do is defined in `extensions/extensions.json`:
 
-## Key References
+```json
+{
+  "providers": ["anthropic"],
+  "tools": ["shell", "read-file", "write-file", "web-search", "send-email"],
+  "hooks": [
+    { "name": "thread-memory-updater", "events": ["harness.inference.completed"] },
+    { "name": "active-memory-updater", "events": ["memory.thread.updated"] }
+  ],
+  "resolvers": ["load-file", "thread-memory-state", "thread-history", "invocation-metadata", "current-input"]
+}
+```
 
-1. [Personas and memory](/developer-experience/personas-memory)
-2. [Environment and secrets](/developer-experience/environment)
-3. [Config files](/developer-experience/configuration)
-4. [Security and risk model](/developer-experience/security)
+Each extension type serves a distinct role:
+
+| Extension | Purpose | Example |
+|-----------|---------|---------|
+| **[Tools](/developer-experience/extensions/tools)** | Actions the LLM can call | `send_email`, `web_search`, `shell` |
+| **[Providers](/developer-experience/extensions/providers)** | LLM API adapters | OpenAI, Anthropic, Gemini, Grok |
+| **[Hooks](/developer-experience/extensions/hooks)** | React to runtime events | Update memory after inference, send webhook |
+| **[Resolvers](/developer-experience/extensions/resolvers)** | Build context for each inference run | Load files, inject history, add metadata |
+
+## Start Here
+
+If you're new to Protege, read these pages in order:
+
+1. **[Extensions Overview](/developer-experience/extensions/)** — how the manifest works, how config merging works
+2. **[Tools](/developer-experience/extensions/tools)** — what your agent can do
+3. **[Providers](/developer-experience/extensions/providers)** — which LLMs your agent uses
+4. **[Personas and Memory](/developer-experience/personas-memory)** — agent identity and how memory works
+5. **[Config Files](/developer-experience/configuration)** — every configuration surface explained
+
+## Reference Pages
+
+- **[Hooks](/developer-experience/extensions/hooks)** — event system and custom observers
+- **[Resolvers](/developer-experience/extensions/resolvers)** — context pipeline customization
+- **[Environment and Secrets](/developer-experience/environment)** — managing API keys
+- **[Security](/developer-experience/security)** — threat model and access policies

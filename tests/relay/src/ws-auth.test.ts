@@ -1,6 +1,7 @@
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { createRelayRateLimitState } from '@relay/src/rate-limit';
 import { createRelaySessionRegistry, readRelaySessionByPublicKey } from '@relay/src/session-registry';
 import { createRelayStore, readRelayChallenge } from '@relay/src/storage';
 import {
@@ -46,6 +47,11 @@ let replacementAuthSocketId = '';
 let replacedSocketClosedCode = -1;
 let replacedSocketClosedReason = '';
 let replacementRegistrySocketId = '';
+let rateLimitedAuthType = '';
+let rateLimitedAuthCode = '';
+let rateLimitedAuthClosedCode = -1;
+let rateLimitedAuthClosedReason = '';
+let authEventTypes: string[] = [];
 
 beforeAll((): void => {
   parsedChallengeRequestType = parseRelayWsControlMessage({
@@ -84,6 +90,9 @@ beforeAll((): void => {
       publicKeyBase32: publicKeyBase32.toUpperCase(),
     }),
     nowIso: '2026-02-14T00:00:00.000Z',
+    onWsAuthEvent: (eventArgs): void => {
+      authEventTypes.push(eventArgs.event);
+    },
   });
   const issuedPayload = JSON.parse(issueSocket.capture.sentMessages[0] ?? '{}') as Record<string, unknown>;
   issuedChallengeType = String(issuedPayload.type ?? '');
@@ -131,6 +140,9 @@ beforeAll((): void => {
       signatureBase64,
     }),
     nowIso: '2026-02-14T00:01:10.000Z',
+    onWsAuthEvent: (eventArgs): void => {
+      authEventTypes.push(eventArgs.event);
+    },
   });
   const authPayload = JSON.parse(validSocket.capture.sentMessages[1] ?? '{}') as Record<string, unknown>;
   validAuthType = String(authPayload.type ?? '');
@@ -191,6 +203,9 @@ beforeAll((): void => {
       signatureBase64: Buffer.from('not-a-valid-signature', 'utf8').toString('base64'),
     }),
     nowIso: '2026-02-14T00:03:10.000Z',
+    onWsAuthEvent: (eventArgs): void => {
+      authEventTypes.push(eventArgs.event);
+    },
   });
   const badSignaturePayload = JSON.parse(
     badSignatureSocket.capture.sentMessages[1] ?? '{}',
@@ -289,6 +304,58 @@ beforeAll((): void => {
     registry: replacementRegistry,
     publicKeyBase32,
   })?.socket.id ?? '';
+
+  const rateLimitedStore = createRelayStore();
+  const rateLimitedRegistry = createRelaySessionRegistry();
+  const rateLimitedSocket = createRelayAuthSocketDouble({ socketId: 'socket-rate-limit' });
+  const authRateLimitState = createRelayRateLimitState();
+  handleRelayWsAuthControlMessage({
+    store: rateLimitedStore,
+    registry: rateLimitedRegistry,
+    socket: rateLimitedSocket.socket,
+    state: createRelayWsAuthState(),
+    messageJson: JSON.stringify({
+      type: 'auth_challenge_request',
+      publicKeyBase32,
+    }),
+    nowIso: '2026-02-14T00:05:00.000Z',
+    remoteAddress: '127.0.0.1',
+    authRateLimit: {
+      state: authRateLimitState,
+      attemptsPerMinutePerIp: 1,
+      denyWindowMs: 60000,
+    },
+    onWsAuthEvent: (eventArgs): void => {
+      authEventTypes.push(eventArgs.event);
+    },
+  });
+  handleRelayWsAuthControlMessage({
+    store: rateLimitedStore,
+    registry: rateLimitedRegistry,
+    socket: rateLimitedSocket.socket,
+    state: createRelayWsAuthState(),
+    messageJson: JSON.stringify({
+      type: 'auth_challenge_request',
+      publicKeyBase32,
+    }),
+    nowIso: '2026-02-14T00:05:01.000Z',
+    remoteAddress: '127.0.0.1',
+    authRateLimit: {
+      state: authRateLimitState,
+      attemptsPerMinutePerIp: 1,
+      denyWindowMs: 60000,
+    },
+    onWsAuthEvent: (eventArgs): void => {
+      authEventTypes.push(eventArgs.event);
+    },
+  });
+  const rateLimitedPayload = JSON.parse(
+    rateLimitedSocket.capture.sentMessages[1] ?? '{}',
+  ) as Record<string, unknown>;
+  rateLimitedAuthType = String(rateLimitedPayload.type ?? '');
+  rateLimitedAuthCode = String(rateLimitedPayload.code ?? '');
+  rateLimitedAuthClosedCode = rateLimitedSocket.capture.closeCode;
+  rateLimitedAuthClosedReason = rateLimitedSocket.capture.closeReason;
 });
 
 describe('relay websocket auth control parsing', () => {
@@ -412,5 +479,25 @@ describe('relay websocket auth flow', () => {
 
   it('keeps newest authenticated socket bound in session registry', () => {
     expect(replacementRegistrySocketId).toBe('socket-replace-b');
+  });
+
+  it('emits auth_error when auth rate limit is exceeded', () => {
+    expect(rateLimitedAuthType).toBe('auth_error');
+  });
+
+  it('emits rate_limited code when auth rate limit is exceeded', () => {
+    expect(rateLimitedAuthCode).toBe('rate_limited');
+  });
+
+  it('closes sockets with 4408 when auth rate limit is exceeded', () => {
+    expect(rateLimitedAuthClosedCode).toBe(4408);
+  });
+
+  it('closes sockets with rate_limited reason when auth rate limit is exceeded', () => {
+    expect(rateLimitedAuthClosedReason).toBe('rate_limited');
+  });
+
+  it('emits auth lifecycle callback events for observability', () => {
+    expect(authEventTypes.length > 0).toBe(true);
   });
 });

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runCli } from '@engine/cli/index';
-import { listPersonas } from '@engine/shared/personas';
+import { createPersona, listPersonas } from '@engine/shared/personas';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let firstBootstrapPersonaId = '';
@@ -18,6 +18,9 @@ let gatewayConfigRelayWsUrl = '';
 let gatewayConfigMailDomain = '';
 let gatewayConfigPreservedTransportHost = '';
 let bootstrapPersonaEmailDomain = '';
+let updatedPersonaCount = 0;
+let personaCountBeforeBootstrap = 0;
+let allPersonaDomainsAfterBootstrapMatchRelayDomain = false;
 let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
 beforeAll(async (): Promise<void> => {
@@ -45,6 +48,9 @@ beforeAll(async (): Promise<void> => {
       },
     },
   });
+  createPersona({ displayName: 'Secondary Persona' });
+  createPersona({ displayName: 'Tertiary Persona' });
+  personaCountBeforeBootstrap = listPersonas().length;
 
   await runCli({
     argv: ['relay', 'bootstrap', '--relay-ws-url', 'ws://relay.test/ws', '--json'],
@@ -53,10 +59,12 @@ beforeAll(async (): Promise<void> => {
     personaId: string;
     createdPersona: boolean;
     relayWsUrl: string;
+    updatedPersonaCount: number;
   };
   firstBootstrapPersonaId = firstResult.personaId;
   firstBootstrapCreatedPersona = firstResult.createdPersona;
   firstBootstrapRelayUrl = firstResult.relayWsUrl;
+  updatedPersonaCount = firstResult.updatedPersonaCount;
 
   await runCli({
     argv: ['relay', 'bootstrap', '--relay-ws-url', 'ws://relay.test/ws', '--json'],
@@ -86,6 +94,9 @@ beforeAll(async (): Promise<void> => {
   gatewayConfigRelayWsUrl = gatewayConfig.relay?.relayWsUrl ?? '';
   gatewayConfigPreservedTransportHost = gatewayConfig.transport?.host ?? '';
   bootstrapPersonaEmailDomain = (listPersonas()[0]?.emailAddress ?? '').split('@')[1] ?? '';
+  allPersonaDomainsAfterBootstrapMatchRelayDomain = listPersonas().every((persona) => {
+    return persona.emailAddress.endsWith('@mail.test');
+  });
 
   process.stdout.write = stdoutWrite;
 });
@@ -95,8 +106,8 @@ afterAll((): void => {
 });
 
 describe('relay bootstrap cli', () => {
-  it('creates one persona during first relay bootstrap when none exist', () => {
-    expect(firstBootstrapCreatedPersona).toBe(true);
+  it('does not create a persona when one already exists before bootstrap', () => {
+    expect(firstBootstrapCreatedPersona).toBe(false);
   });
 
   it('returns relay websocket url in bootstrap output', () => {
@@ -108,7 +119,7 @@ describe('relay bootstrap cli', () => {
   });
 
   it('does not create additional personas on bootstrap rerun', () => {
-    expect([secondBootstrapCreatedPersona, personaCountAfterSecondBootstrap]).toEqual([false, 1]);
+    expect([secondBootstrapCreatedPersona, personaCountAfterSecondBootstrap]).toEqual([false, 2]);
   });
 
   it('writes relay config as enabled in gateway config', () => {
@@ -125,6 +136,14 @@ describe('relay bootstrap cli', () => {
 
   it('reconciles persona email address domain with relay mail domain', () => {
     expect(bootstrapPersonaEmailDomain).toBe('mail.test');
+  });
+
+  it('updates all persona email domains during bootstrap', () => {
+    expect(allPersonaDomainsAfterBootstrapMatchRelayDomain).toBe(true);
+  });
+
+  it('reports updated persona count in bootstrap output', () => {
+    expect(updatedPersonaCount).toBe(personaCountBeforeBootstrap);
   });
 
   it('preserves existing non-relay gateway config fields', () => {

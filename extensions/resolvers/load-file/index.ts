@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 
-import type { HarnessResolverDefinition } from '@engine/harness/resolvers/types';
+import type { HarnessResolverDefinition } from '@protege-pack/toolkit';
 
 /**
  * Loads one file path from resolver positional argument and emits its trimmed content.

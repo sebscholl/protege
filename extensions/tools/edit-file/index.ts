@@ -1,7 +1,7 @@
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from '@engine/harness/tools/contract';
+} from '@protege-pack/toolkit';
 
 /**
  * Represents accepted input payload for edit_file tool execution.

@@ -1,18 +1,18 @@
-import type { HookEventPayloadByName, HarnessHookResult } from '@engine/harness/hooks/events';
-import type { ThreadMemoryState } from '@engine/harness/memory/storage';
-import type { HarnessStoredMessage, HarnessThreadToolEvent } from '@engine/harness/types';
-import type { ProtegeDatabase } from '@engine/shared/database';
+import type { HookEventPayloadByName, HarnessHookResult } from '@protege-pack/toolkit';
+import type { ThreadMemoryState } from '@protege-pack/toolkit';
+import type { HarnessStoredMessage, HarnessThreadToolEvent } from '@protege-pack/toolkit';
+import type { ProtegeDatabase } from '@protege-pack/toolkit';
 
-import { initializeDatabase } from '@engine/shared/database';
-import { resolvePersonaMemoryPaths } from '@engine/shared/personas';
-import { HOOK_EVENT } from '@engine/harness/hooks/events';
-import { listThreadMessages, listThreadToolEventsByThread } from '@engine/harness/storage';
+import { initializeDatabase } from '@protege-pack/toolkit';
+import { resolvePersonaMemoryPaths } from '@protege-pack/toolkit';
+import { HOOK_EVENT } from '@protege-pack/toolkit';
+import { listThreadMessages, listThreadToolEventsByThread } from '@protege-pack/toolkit';
 import {
   readThreadMemoryState,
   upsertThreadMemoryState,
-} from '@engine/harness/memory/storage';
-import { synthesizeMemoryText } from '@engine/harness/memory/synthesis';
-import { resolveMigrationsDirPath } from '@engine/harness/runtime';
+} from '@protege-pack/toolkit';
+import { synthesizeMemoryText } from '@protege-pack/toolkit';
+import { resolveMigrationsDirPath } from '@protege-pack/toolkit';
 
 /**
  * Represents one resolved thread-memory updater config payload.

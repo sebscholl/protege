@@ -1,8 +1,10 @@
 import { deriveRelayEmailLocalPart, issueRelayChallenge } from '@relay/src/auth/challenge';
+import { buildRelayRateLimitConfig, consumeRelayRateLimit } from '@relay/src/rate-limit';
 import { verifyRelayChallengeResponse } from '@relay/src/auth/verify';
 import type { RelaySessionRegistry, RelaySocket } from '@relay/src/session-registry';
 import { activateRelaySession } from '@relay/src/session-registry';
 import type { RelayStore } from '@relay/src/storage';
+import type { RelayRateLimitState } from '@relay/src/rate-limit';
 
 /**
  * Represents one websocket connection auth state.
@@ -50,10 +52,63 @@ export function handleRelayWsAuthControlMessage(
     state: RelayWsAuthState;
     messageJson: string;
     nowIso: string;
+    remoteAddress?: string;
+    authRateLimit?: {
+      state: RelayRateLimitState;
+      attemptsPerMinutePerIp: number;
+      denyWindowMs: number;
+    };
+    authChallengePolicy?: {
+      ttlSeconds: number;
+      maxRecords: number;
+    };
+    onWsAuthEvent?: (
+      args: {
+        event: 'attempted' | 'challenged' | 'accepted' | 'rejected';
+        remoteAddress: string;
+        publicKeyBase32?: string;
+        code?: string;
+        sessionRole?: 'inbound' | 'outbound';
+      },
+    ) => void;
   },
 ): {
   state: RelayWsAuthState;
 } {
+  const remoteAddress = readRelayWsRemoteAddress({
+    remoteAddress: args.remoteAddress,
+  });
+  args.onWsAuthEvent?.({
+    event: 'attempted',
+    remoteAddress,
+  });
+  if (args.authRateLimit) {
+    const authRateLimitResult = consumeRelayRateLimit({
+      state: args.authRateLimit.state,
+      key: `ws:auth:${remoteAddress}`,
+      config: buildRelayRateLimitConfig({
+        perMinute: args.authRateLimit.attemptsPerMinutePerIp,
+        denyWindowMs: args.authRateLimit.denyWindowMs,
+      }),
+      nowMs: Date.now(),
+    });
+    if (!authRateLimitResult.allowed) {
+      args.socket.send(JSON.stringify({
+        type: 'auth_error',
+        code: 'rate_limited',
+      }));
+      args.socket.close(4408, 'rate_limited');
+      args.onWsAuthEvent?.({
+        event: 'rejected',
+        remoteAddress,
+        code: 'rate_limited',
+      });
+      return {
+        state: args.state,
+      };
+    }
+  }
+
   const parsed = parseRelayWsControlMessage({
     messageJson: args.messageJson,
   });
@@ -63,6 +118,11 @@ export function handleRelayWsAuthControlMessage(
       code: 'invalid_message',
     }));
     args.socket.close(4401, 'invalid_message');
+    args.onWsAuthEvent?.({
+      event: 'rejected',
+      remoteAddress,
+      code: 'invalid_message',
+    });
     return {
       state: args.state,
     };
@@ -76,6 +136,8 @@ export function handleRelayWsAuthControlMessage(
       store: args.store,
       publicKeyBase32,
       nowIso: args.nowIso,
+      ttlSeconds: args.authChallengePolicy?.ttlSeconds,
+      maxChallengeRecords: args.authChallengePolicy?.maxRecords,
     });
     args.socket.send(JSON.stringify({
       type: 'auth_challenge',
@@ -84,6 +146,12 @@ export function handleRelayWsAuthControlMessage(
       challengeText: challenge.challengeText,
       expiresAt: challenge.expiresAt,
     }));
+    args.onWsAuthEvent?.({
+      event: 'challenged',
+      remoteAddress,
+      publicKeyBase32,
+      sessionRole: parsed.sessionRole ?? 'inbound',
+    });
     return {
       state: {
         authenticated: false,
@@ -106,6 +174,13 @@ export function handleRelayWsAuthControlMessage(
       code: result.errorCode ?? 'auth_failed',
     }));
     args.socket.close(4401, result.errorCode ?? 'auth_failed');
+    args.onWsAuthEvent?.({
+      event: 'rejected',
+      remoteAddress,
+      publicKeyBase32: parsed.publicKeyBase32,
+      code: result.errorCode ?? 'auth_failed',
+      sessionRole: parsed.sessionRole ?? args.state.sessionRole ?? 'inbound',
+    });
     return {
       state: args.state,
     };
@@ -125,6 +200,12 @@ export function handleRelayWsAuthControlMessage(
     sessionRole: parsed.sessionRole ?? args.state.sessionRole ?? 'inbound',
     replacedSocketId: activation.replacedSocketId ?? null,
   }));
+  args.onWsAuthEvent?.({
+    event: 'accepted',
+    remoteAddress,
+    publicKeyBase32: result.identity.publicKeyBase32,
+    sessionRole: parsed.sessionRole ?? args.state.sessionRole ?? 'inbound',
+  });
   return {
     state: {
       authenticated: true,
@@ -187,4 +268,17 @@ export function parseRelayWsControlMessage(
   }
 
   return undefined;
+}
+
+/**
+ * Reads one websocket remote address value with fallback for unknown sources.
+ */
+export function readRelayWsRemoteAddress(
+  args: {
+    remoteAddress?: string;
+  },
+): string {
+  return args.remoteAddress && args.remoteAddress.trim().length > 0
+    ? args.remoteAddress.trim()
+    : 'unknown';
 }

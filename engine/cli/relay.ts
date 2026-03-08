@@ -51,6 +51,7 @@ export function renderRelayBootstrapResult(
         { key: 'relayWsUrl', value: args.result.relayWsUrl },
         { key: 'personaId', value: args.result.personaId },
         { key: 'createdPersona', value: args.result.createdPersona },
+        { key: 'updatedPersonaCount', value: args.result.updatedPersonaCount },
         { key: 'gatewayConfigPath', value: args.result.gatewayConfigPath },
       ],
     }),

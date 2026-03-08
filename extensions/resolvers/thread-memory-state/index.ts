@@ -1,4 +1,4 @@
-import type { HarnessResolverDefinition } from '@engine/harness/resolvers/types';
+import type { HarnessResolverDefinition } from '@protege-pack/toolkit';
 
 /**
  * Placeholder resolver for future DB-backed thread memory summaries.

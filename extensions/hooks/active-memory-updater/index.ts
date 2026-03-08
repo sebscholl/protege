@@ -1,21 +1,21 @@
-import type { HookEventPayloadByName, HarnessHookResult } from '@engine/harness/hooks/events';
-import type { PersonaMemorySynthesisState, ThreadMemoryState } from '@engine/harness/memory/storage';
-import type { ProtegeDatabase } from '@engine/shared/database';
+import type { HookEventPayloadByName, HarnessHookResult } from '@protege-pack/toolkit';
+import type { PersonaMemorySynthesisState, ThreadMemoryState } from '@protege-pack/toolkit';
+import type { ProtegeDatabase } from '@protege-pack/toolkit';
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
-import { initializeDatabase } from '@engine/shared/database';
-import { resolvePersonaMemoryPaths } from '@engine/shared/personas';
-import { HOOK_EVENT } from '@engine/harness/hooks/events';
+import { initializeDatabase } from '@protege-pack/toolkit';
+import { resolvePersonaMemoryPaths } from '@protege-pack/toolkit';
+import { HOOK_EVENT } from '@protege-pack/toolkit';
 import {
   clearPersonaMemoryDirty,
   listThreadMemoryStatesByPersona,
   markPersonaMemoryDirty,
   readPersonaMemorySynthesisState,
   setPersonaMemoryDirtyFailure,
-} from '@engine/harness/memory/storage';
-import { synthesizeMemoryText } from '@engine/harness/memory/synthesis';
-import { resolveMigrationsDirPath } from '@engine/harness/runtime';
+} from '@protege-pack/toolkit';
+import { synthesizeMemoryText } from '@protege-pack/toolkit';
+import { resolveMigrationsDirPath } from '@protege-pack/toolkit';
 
 /**
  * Represents one resolved active-memory updater config payload.

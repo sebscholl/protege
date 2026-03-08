@@ -18,6 +18,7 @@ let duplicateCreatedAtStable = false;
 let duplicateLastSeenAdvanced = false;
 let derivedLocalPartLowercase = '';
 let challengeUsedAfterSuccess = false;
+let challengeCapEvictedOldest = false;
 
 beforeAll((): void => {
   const keyPairA = generateKeyPairSync('ed25519');
@@ -104,7 +105,7 @@ beforeAll((): void => {
     publicKeyBase32: publicKeyA,
     challengeId: challenge.challengeId,
     signatureBase64: signature,
-    nowIso: '2026-02-14T00:03:00.000Z',
+    nowIso: '2026-02-14T00:00:20.000Z',
   }).errorCode ?? '';
 
   const mismatchChallenge = issueRelayChallenge({
@@ -191,6 +192,36 @@ beforeAll((): void => {
   });
   duplicateCreatedAtStable = firstDuplicate.identity?.createdAt === secondDuplicate.identity?.createdAt;
   duplicateLastSeenAdvanced = (secondDuplicate.identity?.lastSeenAt ?? '') > (firstDuplicate.identity?.lastSeenAt ?? '');
+
+  const cappedStore = createRelayStore();
+  issueRelayChallenge({
+    store: cappedStore,
+    publicKeyBase32: publicKeyA,
+    nowIso: '2026-02-14T00:09:00.000Z',
+    ttlSeconds: 60,
+    challengeId: 'challenge-cap-1',
+    maxChallengeRecords: 2,
+  });
+  issueRelayChallenge({
+    store: cappedStore,
+    publicKeyBase32: publicKeyA,
+    nowIso: '2026-02-14T00:09:01.000Z',
+    ttlSeconds: 60,
+    challengeId: 'challenge-cap-2',
+    maxChallengeRecords: 2,
+  });
+  issueRelayChallenge({
+    store: cappedStore,
+    publicKeyBase32: publicKeyA,
+    nowIso: '2026-02-14T00:09:02.000Z',
+    ttlSeconds: 60,
+    challengeId: 'challenge-cap-3',
+    maxChallengeRecords: 2,
+  });
+  challengeCapEvictedOldest = readRelayChallenge({
+    store: cappedStore,
+    challengeId: 'challenge-cap-1',
+  }) === undefined;
 });
 
 describe('relay auth registration flow', () => {
@@ -236,5 +267,9 @@ describe('relay auth registration flow', () => {
 
   it('updates identity lastSeenAt across repeated valid registrations', () => {
     expect(duplicateLastSeenAdvanced).toBe(true);
+  });
+
+  it('evicts oldest challenge records when challenge cap is exceeded', () => {
+    expect(challengeCapEvictedOldest).toBe(true);
   });
 });

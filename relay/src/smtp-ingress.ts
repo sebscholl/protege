@@ -19,6 +19,15 @@ export type RelaySmtpIngressResult = {
 };
 
 /**
+ * Represents one SMTP-recipient route availability check result.
+ */
+export type RelaySmtpRecipientRouteStatus = {
+  routable: boolean;
+  reason?: 'recipient_invalid' | 'recipient_not_connected';
+  recipientPublicKeyBase32?: string;
+};
+
+/**
  * Resolves one recipient public-key identity local-part from one email address.
  */
 export function resolveRelayRecipientPublicKeyBase32(
@@ -35,6 +44,43 @@ export function resolveRelayRecipientPublicKeyBase32(
 }
 
 /**
+ * Returns whether one recipient address is currently routable to a connected relay session.
+ */
+export function resolveRelaySmtpRecipientRouteStatus(
+  args: {
+    registry: RelaySessionRegistry;
+    recipientAddress: string;
+  },
+): RelaySmtpRecipientRouteStatus {
+  const recipientPublicKeyBase32 = resolveRelayRecipientPublicKeyBase32({
+    recipientAddress: args.recipientAddress,
+  });
+  if (!recipientPublicKeyBase32) {
+    return {
+      routable: false,
+      reason: 'recipient_invalid',
+    };
+  }
+
+  const session = readRelaySessionByPublicKey({
+    registry: args.registry,
+    publicKeyBase32: recipientPublicKeyBase32,
+  });
+  if (!session) {
+    return {
+      routable: false,
+      reason: 'recipient_not_connected',
+      recipientPublicKeyBase32,
+    };
+  }
+
+  return {
+    routable: true,
+    recipientPublicKeyBase32,
+  };
+}
+
+/**
  * Routes one inbound SMTP message stream into one authenticated websocket session.
  */
 export function routeInboundSmtpToRelaySession(
@@ -46,16 +92,19 @@ export function routeInboundSmtpToRelaySession(
     streamId?: string;
   },
 ): RelaySmtpIngressResult {
-  const recipientPublicKeyBase32 = resolveRelayRecipientPublicKeyBase32({
+  const routeStatus = resolveRelaySmtpRecipientRouteStatus({
+    registry: args.registry,
     recipientAddress: args.recipientAddress,
   });
-  if (!recipientPublicKeyBase32) {
+  if (!routeStatus.routable) {
     return {
       accepted: false,
-      reason: 'recipient_invalid',
+      reason: routeStatus.reason,
+      recipientPublicKeyBase32: routeStatus.recipientPublicKeyBase32,
     };
   }
 
+  const recipientPublicKeyBase32 = routeStatus.recipientPublicKeyBase32 as string;
   const session = readRelaySessionByPublicKey({
     registry: args.registry,
     publicKeyBase32: recipientPublicKeyBase32,
@@ -67,7 +116,6 @@ export function routeInboundSmtpToRelaySession(
       recipientPublicKeyBase32,
     };
   }
-
   const streamId = args.streamId ?? randomUUID();
   try {
     session.socket.send(createRelaySmtpStartFrame({

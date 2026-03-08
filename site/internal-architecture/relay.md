@@ -1,34 +1,63 @@
 # Relay Service
 
-Relay is optional infrastructure, external to core Protege runtime.
+The relay is an optional standalone server that bridges public SMTP and your local Protege gateway. It's the piece that lets your agent receive email from the internet without opening port 25 on your machine.
 
-## Role
+**If you have direct SMTP access**, you don't need the relay at all.
 
-- public SMTP ingress endpoint
-- websocket tunnel bridge to local gateway
-- direct-to-MX SMTP egress for outbound relay sends
+## Architecture
 
-Protege can run without relay when direct SMTP is available.
+```
+Internet                         Your Machine
+────────                         ────────────
+Sender → SMTP (port 25) → Relay Server → WebSocket → Local Gateway
+                                                           │
+Local Gateway → WebSocket → Relay Server → SMTP → Recipient MX
+```
 
-## Auth Model
+The relay handles:
+- **Public SMTP ingress** — accepts email from the internet
+- **WebSocket tunnel** — streams email data to/from your local gateway
+- **SMTP egress** — delivers your agent's outbound replies to recipient mail servers
 
-- identity is agent public key (ed25519)
-- websocket auth uses challenge-response signatures
-- no user account/tenant model in relay
+## Authentication
 
-## Runtime Components
+The relay doesn't have user accounts or tenants. Identity is based on Ed25519 public keys:
 
-- HTTP + websocket server (`relay/src/index.ts`)
-- websocket auth (`relay/src/ws-auth.ts`)
-- SMTP ingress server (`relay/src/smtp-server.ts`)
-- tunnel frame codec (`relay/src/tunnel.ts`)
-- outbound delivery assembler (`relay/src/outbound.ts`)
+1. Gateway connects to the relay via WebSocket
+2. Relay sends a random challenge
+3. Gateway signs the challenge with the persona's private key (`passport.key`)
+4. Relay verifies the signature against the registered public key
+5. Connection is authenticated — the relay now routes inbound email for that address to this socket
 
-## Config (`relay/config.json`)
+Each persona authenticates independently, so a multi-persona gateway opens one WebSocket per persona.
+
+## Tunnel Protocol
+
+Email data is streamed as binary frames:
+
+| Frame | Direction | Purpose |
+|-------|-----------|---------|
+| `smtp_start` | Relay → Gateway | Begins a new inbound email |
+| `smtp_chunk` | Relay → Gateway | A chunk of SMTP data |
+| `smtp_end` | Relay → Gateway | Marks end of inbound email |
+| (outbound payload) | Gateway → Relay | Outbound email for delivery |
+| `relay_delivery_result` | Relay → Gateway | Delivery confirmation or failure |
+
+The gateway reassembles the tunnel frames into a complete MIME message and processes it through the normal inbound pipeline.
+
+## Delivery Confirmation
+
+When the relay delivers an outbound email, it sends a `relay_delivery_result` control message back to the gateway. This lets the gateway know whether delivery succeeded or failed.
+
+If the gateway doesn't receive a delivery signal within the configured timeout, it records the delivery as "queued/indeterminate" rather than retrying (to avoid duplicate sends).
+
+## Relay Server Configuration
+
+The relay server reads `relay/config.json`:
 
 ```json
 {
-  "host": "127.0.0.1",
+  "host": "0.0.0.0",
   "port": 8080,
   "smtp": {
     "enabled": true,
@@ -38,23 +67,21 @@ Protege can run without relay when direct SMTP is available.
 }
 ```
 
-Defaults when file missing:
+| Field | Default | Description |
+|-------|---------|-------------|
+| `host` | `127.0.0.1` | HTTP/WebSocket bind address |
+| `port` | `8080` | HTTP/WebSocket port |
+| `smtp.enabled` | `true` | Whether to start the SMTP server |
+| `smtp.host` | `127.0.0.1` | SMTP bind address |
+| `smtp.port` | `2526` | SMTP port |
 
-- host `127.0.0.1`
-- port `8080`
-- smtp host `127.0.0.1`
-- smtp port `2526`
+## Source Files
 
-## Tunnel Protocol (high level)
-
-- `smtp_start`
-- `smtp_chunk`
-- `smtp_end`
-
-Inbound: SMTP stream -> frames -> authenticated gateway session.
-
-Outbound: gateway frames -> relay MIME assembly -> SMTP egress delivery.
-
-## Delivery Control
-
-Relay emits `relay_delivery_result` control payloads back to originating socket for sent/failed acknowledgement semantics.
+| File | Purpose |
+|------|---------|
+| `relay/src/index.ts` | HTTP + WebSocket server |
+| `relay/src/ws-auth.ts` | Challenge-response authentication |
+| `relay/src/smtp-server.ts` | SMTP ingress server |
+| `relay/src/smtp-ingress.ts` | Inbound SMTP processing |
+| `relay/src/ws-connection.ts` | WebSocket connection management |
+| `relay/src/storage.ts` | Relay-side data persistence |

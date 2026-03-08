@@ -30,6 +30,7 @@ export type RelayBootstrapResult = {
   relayWsUrl: string;
   personaId: string;
   createdPersona: boolean;
+  updatedPersonaCount: number;
   gatewayConfigPath: string;
 };
 
@@ -87,7 +88,7 @@ export function parseRelayBootstrapArgs(
 }
 
 /**
- * Bootstraps relay mode by ensuring one persona and writing relay gateway config.
+ * Bootstraps relay mode by ensuring one bootstrap persona, writing relay config, and reconciling all persona mailbox domains.
  */
 export function runRelayBootstrap(
   args: {
@@ -119,16 +120,16 @@ export function runRelayBootstrap(
   };
   mkdirSync(dirname(gatewayConfigPath), { recursive: true });
   writeFileSync(gatewayConfigPath, JSON.stringify(updatedConfig, null, 2));
-  const persona = synchronizeBootstrapPersonaMailboxAddress({
-    persona: personaSelection.persona,
+  const updatedPersonas = synchronizeAllBootstrapPersonaMailboxAddresses({
     mailDomain: effectiveMailDomain,
   });
 
   return {
     relayEnabled: true,
     relayWsUrl: args.bootstrapArgs.relayWsUrl,
-    personaId: persona.personaId,
+    personaId: personaSelection.persona.personaId,
     createdPersona: personaSelection.created,
+    updatedPersonaCount: updatedPersonas.length,
     gatewayConfigPath,
   };
 }
@@ -224,5 +225,21 @@ export function synchronizeBootstrapPersonaMailboxAddress(
   return updatePersonaEmailAddress({
     personaId: args.persona.personaId,
     emailAddress: `${args.persona.emailLocalPart}@${args.mailDomain}`,
+  });
+}
+
+/**
+ * Synchronizes all persona mailbox addresses from configured mail domain.
+ */
+export function synchronizeAllBootstrapPersonaMailboxAddresses(
+  args: {
+    mailDomain: string;
+  },
+): PersonaMetadata[] {
+  return listPersonas().map((persona) => {
+    return synchronizeBootstrapPersonaMailboxAddress({
+      persona,
+      mailDomain: args.mailDomain,
+    });
   });
 }

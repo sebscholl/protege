@@ -189,8 +189,38 @@ export function startRelayClient(
       url: args.config.relayWsUrl,
     });
     socket = currentSocket;
+    let reconnectScheduledForSocket = false;
+
+    const scheduleReconnect = (): void => {
+      if (reconnectScheduledForSocket || stopped || socket !== currentSocket) {
+        return;
+      }
+
+      reconnectScheduledForSocket = true;
+      connected = false;
+      authenticated = false;
+      clearHeartbeatTimeout();
+      reconnectAttempt += 1;
+      const reconnectDelayMs = resolveReconnectDelayMs({
+        reconnectAttempt,
+        baseDelayMs: args.config.reconnectBaseDelayMs,
+        maxDelayMs: args.config.reconnectMaxDelayMs,
+      });
+      args.callbacks?.onDisconnected?.({
+        reconnectDelayMs,
+        reconnectAttempt,
+      });
+      clearReconnectTimeout();
+      reconnectTimeout = clock.setTimeout((): void => {
+        connect();
+      }, reconnectDelayMs);
+    };
 
     currentSocket.onopen = (): void => {
+      if (socket !== currentSocket || stopped) {
+        return;
+      }
+
       connected = true;
       authenticated = false;
       currentSocket.send(JSON.stringify({
@@ -202,6 +232,10 @@ export function startRelayClient(
     };
 
     currentSocket.onmessage = (event: RelayClientMessageEvent): void => {
+      if (socket !== currentSocket || stopped) {
+        return;
+      }
+
       void handleRelayClientMessage({
         event,
         scheduleHeartbeatTimeout,
@@ -256,31 +290,15 @@ export function startRelayClient(
     };
 
     currentSocket.onerror = (): void => {
-      // Relay runtime handles close semantics for reconnect scheduling.
+      scheduleReconnect();
     };
 
     currentSocket.onclose = (): void => {
-      const wasConnected = connected;
-      connected = false;
-      authenticated = false;
-      clearHeartbeatTimeout();
-      if (!wasConnected || stopped) {
+      if (socket !== currentSocket) {
         return;
       }
 
-      reconnectAttempt += 1;
-      const reconnectDelayMs = resolveReconnectDelayMs({
-        reconnectAttempt,
-        baseDelayMs: args.config.reconnectBaseDelayMs,
-        maxDelayMs: args.config.reconnectMaxDelayMs,
-      });
-      args.callbacks?.onDisconnected?.({
-        reconnectDelayMs,
-        reconnectAttempt,
-      });
-      reconnectTimeout = clock.setTimeout((): void => {
-        connect();
-      }, reconnectDelayMs);
+      scheduleReconnect();
     };
   };
 

@@ -1,28 +1,31 @@
-# Build a Custom Hook
+# Custom Hooks
 
-## Directory Layout
+Custom hooks let you react to any runtime event — send alerts, update external systems, track metrics, etc.
 
-```text
-extensions/hooks/log-to-slack/
-  index.ts
-  config.json
-  README.md
+## Example: Slack Notification on Failures
+
+```
+extensions/hooks/slack-alert/
+├── index.ts
+├── config.json
+└── README.md
 ```
 
-## Hook Implementation
+**`index.ts`:**
 
 ```ts
 import type {
   HarnessHookOnEvent,
   HarnessHookResult,
-} from '@engine/harness/hooks/events';
+} from '@protege-pack/toolkit';
 
 export const onEvent: HarnessHookOnEvent = async (
   event,
   payload,
   config,
 ): Promise<HarnessHookResult> => {
-  if (event !== 'harness.tool.call.failed') {
+  // Only act on tool failures and scheduler failures
+  if (event !== 'harness.tool.call.failed' && event !== 'scheduler.run.failed') {
     return;
   }
 
@@ -31,50 +34,83 @@ export const onEvent: HarnessHookOnEvent = async (
     return;
   }
 
-  const body = {
-    text: `[Protege] tool failure ${String(payload.toolName ?? 'unknown')}: ${String(payload.message ?? 'unknown')}`,
-  };
+  const toolName = String(payload.toolName ?? payload.responsibilityId ?? 'unknown');
+  const errorMessage = String(payload.message ?? payload.errorMessage ?? 'unknown error');
 
   await fetch(webhookUrl, {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(body),
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      text: `[Protege] Failure in ${toolName}: ${errorMessage}`,
+    }),
   });
 };
 ```
 
-## Hook Config
+**`config.json`:**
 
 ```json
 {
-  "webhook_url": "",
-  "channel": "#ops"
+  "webhook_url": ""
 }
 ```
 
-## Manifest Registration
+**Manifest registration:**
 
 ```json
 {
   "hooks": [
     {
-      "name": "log-to-slack",
-      "events": [
-        "harness.tool.call.failed",
-        "scheduler.run.failed"
-      ],
+      "name": "slack-alert",
+      "events": ["harness.tool.call.failed", "scheduler.run.failed"],
       "config": {
-        "webhook_url": "${SLACK_WEBHOOK_URL}"
+        "webhook_url": "https://hooks.slack.com/services/T.../B.../xxx"
       }
     }
   ]
 }
 ```
 
-## Notes
+## Chained Events
 
-1. hooks run async and are non-blocking,
-2. hook errors are isolated,
-3. use explicit `events` filters to limit load and noise.
+A hook can emit new events, triggering other hooks downstream. This is how the memory chain works — `thread-memory-updater` emits `memory.thread.updated`, which triggers `active-memory-updater`.
+
+Return emitted events from your hook:
+
+```ts
+export const onEvent: HarnessHookOnEvent = async (event, payload, config) => {
+  // ... your logic ...
+
+  return {
+    emit: [
+      {
+        event: 'memory.thread.updated',
+        payload: {
+          level: 'info',
+          scope: 'hooks',
+          event: 'memory.thread.updated',
+          timestamp: new Date().toISOString(),
+          personaId: String(payload.personaId ?? ''),
+        },
+      },
+    ],
+  };
+};
+```
+
+## The Hook Contract
+
+```ts
+type HarnessHookOnEvent = <TEvent extends HookEventName>(
+  event: TEvent,
+  payload: HookEventPayloadByName[TEvent],
+  config: Record<string, unknown>,
+) => Promise<HarnessHookResult> | HarnessHookResult;
+
+type HarnessHookResult = void | {
+  emit?: Array<{
+    event: HookEventName;
+    payload: HookEventPayloadByName[HookEventName];
+  }>;
+};
+```

@@ -2,6 +2,7 @@ import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Duplex } from 'node:stream';
 import type { SMTPServer } from 'smtp-server';
+import type { RelayRateLimitState } from '@relay/src/rate-limit';
 import type { RelayWsConnectionSocket } from '@relay/src/ws-connection';
 import type { RelayTunnelFrame } from '@relay/src/tunnel';
 
@@ -15,10 +16,11 @@ import {
   createRelayOutboundTunnelState,
   sendRelayOutboundMime,
 } from '@relay/src/outbound';
+import { createRelayRateLimitState } from '@relay/src/rate-limit';
 import { readRelaySessionBySocketId } from '@relay/src/session-registry';
 import { startRelaySmtpServer, stopRelaySmtpServer } from '@relay/src/smtp-server';
 import { createRelaySessionRegistry } from '@relay/src/session-registry';
-import { createRelayStore } from '@relay/src/storage';
+import { createRelayStore, sweepRelayChallengeRecords } from '@relay/src/storage';
 import { attachRelayWsConnection } from '@relay/src/ws-connection';
 
 /**
@@ -29,6 +31,7 @@ export type StartedRelayServer = {
   webSocketServer: WebSocketServer;
   smtpServer?: SMTPServer;
   baseUrl: string;
+  challengeGcInterval?: NodeJS.Timeout;
 };
 
 /**
@@ -55,6 +58,15 @@ export type RelayWebSocketUpgradeServer = {
  * Represents one set of optional relay lifecycle callbacks for runtime observability.
  */
 export type RelayServerCallbacks = {
+  onWsAuthEvent?: (
+    args: {
+      event: 'attempted' | 'challenged' | 'accepted' | 'rejected';
+      remoteAddress: string;
+      publicKeyBase32?: string;
+      code?: string;
+      sessionRole?: 'inbound' | 'outbound';
+    },
+  ) => void;
   onIngressAccepted?: (
     args: {
       recipientAddress: string;
@@ -65,6 +77,7 @@ export type RelayServerCallbacks = {
     args: {
       recipientAddress: string;
       reason: string;
+      stage: 'rcpt' | 'data';
     },
   ) => void;
   onOutboundQueued?: (
@@ -153,6 +166,24 @@ export function createRelayUpgradeHandler(
     webSocketServer: RelayWebSocketUpgradeServer;
     runtimeState: RelayRuntimeState;
     nowIso: () => string;
+    wsAuthRateLimit?: {
+      state: RelayRateLimitState;
+      attemptsPerMinutePerIp: number;
+      denyWindowMs: number;
+    };
+    authChallengePolicy?: {
+      ttlSeconds: number;
+      maxRecords: number;
+    };
+    onWsAuthEvent?: (
+      args: {
+        event: 'attempted' | 'challenged' | 'accepted' | 'rejected';
+        remoteAddress: string;
+        publicKeyBase32?: string;
+        code?: string;
+        sessionRole?: 'inbound' | 'outbound';
+      },
+    ) => void;
     onOutboundTunnelFrame?: (
       args: {
         frame: RelayTunnelFrame;
@@ -182,9 +213,13 @@ export function createRelayUpgradeHandler(
         runtime: {
           store: args.runtimeState.store,
           registry: args.runtimeState.sessionRegistry,
+          authRateLimit: args.wsAuthRateLimit,
+          authChallengePolicy: args.authChallengePolicy,
+          onWsAuthEvent: args.onWsAuthEvent,
           onOutboundTunnelFrame: args.onOutboundTunnelFrame,
         },
         nowIso: args.nowIso,
+        remoteAddress: request.socket?.remoteAddress,
       });
     });
   };
@@ -203,6 +238,7 @@ export async function startRelayServer(
   const config = args.config ?? readRelayRuntimeConfig();
   const server = createServer(createRelayRequestHandler());
   const runtimeState = createRelayRuntimeState();
+  const rateLimitState = createRelayRateLimitState();
   const outboundTunnelState = createRelayOutboundTunnelState();
   const sendOutboundMimeFn = args.sendOutboundMimeFn ?? sendRelayOutboundMime;
   const webSocketServer = new WebSocketServer({
@@ -212,6 +248,16 @@ export async function startRelayServer(
     webSocketServer,
     runtimeState,
     nowIso: (): string => new Date().toISOString(),
+    wsAuthRateLimit: {
+      state: rateLimitState,
+      attemptsPerMinutePerIp: config.rateLimits.wsAuthAttemptsPerMinutePerIp,
+      denyWindowMs: config.rateLimits.denyWindowMs,
+    },
+    authChallengePolicy: {
+      ttlSeconds: config.auth.challengeTtlSeconds,
+      maxRecords: config.auth.maxChallengeRecords,
+    },
+    onWsAuthEvent: args.callbacks?.onWsAuthEvent,
     onOutboundTunnelFrame: (frameArgs): void => {
       const result = applyRelayOutboundTunnelFrame({
         state: outboundTunnelState,
@@ -302,10 +348,24 @@ export async function startRelayServer(
 
   const smtpServer = await startRelaySmtpServer({
     config: config.smtp,
+    rateLimits: {
+      connectionsPerMinutePerIp: config.rateLimits.smtpConnectionsPerMinutePerIp,
+      messagesPerMinutePerIp: config.rateLimits.smtpMessagesPerMinutePerIp,
+      denyWindowMs: config.rateLimits.denyWindowMs,
+    },
+    rateLimitState,
     runtimeState,
     onAccepted: args.callbacks?.onIngressAccepted,
     onRejected: args.callbacks?.onIngressRejected,
   });
+  const challengeGcInterval = setInterval(() => {
+    sweepRelayChallengeRecords({
+      store: runtimeState.store,
+      nowIso: new Date().toISOString(),
+      maxRecords: config.auth.maxChallengeRecords,
+    });
+  }, config.auth.challengeGcIntervalMs);
+  challengeGcInterval.unref?.();
 
   const addressInfo = server.address() as AddressInfo;
   return {
@@ -313,6 +373,7 @@ export async function startRelayServer(
     webSocketServer,
     smtpServer,
     baseUrl: `http://${addressInfo.address}:${addressInfo.port}`,
+    challengeGcInterval,
   };
 }
 
@@ -341,8 +402,13 @@ export async function stopRelayServer(
     server: Server;
     webSocketServer?: WebSocketServer;
     smtpServer?: SMTPServer;
+    challengeGcInterval?: NodeJS.Timeout;
   },
 ): Promise<void> {
+  if (args.challengeGcInterval) {
+    clearInterval(args.challengeGcInterval);
+  }
+
   if (args.smtpServer) {
     await stopRelaySmtpServer({
       server: args.smtpServer,

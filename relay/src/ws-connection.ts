@@ -9,6 +9,7 @@ import type { RelaySessionRegistry } from '@relay/src/session-registry';
 import { removeRelaySessionBySocketId } from '@relay/src/session-registry';
 import { parseRelayTunnelFrame } from '@relay/src/tunnel';
 import { createRelayWsAuthState, handleRelayWsAuthControlMessage } from '@relay/src/ws-auth';
+import type { RelayRateLimitState } from '@relay/src/rate-limit';
 
 /**
  * Represents one minimal websocket runtime contract used by relay connection logic.
@@ -31,6 +32,24 @@ export type RelayWsConnectionSocket = {
 export type RelayWsRuntime = {
   store: RelayStore;
   registry: RelaySessionRegistry;
+  authRateLimit?: {
+    state: RelayRateLimitState;
+    attemptsPerMinutePerIp: number;
+    denyWindowMs: number;
+  };
+  authChallengePolicy?: {
+    ttlSeconds: number;
+    maxRecords: number;
+  };
+  onWsAuthEvent?: (
+    args: {
+      event: 'attempted' | 'challenged' | 'accepted' | 'rejected';
+      remoteAddress: string;
+      publicKeyBase32?: string;
+      code?: string;
+      sessionRole?: 'inbound' | 'outbound';
+    },
+  ) => void;
   onOutboundTunnelFrame?: (
     args: {
       frame: RelayTunnelFrame;
@@ -76,6 +95,7 @@ export function attachRelayWsConnection(
     runtime: RelayWsRuntime;
     nowIso: () => string;
     socketId?: string;
+    remoteAddress?: string;
   },
 ): {
   socketId: string;
@@ -140,6 +160,10 @@ export function attachRelayWsConnection(
       state,
       messageJson,
       nowIso: args.nowIso(),
+      remoteAddress: args.remoteAddress,
+      authRateLimit: args.runtime.authRateLimit,
+      authChallengePolicy: args.runtime.authChallengePolicy,
+      onWsAuthEvent: args.runtime.onWsAuthEvent,
     }).state;
   });
 

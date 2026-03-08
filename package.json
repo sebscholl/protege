@@ -1,5 +1,5 @@
 {
-  "name": "protege",
+  "name": "@protege-pack/toolkit",
   "version": "0.1.0",
   "description": "Email-native AI agent CLI focused on simplicity, interoperability, and self-sovereignty.",
   "private": false,
@@ -7,8 +7,22 @@
   "bin": {
     "protege": "dist/main.js"
   },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./cli": {
+      "import": "./dist/main.js",
+      "types": "./dist/main.d.ts"
+    }
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
   "files": [
     "dist/",
+    "engine/toolkit/README.md",
     "engine/cli/*.help.txt",
     "configs/*.json",
     "prompts/*.md",
@@ -19,7 +33,6 @@
     "extensions/resolvers/**",
     "personas/README.md",
     "memory/README.md",
-    "site/",
     ".secrets.example",
     "README.md"
   ],
@@ -45,6 +58,7 @@
     "relay:deploy:sync": "bash relay/deploy/scripts/sync-to-server.sh",
     "relay:deploy:remote": "bash relay/deploy/scripts/deploy-remote.sh",
     "relay:deploy": "bash relay/deploy/scripts/deploy-via-ssh.sh",
+    "relay:server:bootstrap": "bash relay/deploy/scripts/server-bootstrap.sh",
     "relay:server:restart": "bash relay/deploy/scripts/server-restart.sh",
     "relay:server:status": "bash relay/deploy/scripts/server-status.sh",
     "relay:server:logs": "bash relay/deploy/scripts/server-logs.sh",

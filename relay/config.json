@@ -1,9 +1,30 @@
 {
   "host": "127.0.0.1",
   "port": 8080,
+  "logging": {
+    "consoleLogFormat": "pretty",
+    "prettyLogThemePath": "relay/theme.json"
+  },
   "smtp": {
     "enabled": true,
     "host": "0.0.0.0",
-    "port": 25
+    "port": 25,
+    "maxMessageBytes": 10485760,
+    "maxRecipients": 10
+  },
+  "rateLimits": {
+    "denyWindowMs": 300000,
+    "smtpMessagesPerMinutePerIp": 30,
+    "wsAuthAttemptsPerMinutePerIp": 20,
+    "smtpConnectionsPerMinutePerIp": 60
+  },
+  "auth": {
+    "challengeTtlSeconds": 60,
+    "maxChallengeRecords": 10000,
+    "challengeGcIntervalMs": 60000
+  },
+  "ws": {
+    "idleTimeoutMs": 120000,
+    "heartbeatIntervalMs": 30000
   }
 }

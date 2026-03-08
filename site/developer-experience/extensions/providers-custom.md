@@ -1,64 +1,93 @@
-# Build a Custom Provider
+# Custom Providers
 
-## Directory Layout
+To connect an LLM not covered by the built-ins (e.g., a self-hosted model, Ollama, or a new API), create a custom provider adapter.
 
-```text
-extensions/providers/custom-provider/
-  index.ts
-  config.json
-  README.md
+## Example: Ollama Provider
+
+### 1. Create the directory
+
+```
+extensions/providers/ollama/
+├── index.ts
+├── config.json
+└── README.md
 ```
 
-## Adapter Example
+### 2. Implement the adapter contract
+
+Your `index.ts` must export a factory function or a `provider` object matching `HarnessProviderAdapter`:
 
 ```ts
 import type {
   HarnessProviderAdapter,
   HarnessProviderGenerateRequest,
   HarnessProviderGenerateResponse,
-} from '@engine/harness/providers/contract';
+} from '@protege-pack/toolkit';
+import { HarnessProviderError } from '@protege-pack/toolkit';
 
-export const provider: HarnessProviderAdapter = {
-  providerId: 'openai',
-  capabilities: {
-    tools: true,
-    structuredOutput: false,
-    streaming: false,
-  },
-  generate: async (
-    args: {
-      request: HarnessProviderGenerateRequest;
+export function createOllamaProviderAdapter(args: {
+  config: { baseUrl: string };
+}): HarnessProviderAdapter {
+  return {
+    providerId: 'openai', // Use 'openai' for OpenAI-compatible APIs
+    capabilities: {
+      tools: true,
+      structuredOutput: false,
+      streaming: false,
     },
-  ): Promise<HarnessProviderGenerateResponse> => {
-    void args;
+    generate: async (generateArgs: {
+      request: HarnessProviderGenerateRequest;
+    }): Promise<HarnessProviderGenerateResponse> => {
+      const { request } = generateArgs;
 
-    return {
-      text: 'hello',
-      toolCalls: [],
-      finishReason: 'stop',
-    };
-  },
-};
-```
+      // Map normalized messages to your provider's format
+      const response = await fetch(`${args.config.baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: request.modelId.split('/')[1],
+          messages: request.messages.map((m) => ({
+            role: m.role,
+            content: m.parts.map((p) => p.text).join(''),
+          })),
+          temperature: request.temperature,
+          max_tokens: request.maxOutputTokens,
+        }),
+      });
 
-## `config.json` Defaults
+      if (!response.ok) {
+        throw new HarnessProviderError({
+          code: 'provider_internal',
+          message: `Ollama returned ${response.status}`,
+        });
+      }
 
-```json
-{
-  "api_key_env": "CUSTOM_PROVIDER_API_KEY",
-  "base_url": "https://api.example.com/v1"
+      const data = await response.json();
+
+      // Map the response back to normalized format
+      return {
+        text: data.choices?.[0]?.message?.content ?? '',
+        toolCalls: [],
+        finishReason: data.choices?.[0]?.finish_reason,
+        usage: {
+          inputTokens: data.usage?.prompt_tokens,
+          outputTokens: data.usage?.completion_tokens,
+        },
+      };
+    },
+  };
 }
 ```
 
-## Manifest Registration
+### 3. Register in the manifest
 
 ```json
 {
   "providers": [
     {
-      "name": "custom-provider",
+      "name": "ollama",
       "config": {
-        "api_key_env": "CUSTOM_PROVIDER_API_KEY"
+        "base_url": "http://localhost:11434"
       }
     }
   ]
@@ -67,19 +96,60 @@ export const provider: HarnessProviderAdapter = {
 
 ## Provider Responsibilities
 
-1. map normalized request messages to provider-native request shape,
-2. map provider response back to normalized `text` + `toolCalls`,
-3. preserve usage and finish reason when available,
-4. throw typed `HarnessProviderError` with stable error codes.
+Your adapter must:
+
+1. **Map normalized messages** to the provider's native request format
+2. **Map the response back** to `text` + `toolCalls` in the normalized shape
+3. **Preserve usage metrics** (input/output tokens) when available
+4. **Throw `HarnessProviderError`** with stable error codes on failures
 
 ## Error Codes
 
-Use `HarnessProviderError` with codes like:
+Use these codes when throwing `HarnessProviderError`:
 
-1. `bad_request`
-2. `unauthorized`
-3. `rate_limited`
-4. `timeout`
-5. `unavailable`
-6. `provider_internal`
-7. `response_parse_failed`
+| Code | When to use |
+|------|------------|
+| `bad_request` | Invalid request shape |
+| `unauthorized` | Invalid or missing API key |
+| `rate_limited` | Provider rate limit hit |
+| `timeout` | Request timed out |
+| `unavailable` | Provider service is down |
+| `provider_internal` | Unknown provider-side error |
+| `response_parse_failed` | Can't parse the response |
+
+## The Provider Contract
+
+For reference, here are the key types:
+
+```ts
+type HarnessProviderAdapter = {
+  readonly providerId: 'openai' | 'anthropic' | 'gemini' | 'grok';
+  readonly capabilities: {
+    tools: boolean;
+    structuredOutput: boolean;
+    streaming: boolean;
+  };
+  generate: (args: {
+    request: HarnessProviderGenerateRequest;
+  }) => Promise<HarnessProviderGenerateResponse>;
+};
+
+type HarnessProviderGenerateRequest = {
+  modelId: string;              // e.g., "anthropic/claude-sonnet-4-20250514"
+  messages: HarnessProviderMessage[];
+  temperature?: number;
+  maxOutputTokens?: number;
+  tools?: HarnessProviderTool[];
+};
+
+type HarnessProviderGenerateResponse = {
+  text?: string;                // The assistant's text response
+  toolCalls: HarnessProviderToolCall[];  // Tool calls to execute
+  finishReason?: string;
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+  };
+};
+```

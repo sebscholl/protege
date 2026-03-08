@@ -1,89 +1,124 @@
 # Chat Guide
 
-`protege chat` is a terminal inbox client. It does not introduce a new protocol. Every interaction is stored as email-thread data in persona memory.
+`protege chat` is a terminal-based inbox client for interacting with your agent locally. It doesn't introduce a new protocol — every message is stored as email-thread data in the persona's database, just like real email conversations.
 
-## Start Chat
+## Starting Chat
 
-1. Open chat with a unified inbox across personas:
 ```bash
+# Open the unified inbox (all personas)
 protege chat
-```
-2. Open chat filtered to one persona:
-```bash
-protege chat --persona <persona_id_or_prefix>
-```
-3. Open chat and jump directly to one thread:
-```bash
-protege chat --thread <thread_id>
+
+# Filter to one persona
+protege chat --persona 5d52
+
+# Jump directly to a specific thread
+protege chat --thread thread_abc123
 ```
 
-## Mental Model
+## Views
 
-1. Inbox view: list of known threads across selected persona scope.
-2. Thread view: one thread conversation.
-3. Existing threads: read-only in v1.
-4. Writable threads: only threads created inside chat (`Ctrl+N`).
+### Inbox View
 
-## Modes
+The inbox shows all known threads across selected personas:
 
-Thread view has two interaction modes:
+```
+│ Research Assistant — Weekly Report
+│ 2 minutes ago · alice@example.com
+│ Here's your weekly summary...
+│
+  DevOps Bot — Server Alert
+  15 minutes ago · ops@example.com
+  All systems operational...
+```
 
-1. `COMPOSE`: typing edits the draft.
-2. `COMMAND`: typing does not append to the draft.
+The blue bar (`│`) marks the selected thread.
 
-## Keybindings (Default)
+### Thread View
 
-Inbox:
+Press `Enter` to open a thread and see the full conversation:
 
-1. `Up` / `Down`: move selection.
-2. `Enter`: open selected thread.
-3. `Ctrl+N`: create a writable local chat thread.
-4. `Ctrl+V`: toggle `light` / `verbose` display mode.
-5. `Ctrl+R`: refresh.
-6. `Ctrl+Q`: quit.
+```
+• alice@example.com — 10:30 AM
+  Can you research the latest Node.js release?
 
-Thread:
+• agent@mail.protege.bot — 10:31 AM
+  Node.js v22.x is the current LTS release...
+```
 
-1. `Esc`: back to inbox.
-2. `i`: enter compose mode from command mode.
-3. `Ctrl+S`: send draft.
-4. `Ctrl+Enter`: legacy send fallback (terminal-dependent).
-5. `Up` / `Down`: scroll thread.
-6. `PageUp` / `PageDown`: fast scroll.
-7. `Ctrl+U` / `Ctrl+D`: fast scroll alternative.
+## Keybindings
 
-All chat keybindings are configurable in `configs/system.json` under `chat.keymap`.
+### Inbox
 
-## Sending Behavior
+| Key | Action |
+|-----|--------|
+| `Up` / `Down` | Move selection |
+| `Enter` | Open selected thread |
+| `Ctrl+N` | Create a new writable thread |
+| `Ctrl+V` | Toggle light/verbose display mode |
+| `Ctrl+R` | Refresh inbox |
+| `Ctrl+Q` | Quit |
 
-1. On submit (`Ctrl+S`), the local user message is persisted immediately.
-2. Harness inference runs asynchronously.
-3. Tool-driven reply is persisted in the same thread.
+### Thread (Command Mode)
+
+| Key | Action |
+|-----|--------|
+| `Esc` | Back to inbox |
+| `i` | Enter compose mode |
+| `Up` / `Down` | Scroll thread |
+| `PageUp` / `PageDown` | Fast scroll |
+
+### Thread (Compose Mode)
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+S` | Send message |
+| `Left` / `Right` | Move cursor |
+| `Home` / `End` | Jump to start/end of line |
+| `Backspace` / `Delete` | Delete characters |
+| `Esc` | Back to command mode |
+
+All keybindings are customizable in `configs/system.json` under `chat.keymap`.
+
+## Sending Messages
+
+1. Press `Ctrl+N` to create a new writable thread
+2. Press `i` to enter compose mode
+3. Type your message
+4. Press `Ctrl+S` to send
+
+When you send:
+1. Your message is persisted immediately in the database
+2. Harness inference runs asynchronously
+3. The agent's reply appears in the same thread once inference completes
+
+Chat polls for new messages at the interval set in `configs/system.json` (`chat.poll_interval_ms`, default: 1500ms).
 
 ## Display Modes
 
-1. `light`: sender + body focused.
-2. `verbose`: full email envelope metadata (from/to/subject/date/message-id) per message.
+Toggle between modes with `Ctrl+V`:
 
-Toggle with `Ctrl+V`.
+- **Light** — shows sender and message body only
+- **Verbose** — shows full email headers (from, to, subject, date, message ID) for each message
 
-## Local Identity in Chat
+## Local Addressing
 
-Writable local chat threads use synthetic local addressing:
+Chat uses synthetic local email addresses:
 
-1. User side: `user@localhost`
-2. Persona side: `<persona_email_local_part>@localhost`
+- **Your messages** appear as `user@localhost`
+- **Agent responses** appear as `{persona_email_local_part}@localhost`
+
+This means chat threads are locally scoped — they don't go through the relay or real SMTP.
 
 ## Logging
 
-Chat writes structured events to `tmp/logs/protege.log` (or configured `logs_dir_path`) without printing runtime logs into the TUI surface.
+Chat writes structured events to the log file (configured in `configs/system.json` → `logs_dir_path`) without cluttering the TUI:
 
 ```bash
-protege logs --scope chat --tail 200
+protege logs --scope chat --tail 100
 ```
 
-## Current v1 Limits
+## Current Limitations
 
-1. Existing (non-chat-created) threads are read-only in chat.
-2. Chat is poll-based, not push-updated.
-3. Rich attachment compose UI is not part of chat v1.
+- **Existing threads are read-only** — only threads created inside chat (`Ctrl+N`) can receive new messages
+- **Poll-based updates** — chat polls for new messages rather than receiving push updates
+- **No attachment UI** — composing messages with attachments isn't supported in chat v1

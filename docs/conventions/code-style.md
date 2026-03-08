@@ -16,12 +16,40 @@ Example:
 ```ts
 import type { IncomingHttpHeaders } from 'node:http';
 
-import type { HarnessRequest } from '@engine/harness/types';
+import type { HarnessToolDefinition } from '@protege-pack/toolkit';
 
 import { z } from 'zod';
 
-import { createLogger } from '@engine/shared/logger';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 ```
+
+## Import Boundaries (Mandatory)
+
+Import rules differ for extension code vs core code.
+
+### Extension code (`extensions/**`)
+
+1. Framework imports MUST come from `@protege-pack/toolkit`.
+2. Internal framework aliases MUST NOT be imported:
+   - `@engine/*`
+   - `@extensions/*`
+   - `@configs/*`
+   - `@memory/*`
+   - `@relay/*`
+3. Node built-ins and third-party packages are allowed as usual.
+
+Example:
+
+```ts
+import type { HarnessToolDefinition } from '@protege-pack/toolkit';
+
+import { readFileSync } from 'node:fs';
+```
+
+### Core/runtime code (everything else)
+
+1. Internal aliases (`@engine/*`, `@extensions/*`, etc.) are allowed and preferred over deep relative imports.
+2. Keep alias usage consistent with `tsconfig` and Vitest alias configuration.
 
 ## Function and Method Signatures
 
