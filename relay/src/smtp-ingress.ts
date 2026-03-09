@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import type { RelayAuthAttestation } from '@engine/shared/relay-auth-attestation';
 import type { RelaySessionRegistry } from '@relay/src/session-registry';
 import { readRelaySessionByPublicKey } from '@relay/src/session-registry';
 import {
@@ -90,6 +91,7 @@ export function routeInboundSmtpToRelaySession(
     mailFrom: string;
     chunkBuffers: Buffer[];
     streamId?: string;
+    authAttestation?: RelayAuthAttestation;
   },
 ): RelaySmtpIngressResult {
   const routeStatus = resolveRelaySmtpRecipientRouteStatus({
@@ -122,6 +124,7 @@ export function routeInboundSmtpToRelaySession(
       streamId,
       mailFrom: args.mailFrom,
       rcptTo: args.recipientAddress,
+      authAttestation: args.authAttestation,
     }));
     for (const chunkBuffer of args.chunkBuffers) {
       session.socket.send(createRelaySmtpChunkFrame({

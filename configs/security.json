@@ -1,4 +1,10 @@
 {
+  "gateway_auth": {
+    "enabled": true,
+    "mode": "monitor",
+    "policy": "require_dmarc_or_aligned_spf_dkim",
+    "trusted_relays": []
+  },
   "gateway_access": {
     "enabled": true,
     "default_decision": "allow",

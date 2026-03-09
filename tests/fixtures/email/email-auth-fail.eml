@@ -1,0 +1,7 @@
+From: sender@example.com
+To: protege@localhost
+Subject: Auth Fail Fixture
+Message-ID: <auth-fail@example.com>
+Authentication-Results: mx.example; spf=fail smtp.mailfrom=example.com; dkim=fail header.d=example.com; dmarc=fail header.from=example.com
+
+hello

@@ -131,8 +131,21 @@ export type RelayOutboundTransport = {
 export type RelayOutboundSendMailFn = (
   args: {
     delivery: RelayCompletedOutboundDelivery;
+    dkim?: RelayDkimSigningConfig;
   },
 ) => Promise<RelayOutboundSendMailResult>;
+
+/**
+ * Represents DKIM signing config used for direct outbound relay sends.
+ */
+export type RelayDkimSigningConfig = {
+  enabled: boolean;
+  domainName: string;
+  keySelector: string;
+  privateKey: string;
+  headerFieldNames: string;
+  skipFields: string;
+};
 
 /**
  * Resolves the recipient domain to one outbound SMTP target using MX first, then A/AAAA fallback.
@@ -180,6 +193,7 @@ export async function resolveRelayOutboundTarget(
 export async function sendRelayOutboundMime(
   args: {
     delivery: RelayCompletedOutboundDelivery;
+    dkim?: RelayDkimSigningConfig;
     retryPolicy?: RelayOutboundRetryPolicy;
     sendMailFn?: RelayOutboundSendMailFn;
     onAttemptError?: (
@@ -205,6 +219,7 @@ export async function sendRelayOutboundMime(
       const sendMailFn = args.sendMailFn ?? sendRelayOutboundViaMx;
       const info = await sendMailFn({
         delivery: args.delivery,
+        dkim: args.dkim,
       });
       return {
         attemptCount: attempt,
@@ -259,6 +274,7 @@ export function delay(
 export async function sendRelayOutboundViaMx(
   args: {
     delivery: RelayCompletedOutboundDelivery;
+    dkim?: RelayDkimSigningConfig;
     resolveOutboundTargetFn?: typeof resolveRelayOutboundTarget;
     createTransportFn?: (
       options: TransportOptions,
@@ -274,6 +290,15 @@ export async function sendRelayOutboundViaMx(
     host: target.host,
     port: target.port,
     secure: false,
+    ...(args.dkim?.enabled ? {
+      dkim: {
+        domainName: args.dkim.domainName,
+        keySelector: args.dkim.keySelector,
+        privateKey: args.dkim.privateKey,
+        headerFieldNames: args.dkim.headerFieldNames,
+        skipFields: args.dkim.skipFields,
+      },
+    } : {}),
   } as TransportOptions);
   try {
     const info = await transport.sendMail({

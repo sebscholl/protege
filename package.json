@@ -93,6 +93,7 @@
   "dependencies": {
     "better-sqlite3": "^12.6.2",
     "cli-table3": "^0.6.5",
+    "mailauth": "^4.13.1",
     "mailparser": "^3.9.3",
     "neo-blessed": "^0.2.0",
     "node-cron": "^4.2.1",

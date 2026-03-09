@@ -22,6 +22,11 @@ export type RelayTunnelSmtpStartFrame = RelayTunnelFrameBase & {
   type: 'smtp_start';
   mailFrom: string;
   rcptTo: string;
+  authAttestation?: {
+    keyId: string;
+    payloadBase64: string;
+    signatureBase64: string;
+  };
 };
 
 /**
@@ -112,11 +117,28 @@ export function parseRelayTunnelFrame(
         return undefined;
       }
 
+      const authAttestationRecord = isRelayAuthAttestationRecord({
+        value: parsed.authAttestation,
+      })
+        ? parsed.authAttestation as {
+          keyId: string;
+          payloadBase64: string;
+          signatureBase64: string;
+        }
+        : undefined;
+
       return {
         type: 'smtp_start',
         streamId,
         mailFrom: parsed.mailFrom,
         rcptTo: parsed.rcptTo,
+        authAttestation: authAttestationRecord
+          ? {
+            keyId: authAttestationRecord.keyId,
+            payloadBase64: authAttestationRecord.payloadBase64,
+            signatureBase64: authAttestationRecord.signatureBase64,
+          }
+          : undefined,
       };
     } catch {
       return undefined;
@@ -149,6 +171,11 @@ export function createRelaySmtpStartFrame(
     streamId: string;
     mailFrom: string;
     rcptTo: string;
+    authAttestation?: {
+      keyId: string;
+      payloadBase64: string;
+      signatureBase64: string;
+    };
   },
 ): Buffer {
   return encodeRelayTunnelFrame({
@@ -157,6 +184,7 @@ export function createRelaySmtpStartFrame(
       streamId: args.streamId,
       mailFrom: args.mailFrom,
       rcptTo: args.rcptTo,
+      authAttestation: args.authAttestation,
     },
   });
 }
@@ -225,6 +253,7 @@ function relayTunnelFrameBody(
     return Buffer.from(JSON.stringify({
       mailFrom: args.frame.mailFrom,
       rcptTo: args.frame.rcptTo,
+      authAttestation: args.frame.authAttestation,
     }), 'utf8');
   }
   if (args.frame.type === 'smtp_chunk') {
@@ -232,4 +261,24 @@ function relayTunnelFrameBody(
   }
 
   return Buffer.alloc(0);
+}
+
+/**
+ * Returns true when one value matches relay auth attestation object shape.
+ */
+export function isRelayAuthAttestationRecord(
+  args: {
+    value: unknown;
+  },
+): boolean {
+  if (typeof args.value !== 'object' || args.value === null || Array.isArray(args.value)) {
+    return false;
+  }
+  const record = args.value as Record<string, unknown>;
+  return typeof record.keyId === 'string'
+    && record.keyId.trim().length > 0
+    && typeof record.payloadBase64 === 'string'
+    && record.payloadBase64.trim().length > 0
+    && typeof record.signatureBase64 === 'string'
+    && record.signatureBase64.trim().length > 0;
 }

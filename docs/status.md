@@ -99,3 +99,4 @@ Latest active ADR sequence includes:
 3. `docs/adr/0035-thread-tool-trace-persistence-and-ordering-v1.md`
 4. `docs/adr/0036-harness-context-pipeline-and-resolver-extension-boundary-v1.md`
 5. `docs/adr/0037-memory-synthesis-hooks-and-chained-events-v1.md`
+6. `docs/adr/0038-gateway-auth-policy-dual-ingress-v1.md`

@@ -28,11 +28,16 @@
     "heartbeatIntervalMs": 30000
   },
   "dkim": {
-    "enabled": false,
+    "enabled": true,
     "domainName": "mail.protege.bot",
     "keySelector": "default",
-    "privateKeyPath": "keys/dkim.private.key",
+    "privateKeyPath": "/etc/protege/relay/dkim.private.key",
     "headerFieldNames": "from:sender:reply-to:subject:date:message-id:to:cc:mime-version:content-type:content-transfer-encoding",
     "skipFields": "message-id:date"
+  },
+  "attestation": {
+    "enabled": true,
+    "keyId": "relay-primary",
+    "signingPrivateKeyPath": "/etc/protege/relay/relay-attestation.private.key"
   }
 }

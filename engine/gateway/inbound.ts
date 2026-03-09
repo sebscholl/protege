@@ -8,6 +8,7 @@ import type {
   InboundNormalizedMessage,
   MailAddress,
 } from '@engine/gateway/types';
+import type { RelayAuthAttestation } from '@engine/shared/relay-auth-attestation';
 
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -33,6 +34,7 @@ export type InboundErrorCode =
   | 'attachment_write_failed'
   | 'persona_not_found'
   | 'access_denied'
+  | 'auth_failed'
   | 'recursion_exhausted'
   | 'storage_path_unresolved';
 
@@ -70,6 +72,20 @@ export type GatewayInboundConfig = {
     allowed: boolean;
     reason: string;
     matchedRule?: string;
+  };
+  evaluateSenderAuth?: (
+    args: {
+      senderAddress: string;
+      session: SMTPServerSession;
+      personaId?: string;
+      relayStreamId?: string;
+      authenticationResultsHeader: unknown;
+      relayAuthAttestation?: RelayAuthAttestation;
+    },
+  ) => {
+    allowed: boolean;
+    reason: string;
+    details?: Record<string, unknown>;
   };
   logger: GatewayLogger;
   onMessage: InboundMessageHandler;
@@ -170,6 +186,8 @@ export async function handleInboundData(
   args: {
     stream: SMTPServerDataStream;
     session: SMTPServerSession;
+    relayStreamId?: string;
+    relayAuthAttestation?: RelayAuthAttestation;
     config: GatewayInboundConfig;
   },
 ): Promise<void> {
@@ -205,12 +223,14 @@ export async function handleInboundData(
   const inboundRecursionHeader = readInboundRecursionHeader({
     parsedMail,
   });
-  if (args.config.evaluateSenderAccess) {
-    const accessEvaluation = args.config.evaluateSenderAccess({
+  const accessEvaluation = args.config.evaluateSenderAccess
+    ? args.config.evaluateSenderAccess({
       senderAddress,
       session: args.session,
       personaId,
-    });
+    })
+    : undefined;
+  if (accessEvaluation) {
     if (!accessEvaluation.allowed) {
       throw new GatewayInboundError({
         code: 'access_denied',
@@ -220,6 +240,26 @@ export async function handleInboundData(
           `reason=${accessEvaluation.reason}`,
           accessEvaluation.matchedRule ? `matchedRule=${accessEvaluation.matchedRule}` : '',
         ].filter((item) => item.length > 0).join(' '),
+      });
+    }
+  }
+  if (args.config.evaluateSenderAuth) {
+    const authEvaluation = args.config.evaluateSenderAuth({
+      senderAddress,
+      session: args.session,
+      personaId,
+      relayStreamId: args.relayStreamId,
+      authenticationResultsHeader: parsedMail.headers.get('authentication-results'),
+      relayAuthAttestation: args.relayAuthAttestation,
+    });
+    if (!authEvaluation.allowed) {
+      throw new GatewayInboundError({
+        code: 'auth_failed',
+        message: [
+          'Inbound sender failed gateway authentication policy.',
+          `sender=${senderAddress}`,
+          `reason=${authEvaluation.reason}`,
+        ].join(' '),
       });
     }
   }

@@ -30,6 +30,7 @@ let sendViaMxEnvelopeTo = '';
 let sendViaMxRawMime = '';
 let sendViaMxClosed = false;
 let sendViaMxMessageId = '';
+let sendViaMxTransportDkimDomain = '';
 
 beforeAll(async (): Promise<void> => {
   const state = createRelayOutboundTunnelState();
@@ -180,7 +181,15 @@ beforeAll(async (): Promise<void> => {
     createTransportFn: (_options): {
       sendMail: (args: { envelope: { from: string; to: string[] }; raw: Buffer }) => Promise<{ messageId: string }>;
       close: () => void;
-    } => ({
+    } => {
+      const optionsRecord = _options as Record<string, unknown>;
+      const dkimRecord = typeof optionsRecord.dkim === 'object' && optionsRecord.dkim !== null
+        ? optionsRecord.dkim as Record<string, unknown>
+        : undefined;
+      sendViaMxTransportDkimDomain = typeof dkimRecord?.domainName === 'string'
+        ? dkimRecord.domainName
+        : '';
+      return {
       ...((): {
         sendMail: (args: { envelope: { from: string; to: string[] }; raw: Buffer }) => Promise<{ messageId: string }>;
         close: () => void;
@@ -199,7 +208,16 @@ beforeAll(async (): Promise<void> => {
           },
         };
       })(),
-    }),
+    };
+    },
+    dkim: {
+      enabled: true,
+      domainName: 'mail.protege.bot',
+      keySelector: 'default',
+      privateKey: 'test-private-key',
+      headerFieldNames: 'from:to:subject:date:message-id',
+      skipFields: 'date:message-id',
+    },
   })).messageId ?? '';
 });
 
@@ -286,5 +304,9 @@ describe('relay outbound target resolution and direct mx send', () => {
 
   it('sends to one recipient through mx transport', () => {
     expect(sendViaMxEnvelopeTo).toBe('user@example.org');
+  });
+
+  it('configures dkim signing options on mx transport when enabled', () => {
+    expect(sendViaMxTransportDkimDomain).toBe('mail.protege.bot');
   });
 });

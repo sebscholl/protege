@@ -42,6 +42,12 @@ export type RelayRuntimeConfig = {
     headerFieldNames: string;
     skipFields: string;
   };
+  attestation: {
+    enabled: boolean;
+    keyId: string;
+    signingPrivateKeyPath: string;
+    signingPrivateKeyPem: string;
+  };
 };
 
 /**
@@ -98,6 +104,12 @@ export function readRelayRuntimeConfig(
         privateKey: '',
         headerFieldNames: 'from:sender:reply-to:subject:date:message-id:to:cc:mime-version:content-type:content-transfer-encoding',
         skipFields: 'message-id:date',
+      },
+      attestation: {
+        enabled: false,
+        keyId: '',
+        signingPrivateKeyPath: '',
+        signingPrivateKeyPem: '',
       },
     };
   }
@@ -173,8 +185,17 @@ export function validateRelayRuntimeConfig(
   ) {
     throw new Error(`Relay config at ${args.configPath} field dkim must be an object when provided.`);
   }
+  if (
+    parsed.attestation !== undefined
+    && !isRecord({
+      value: parsed.attestation,
+    })
+  ) {
+    throw new Error(`Relay config at ${args.configPath} field attestation must be an object when provided.`);
+  }
   const ws = parsed.ws as Record<string, unknown>;
   const dkim = (parsed.dkim as Record<string, unknown> | undefined) ?? {};
+  const attestation = (parsed.attestation as Record<string, unknown> | undefined) ?? {};
   const dkimEnabled = readBooleanWithDefault({
     value: dkim.enabled,
     fallback: false,
@@ -216,6 +237,30 @@ export function validateRelayRuntimeConfig(
     domainName: dkimDomainName,
     keySelector: dkimKeySelector,
     privateKeyPath: dkimPrivateKeyPath,
+    configPath: args.configPath,
+  });
+  const attestationEnabled = readBooleanWithDefault({
+    value: attestation.enabled,
+    fallback: false,
+    fieldPath: 'attestation.enabled',
+    configPath: args.configPath,
+  });
+  const attestationKeyId = readStringWithDefault({
+    value: attestation.keyId,
+    fallback: '',
+    fieldPath: 'attestation.keyId',
+    configPath: args.configPath,
+  });
+  const attestationSigningPrivateKeyPath = readStringWithDefault({
+    value: attestation.signingPrivateKeyPath,
+    fallback: '',
+    fieldPath: 'attestation.signingPrivateKeyPath',
+    configPath: args.configPath,
+  });
+  const attestationSigningPrivateKeyPem = readRelayAttestationPrivateKey({
+    enabled: attestationEnabled,
+    keyId: attestationKeyId,
+    signingPrivateKeyPath: attestationSigningPrivateKeyPath,
     configPath: args.configPath,
   });
 
@@ -321,6 +366,12 @@ export function validateRelayRuntimeConfig(
       headerFieldNames: dkimHeaderFieldNames,
       skipFields: dkimSkipFields,
     },
+    attestation: {
+      enabled: attestationEnabled,
+      keyId: attestationKeyId,
+      signingPrivateKeyPath: attestationSigningPrivateKeyPath,
+      signingPrivateKeyPem: attestationSigningPrivateKeyPem,
+    },
   };
 }
 
@@ -362,6 +413,42 @@ export function readRelayDkimPrivateKey(
     throw new Error(`Relay config at ${args.configPath} references empty dkim.privateKeyPath: ${resolvedPrivateKeyPath}`);
   }
   return privateKey;
+}
+
+/**
+ * Reads one relay attestation signing key from disk when attestation is enabled.
+ */
+export function readRelayAttestationPrivateKey(
+  args: {
+    enabled: boolean;
+    keyId: string;
+    signingPrivateKeyPath: string;
+    configPath: string;
+  },
+): string {
+  if (!args.enabled) {
+    return '';
+  }
+
+  if (args.keyId.trim().length === 0) {
+    throw new Error(`Relay config at ${args.configPath} field attestation.keyId must be a non-empty string when attestation.enabled is true.`);
+  }
+  if (args.signingPrivateKeyPath.trim().length === 0) {
+    throw new Error(`Relay config at ${args.configPath} field attestation.signingPrivateKeyPath must be a non-empty string when attestation.enabled is true.`);
+  }
+
+  const resolvedPrivateKeyPath = isAbsolute(args.signingPrivateKeyPath)
+    ? args.signingPrivateKeyPath
+    : resolve(dirname(args.configPath), args.signingPrivateKeyPath);
+  if (!existsSync(resolvedPrivateKeyPath)) {
+    throw new Error(`Relay config at ${args.configPath} references missing attestation.signingPrivateKeyPath: ${resolvedPrivateKeyPath}`);
+  }
+
+  const privateKeyPem = readFileSync(resolvedPrivateKeyPath, 'utf8').trim();
+  if (privateKeyPem.length === 0) {
+    throw new Error(`Relay config at ${args.configPath} references empty attestation.signingPrivateKeyPath: ${resolvedPrivateKeyPath}`);
+  }
+  return privateKeyPem;
 }
 
 /**

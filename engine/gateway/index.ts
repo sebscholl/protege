@@ -8,6 +8,7 @@ import type { SMTPServerDataStream, SMTPServerSession } from 'smtp-server';
 import type { ExecFileSyncOptionsWithStringEncoding } from 'node:child_process';
 
 import { execFileSync, spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { Readable } from 'node:stream';
@@ -48,7 +49,16 @@ import {
   resolvePersonaMemoryPaths,
   updatePersonaEmailAddress,
 } from '@engine/shared/personas';
-import { evaluateGatewayAccess, readSecurityRuntimeConfig } from '@engine/shared/security-config';
+import {
+  type RelayAuthAttestation,
+  verifyRelayAuthAttestation,
+} from '@engine/shared/relay-auth-attestation';
+import {
+  evaluateGatewayAccess,
+  evaluateGatewayAuth,
+  readGatewayAuthSignals,
+  readSecurityRuntimeConfig,
+} from '@engine/shared/security-config';
 import { readGlobalRuntimeConfig } from '@engine/shared/runtime-config';
 import { readInferenceRuntimeConfig } from '@engine/harness/config';
 
@@ -197,9 +207,11 @@ export async function startGatewayRuntime(
 
       void ingestRelayInboundMime({
         inboundConfig,
+        streamId: relayInboundArgs.streamId,
         recipientAddress: relayInboundArgs.recipientAddress,
         mailFrom: relayInboundArgs.mailFrom,
         rawMimeBuffer: relayInboundArgs.rawMimeBuffer,
+        relayAuthAttestation: relayInboundArgs.authAttestation,
       }).catch((error: Error) => {
         logger.error({
           event: 'gateway.relay.ingest_failed',
@@ -335,6 +347,20 @@ export function createGatewayInboundProcessingConfig(
     reason: string;
     matchedRule?: string;
   };
+  evaluateSenderAuth: (
+    args: {
+      senderAddress: string;
+      session: SMTPServerSession;
+      personaId?: string;
+      relayStreamId?: string;
+      authenticationResultsHeader: unknown;
+      relayAuthAttestation?: RelayAuthAttestation;
+    },
+  ) => {
+    allowed: boolean;
+    reason: string;
+    details?: Record<string, unknown>;
+  };
   logger: ReturnType<typeof createUnifiedLogger>;
   relayClientsByPersonaId?: Map<string, RelayClientController>;
   onMessage: (
@@ -344,6 +370,7 @@ export function createGatewayInboundProcessingConfig(
   ) => Promise<void>;
 } {
   const gatewayAccessPolicy = args.securityConfig?.gatewayAccess ?? readSecurityRuntimeConfig().gatewayAccess;
+  const gatewayAuthPolicy = args.securityConfig?.gatewayAuth ?? readSecurityRuntimeConfig().gatewayAuth;
 
   return {
     host: args.runtimeConfig.host,
@@ -360,6 +387,88 @@ export function createGatewayInboundProcessingConfig(
       senderAddress,
       policy: gatewayAccessPolicy,
     }),
+    evaluateSenderAuth: ({
+      authenticationResultsHeader,
+      senderAddress,
+      personaId,
+      session,
+      relayStreamId,
+      relayAuthAttestation,
+    }): {
+      allowed: boolean;
+      reason: string;
+      details?: Record<string, unknown>;
+    } => {
+      const isRelayIngress = Boolean(relayStreamId) || Boolean(relayAuthAttestation);
+      let authSignals = isRelayIngress
+        ? {
+          spf: 'unknown' as const,
+          dkim: 'unknown' as const,
+          dmarc: 'unknown' as const,
+        }
+        : readGatewayAuthSignals({
+          authenticationResultsHeader,
+        });
+      let relayAttestationVerificationReason: string | null = null;
+      if (isRelayIngress) {
+        if (!relayAuthAttestation) {
+          relayAttestationVerificationReason = 'missing_attestation';
+        }
+      }
+      if (relayAuthAttestation && isRelayIngress) {
+        const trustedRelayPublicKeysByKeyId = new Map<string, string>(
+          gatewayAuthPolicy.trustedRelays.map((item) => [item.keyId, item.publicKeyPem]),
+        );
+        const relayContextMailFrom = argsRuntimeSenderAddressFromSession({
+          session,
+        });
+        const relayContextRcptTo = argsRuntimeRecipientAddressFromSession({
+          session,
+        });
+        const relayVerification = verifyRelayAuthAttestation({
+          attestation: relayAuthAttestation,
+          trustedRelayPublicKeysByKeyId,
+          expectedContext: {
+            streamId: relayStreamId ?? '',
+            mailFrom: relayContextMailFrom,
+            rcptTo: relayContextRcptTo,
+          },
+        });
+        relayAttestationVerificationReason = relayVerification.reason;
+        if (relayVerification.valid && relayVerification.payload) {
+          authSignals = relayVerification.payload.signals;
+        }
+      }
+      const authEvaluation = evaluateGatewayAuth({
+        policy: gatewayAuthPolicy,
+        signals: authSignals,
+      });
+      args.logger.info({
+        event: 'gateway.auth.evaluated',
+        context: {
+          senderAddress,
+          personaId: personaId ?? null,
+          mode: authEvaluation.mode,
+          policy: authEvaluation.policy,
+          reason: authEvaluation.reason,
+          allowed: authEvaluation.allowed,
+          spf: authEvaluation.signals.spf,
+          dkim: authEvaluation.signals.dkim,
+          dmarc: authEvaluation.signals.dmarc,
+          relayAuthAttestationReason: relayAttestationVerificationReason,
+        },
+      });
+      return {
+        allowed: authEvaluation.allowed,
+        reason: authEvaluation.reason,
+        details: {
+          mode: authEvaluation.mode,
+          policy: authEvaluation.policy,
+          signals: authEvaluation.signals,
+          relayAuthAttestationReason: relayAttestationVerificationReason,
+        },
+      };
+    },
     logger: args.logger,
     relayClientsByPersonaId: args.relayClientsByPersonaId,
     onMessage: async ({ message }): Promise<void> => {
@@ -406,8 +515,10 @@ export function startGatewayRelayClients(
     };
     onRelayInboundMime?: (
       args: {
+        streamId: string;
         recipientAddress: string;
         mailFrom: string;
+        authAttestation?: RelayAuthAttestation;
         rawMimeBuffer: Buffer;
       },
     ) => void;
@@ -487,8 +598,10 @@ export function startGatewayRelayClients(
             frame,
             onCompleted: (completedArgs): void => {
               args.onRelayInboundMime?.({
+                streamId: completedArgs.streamId,
                 recipientAddress: completedArgs.rcptTo,
                 mailFrom: completedArgs.mailFrom,
+                authAttestation: completedArgs.authAttestation,
                 rawMimeBuffer: completedArgs.rawMimeBuffer,
               });
             },
@@ -555,14 +668,17 @@ export async function ingestRelayInboundMime(
       port: number;
       dev: boolean;
     };
+    streamId?: string;
     recipientAddress: string;
     mailFrom: string;
     rawMimeBuffer: Buffer;
+    relayAuthAttestation?: RelayAuthAttestation;
   },
 ): Promise<void> {
   const stream = Readable.from([args.rawMimeBuffer]) as SMTPServerDataStream;
+  const streamId = args.streamId ?? randomUUID();
   const session = {
-    id: `relay-${Date.now().toString(36)}`,
+    id: `relay-${streamId}`,
     envelope: {
       mailFrom: {
         address: args.mailFrom,
@@ -580,8 +696,42 @@ export async function ingestRelayInboundMime(
   await handleInboundData({
     stream,
     session,
+    relayStreamId: streamId,
+    relayAuthAttestation: args.relayAuthAttestation,
     config: args.inboundConfig,
   });
+}
+
+/**
+ * Reads sender address from one SMTP session envelope.
+ */
+function argsRuntimeSenderAddressFromSession(
+  args: {
+    session: SMTPServerSession;
+  },
+): string {
+  const mailFrom = args.session.envelope?.mailFrom;
+  if (!mailFrom) {
+    return '';
+  }
+
+  return typeof mailFrom.address === 'string' ? mailFrom.address : '';
+}
+
+/**
+ * Reads first recipient address from one SMTP session envelope.
+ */
+function argsRuntimeRecipientAddressFromSession(
+  args: {
+    session: SMTPServerSession;
+  },
+): string {
+  const firstRecipient = args.session.envelope?.rcptTo?.[0];
+  if (!firstRecipient) {
+    return '';
+  }
+
+  return typeof firstRecipient.address === 'string' ? firstRecipient.address : '';
 }
 
 /**

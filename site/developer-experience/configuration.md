@@ -82,6 +82,12 @@ Controls who can send email to your agent.
 
 ```json
 {
+  "gateway_auth": {
+    "enabled": true,
+    "mode": "monitor",
+    "policy": "require_dmarc_or_aligned_spf_dkim",
+    "trusted_relays": []
+  },
   "gateway_access": {
     "enabled": true,
     "default_decision": "deny",
@@ -95,6 +101,21 @@ Controls who can send email to your agent.
   }
 }
 ```
+
+### Gateway Auth
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | boolean | `true` | Enables sender-auth policy evaluation surface |
+| `mode` | `"monitor"` or `"enforce"` | `"monitor"` | `monitor` logs/auth-evaluates without blocking; `enforce` blocks policy failures |
+| `policy` | string | `"require_dmarc_or_aligned_spf_dkim"` | Default auth policy strategy |
+| `trusted_relays` | object[] | `[]` | Trusted relay key list for signed relay attestation verification |
+
+::: info
+The default scaffold ships `gateway_auth` enabled in `monitor` mode so first-time installs work out of the box while still exposing auth telemetry.
+:::
+
+### Gateway Access
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|

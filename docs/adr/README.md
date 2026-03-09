@@ -39,6 +39,7 @@ Accepted ADRs:
 35. `0035-thread-tool-trace-persistence-and-ordering-v1.md`
 36. `0036-harness-context-pipeline-and-resolver-extension-boundary-v1.md`
 37. `0037-memory-synthesis-hooks-and-chained-events-v1.md`
+38. `0038-gateway-auth-policy-dual-ingress-v1.md`
 
 Notes:
 

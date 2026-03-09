@@ -7,6 +7,11 @@ export type RelayTunnelInflightStream = {
   streamId: string;
   mailFrom: string;
   rcptTo: string;
+  authAttestation?: {
+    keyId: string;
+    payloadBase64: string;
+    signatureBase64: string;
+  };
   chunkBuffers: Buffer[];
 };
 
@@ -38,6 +43,11 @@ export function applyRelayTunnelFrame(
         streamId: string;
         mailFrom: string;
         rcptTo: string;
+        authAttestation?: {
+          keyId: string;
+          payloadBase64: string;
+          signatureBase64: string;
+        };
         rawMimeBuffer: Buffer;
       },
     ) => void;
@@ -48,6 +58,7 @@ export function applyRelayTunnelFrame(
       streamId: args.frame.streamId,
       mailFrom: args.frame.mailFrom,
       rcptTo: args.frame.rcptTo,
+      authAttestation: args.frame.authAttestation,
       chunkBuffers: [],
     });
     return;
@@ -73,6 +84,7 @@ export function applyRelayTunnelFrame(
     streamId: inflight.streamId,
     mailFrom: inflight.mailFrom,
     rcptTo: inflight.rcptTo,
+    authAttestation: inflight.authAttestation,
     rawMimeBuffer: Buffer.concat(inflight.chunkBuffers),
   });
 }

@@ -91,9 +91,16 @@ Global fields:
 
 ## `security.json`
 
-Gateway access-control fields:
+Gateway security fields:
 
-1. `gateway_access` object:
+1. `gateway_auth` object:
+   1. `enabled`: boolean (default `true`).
+   2. `mode`: `monitor | enforce` (default `monitor`).
+   3. `policy`: currently `require_dmarc_or_aligned_spf_dkim`.
+   4. `trusted_relays`: optional array of trusted relay key records:
+      1. `key_id`: non-empty string.
+      2. `public_key_pem` or `public_key_path`.
+2. `gateway_access` object:
    1. `enabled`: boolean.
    2. `default_decision`: `allow | deny`.
    3. `allow`: sender email wildcard rules (for example `["*@example.com"]`).

@@ -37,6 +37,26 @@ Deny always wins when both deny and allow rules match the same sender.
 
 **Wildcard matching:** `*` matches any sequence of characters. `*@example.com` matches every sender from that domain. Rules are case-insensitive.
 
+### Gateway sender authentication policy
+
+The default scaffold also enables gateway authentication policy in monitor mode:
+
+```json
+{
+  "gateway_auth": {
+    "enabled": true,
+    "mode": "monitor",
+    "policy": "require_dmarc_or_aligned_spf_dkim"
+  }
+}
+```
+
+`monitor` mode is non-blocking and preserves out-of-box behavior. Move to `enforce` after validating your inbound auth signals in logs.
+
+Gateway allowlist rules do not bypass auth policy evaluation. Address-based allow/deny and sender-auth policy are independent controls.
+
+When email arrives through relay tunneling, gateway auth signals come from **signed relay attestation**, not message headers. In enforce mode, relay-ingested messages without valid attestation are rejected.
+
 ### Agent-to-agent recursion guard
 
 When agents email each other, there's a risk of infinite reply loops. Protege prevents this with a recursion counter:
@@ -180,3 +200,41 @@ Every inbound email that passes the access policy triggers an LLM inference run 
 3. Verify `admin_contact_email` is set and reachable
 4. Test your access policy with real sender addresses before going public
 5. Review which tools are enabled and remove any you don't need
+
+## Enforce Rollout Checklist (Relay Ingress)
+
+Use this sequence before moving `gateway_auth.mode` from `monitor` to `enforce`.
+
+1. Configure trusted relay keys in `configs/security.json`:
+
+```json
+{
+  "gateway_auth": {
+    "enabled": true,
+    "mode": "monitor",
+    "policy": "require_dmarc_or_aligned_spf_dkim",
+    "trusted_relays": [
+      {
+        "key_id": "relay-primary",
+        "public_key_pem_path": "/etc/protege/gateway/relay-attestation.public.pem"
+      }
+    ]
+  }
+}
+```
+
+2. Ensure relay is configured with the matching attestation key pair in `relay/config.json`:
+   - `relay_auth_attestation.enabled: true`
+   - `relay_auth_attestation.keyId` matches gateway `trusted_relays[].key_id`
+   - `relay_auth_attestation.privateKeyPath` points to readable private key file
+
+3. In `monitor` mode, send one legit Gmail message and one spoof probe.
+4. Inspect gateway logs:
+   - legit message should show `reason=monitor_pass`
+   - spoof probe should show `reason=monitor_fail`
+5. Switch to `mode: "enforce"` and restart gateway.
+6. Re-run legit + spoof probes:
+   - legit should process normally
+   - spoof should be rejected with `gateway.relay.ingest_failed` and auth failure reason
+
+If legit messages are rejected in enforce mode, first check `relayAuthAttestationReason` in gateway logs. The most common cause is key mismatch or unreadable key path.

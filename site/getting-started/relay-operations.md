@@ -52,6 +52,7 @@ The relay bridges public SMTP and your local gateway using WebSocket tunneling:
 - Each persona authenticates independently using an Ed25519 challenge-response signature
 - The relay has no user accounts or tenant model — identity is the public key
 - Persona keys are stored locally in `personas/{persona_id}/passport.key`
+- Sender-auth policy enforcement happens on the gateway using signed relay attestation (`configs/security.json > gateway_auth.trusted_relays`)
 
 ## Tuning Connection Parameters
 

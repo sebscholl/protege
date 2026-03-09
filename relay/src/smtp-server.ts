@@ -1,7 +1,9 @@
 import type { SMTPServerAddress, SMTPServerDataStream, SMTPServerSession } from 'smtp-server';
 
+import { createRelayAuthAttestation, type RelayAuthSignals } from '@engine/shared/relay-auth-attestation';
 import { SMTPServer } from 'smtp-server';
 
+import { evaluateRelayAuthSignals } from '@relay/src/auth-evaluator';
 import type { RelayRuntimeState } from '@relay/src/index';
 import { buildRelayRateLimitConfig, consumeRelayRateLimit } from '@relay/src/rate-limit';
 import { resolveRelaySmtpRecipientRouteStatus, routeInboundSmtpToRelaySession } from '@relay/src/smtp-ingress';
@@ -40,6 +42,11 @@ export type RelaySmtpError = Error & {
 export function startRelaySmtpServer(
   args: {
     config: RelaySmtpRuntimeConfig;
+    attestationConfig?: {
+      enabled: boolean;
+      keyId: string;
+      signingPrivateKeyPem: string;
+    };
     rateLimits: RelaySmtpRateLimitConfig;
     rateLimitState: RelayRateLimitState;
     runtimeState: RelayRuntimeState;
@@ -77,6 +84,7 @@ export function startRelaySmtpServer(
     }),
     onData: createRelaySmtpDataHandler({
       smtpConfig: args.config,
+      attestationConfig: args.attestationConfig,
       rateLimits: args.rateLimits,
       rateLimitState: args.rateLimitState,
       runtimeState: args.runtimeState,
@@ -117,6 +125,11 @@ export async function stopRelaySmtpServer(
 export function createRelaySmtpDataHandler(
   args: {
     smtpConfig: Pick<RelaySmtpRuntimeConfig, 'maxMessageBytes' | 'maxRecipients'>;
+    attestationConfig?: {
+      enabled: boolean;
+      keyId: string;
+      signingPrivateKeyPem: string;
+    };
     rateLimits: RelaySmtpRateLimitConfig;
     rateLimitState: RelayRateLimitState;
     runtimeState: RelayRuntimeState;
@@ -133,6 +146,7 @@ export function createRelaySmtpDataHandler(
         stage: 'rcpt' | 'data';
       },
     ) => void;
+    evaluateAuthSignalsFn?: typeof evaluateRelayAuthSignals;
     nowMs: () => number;
   },
 ): (
@@ -145,6 +159,11 @@ export function createRelaySmtpDataHandler(
     session: SMTPServerSession,
     callback: (error?: Error | null) => void,
     ): void => {
+    const attestationConfig = args.attestationConfig ?? {
+      enabled: false,
+      keyId: '',
+      signingPrivateKeyPem: '',
+    };
     const recipientAddress = session.envelope.rcptTo?.[0]?.address ?? '';
     const remoteAddress = readRelaySmtpRemoteAddress({
       session,
@@ -178,19 +197,40 @@ export function createRelaySmtpDataHandler(
     void readRelaySmtpStreamBuffer({
       stream,
       maxBytes: args.smtpConfig.maxMessageBytes,
-    }).then((chunkBuffer) => {
+    }).then(async (chunkBuffer) => {
+      const evaluateAuthSignalsFn = args.evaluateAuthSignalsFn ?? evaluateRelayAuthSignals;
       const envelopeMailFrom = session.envelope.mailFrom;
       const mailFrom = envelopeMailFrom === false
         ? ''
         : envelopeMailFrom?.address ?? '';
+      const authSignals = await evaluateAuthSignalsFn({
+        rawMimeBuffer: chunkBuffer,
+        session,
+        mailFrom,
+      });
       const acceptedRecipients = session.envelope.rcptTo ?? [];
       let acceptedDeliveryCount = 0;
       for (const recipient of acceptedRecipients) {
+        const streamId = readRelaySmtpStreamId({
+          recipientAddress: recipient.address,
+          session,
+        });
+        const authAttestation = buildRelayAuthAttestation({
+          enabled: attestationConfig.enabled,
+          keyId: attestationConfig.keyId,
+          signingPrivateKeyPem: attestationConfig.signingPrivateKeyPem,
+          streamId,
+          mailFrom,
+          rcptTo: recipient.address,
+          authSignals,
+        });
         const result = routeInboundSmtpToRelaySession({
           registry: args.runtimeState.sessionRegistry,
           recipientAddress: recipient.address,
           mailFrom,
           chunkBuffers: [chunkBuffer],
+          streamId,
+          authAttestation,
         });
         if (!result.accepted || !result.streamId) {
           args.onRejected?.({
@@ -437,4 +477,47 @@ export function rejectRelaySmtpDataStream(
     });
   });
   args.stream.resume();
+}
+
+/**
+ * Builds one deterministic relay stream id for one SMTP recipient delivery.
+ */
+export function readRelaySmtpStreamId(
+  args: {
+    recipientAddress: string;
+    session: SMTPServerSession;
+  },
+): string {
+  return `${args.session.id}:${args.recipientAddress}`;
+}
+
+/**
+ * Creates one signed relay auth attestation when relay attestation is enabled.
+ */
+export function buildRelayAuthAttestation(
+  args: {
+    enabled: boolean;
+    keyId: string;
+    signingPrivateKeyPem: string;
+    streamId: string;
+    mailFrom: string;
+    rcptTo: string;
+    authSignals: RelayAuthSignals;
+  },
+): ReturnType<typeof createRelayAuthAttestation> | undefined {
+  if (!args.enabled) {
+    return undefined;
+  }
+
+  return createRelayAuthAttestation({
+    keyId: args.keyId,
+    privateKeyPem: args.signingPrivateKeyPem,
+    payload: {
+      streamId: args.streamId,
+      mailFrom: args.mailFrom,
+      rcptTo: args.rcptTo,
+      issuedAt: new Date().toISOString(),
+      signals: args.authSignals,
+    },
+  });
 }

@@ -286,6 +286,14 @@ export async function startRelayServer(
       });
       void sendOutboundMimeFn({
         delivery: result.completed,
+        dkim: {
+          enabled: config.dkim.enabled,
+          domainName: config.dkim.domainName,
+          keySelector: config.dkim.keySelector,
+          privateKey: config.dkim.privateKey,
+          headerFieldNames: config.dkim.headerFieldNames,
+          skipFields: config.dkim.skipFields,
+        },
         onAttemptError: (attemptErrorArgs): void => {
           args.callbacks?.onOutboundFailed?.({
             streamKey: result.completed?.streamKey ?? frameArgs.frame.streamId,
@@ -348,6 +356,11 @@ export async function startRelayServer(
 
   const smtpServer = await startRelaySmtpServer({
     config: config.smtp,
+    attestationConfig: {
+      enabled: config.attestation.enabled,
+      keyId: config.attestation.keyId,
+      signingPrivateKeyPem: config.attestation.signingPrivateKeyPem,
+    },
     rateLimits: {
       connectionsPerMinutePerIp: config.rateLimits.smtpConnectionsPerMinutePerIp,
       messagesPerMinutePerIp: config.rateLimits.smtpMessagesPerMinutePerIp,
