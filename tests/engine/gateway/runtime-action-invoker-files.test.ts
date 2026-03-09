@@ -13,6 +13,8 @@ let writeContent = '';
 let editedContent = '';
 let editAppliedCount = -1;
 let editTextNotFoundError = '';
+let windowsEditedContent = '';
+let windowsEditAppliedCount = -1;
 let outsideReadContent = '';
 let outsideFilePath = '';
 let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
@@ -43,6 +45,10 @@ beforeAll(async (): Promise<void> => {
   workspace.writeFile({
     relativePath: 'tmp/edit-target.txt',
     payload: 'alpha beta alpha',
+  });
+  workspace.writeFile({
+    relativePath: 'tmp/windows-edit-target.txt',
+    payload: 'first\r\nsecond\r\nthird',
   });
   outsideFilePath = join('/tmp', 'protege-outside-runtime-read.txt');
   writeFileSync(outsideFilePath, 'outside-content', 'utf8');
@@ -83,6 +89,17 @@ beforeAll(async (): Promise<void> => {
   });
   editAppliedCount = Number(editResult.appliedEdits ?? -1);
   editedContent = readFileSync(join(tempRootPath, 'tmp', 'edit-target.txt'), 'utf8');
+
+  const windowsEditResult = await invoke({
+    action: 'file.edit',
+    payload: {
+      path: 'tmp/windows-edit-target.txt',
+      oldText: 'first\nsecond',
+      newText: 'first\nupdated',
+    },
+  });
+  windowsEditAppliedCount = Number(windowsEditResult.appliedEdits ?? -1);
+  windowsEditedContent = readFileSync(join(tempRootPath, 'tmp', 'windows-edit-target.txt'), 'utf8');
 
   try {
     await invoke({
@@ -125,6 +142,14 @@ describe('gateway runtime action invoker file actions', () => {
 
   it('returns applied edit count for file.edit action', () => {
     expect(editAppliedCount).toBe(2);
+  });
+
+  it('matches oldText against CRLF files when payload uses LF newlines', () => {
+    expect(windowsEditAppliedCount).toBe(1);
+  });
+
+  it('applies replacement content using target file newline style', () => {
+    expect(windowsEditedContent).toBe('first\r\nupdated\r\nthird');
   });
 
   it('fails file.edit when oldText is not present', () => {
