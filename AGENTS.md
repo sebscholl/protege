@@ -41,6 +41,20 @@ If instructions conflict, priority is:
 2. This `AGENTS.md`.
 3. Other repository docs.
 
+## Monorepo Structure
+
+This repository is a monorepo with three independent packages:
+
+1. `framework/` (`@protege-pack/toolkit`)
+2. `relay/` (`@protege-pack/relay`)
+3. `site/` (`@protege-pack/site`)
+
+Working rule:
+
+1. Run commands from the package directory you are changing.
+2. Do not assume root-level scripts exist.
+3. Keep package dependencies and scripts isolated.
+
 ## Source of Truth
 
 Use these as canonical references:
@@ -58,6 +72,12 @@ Use these as canonical references:
 
 Do not silently diverge from these files.
 
+Package-level docs:
+
+1. Framework implementation and conventions remain rooted in `docs/`.
+2. User-facing documentation lives in `site/`.
+3. Relay operational/deploy implementation lives under `relay/`.
+
 ## Non-Negotiable Engineering Rules
 
 1. Write tests for all new behavior.
@@ -66,22 +86,23 @@ Do not silently diverge from these files.
 4. Intercept network interactions with `MSW` + fixture-backed handlers only.
 5. Keep each `it(...)` block to one to two lines.
 6. For async behavior with multiple assertions, perform async action in setup and assert across separate `it(...)` blocks.
-7. Use path aliases instead of deep relative imports across top-level domains:
+7. In `framework/` core/runtime code, use path aliases instead of deep relative imports:
    - `@engine/*`
    - `@extensions/*`
    - `@configs/*`
    - `@memory/*`
    - `@tests/*`
-8. Import ordering is mandatory:
+8. In `framework/extensions/**`, import framework surface from `@protege-pack/toolkit` only.
+9. Import ordering is mandatory:
    - external types
    - internal types
    - external package imports
    - internal package imports
-9. Add JSDoc for every class/module/method/function in source code, including private/internal and test helper functions (excluding `it(...)` blocks).
-10. If a signature has more than one argument, place each argument on a new line.
-11. If a function has more than one function-specific argument, use a typed object parameter.
-12. Prefer inline types for unique signatures; create shared types only when reused.
-13. Ensure important folders have clear `README.md` guidance.
+10. Add JSDoc for every class/module/method/function in source code, including private/internal and test helper functions (excluding `it(...)` blocks).
+11. If a signature has more than one argument, place each argument on a new line.
+12. If a function has more than one function-specific argument, use a typed object parameter.
+13. Prefer inline types for unique signatures; create shared types only when reused.
+14. Ensure important folders have clear `README.md` guidance.
 
 ## Execution Rules
 
@@ -120,7 +141,7 @@ Use these shorthand commands in this repo:
      1. Review all unstaged/staged changes for correctness and risks.
      2. Verify docs and folder `README.md` files are current for changed behavior.
      3. Update docs/READMEs/ADRs as needed before commit.
-     4. Run quality gates: `lint`, `typecheck`, `test`.
+     4. Run quality gates in each changed package: `lint`, `typecheck`, `test`.
      5. Stage changes, create a thoughtful commit message, and push.
      6. If working on a feature branch, merge into the target branch after checks pass.
    - If docs are stale, the command must fix them before commit rather than asking to skip.
