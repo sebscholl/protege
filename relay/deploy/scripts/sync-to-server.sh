@@ -25,7 +25,9 @@ rsync -az --delete \
   --exclude ".secrets" \
   --exclude ".secrets.*" \
   --exclude ".relay.env" \
-  --exclude "/memory" \
+  --include "/memory/" \
+  --include "/memory/README.md" \
+  --exclude "/memory/*" \
   --exclude "/tmp" \
   "${REPO_ROOT}/" \
   "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/"
