@@ -1,0 +1,86 @@
+{
+  "name": "@protege-pack/toolkit",
+  "version": "0.1.0",
+  "description": "Email-native AI agent CLI focused on simplicity, interoperability, and self-sovereignty.",
+  "private": false,
+  "type": "module",
+  "bin": {
+    "protege": "dist/main.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./cli": {
+      "import": "./dist/main.js",
+      "types": "./dist/main.d.ts"
+    }
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "files": [
+    "dist/",
+    "engine/toolkit/README.md",
+    "engine/cli/*.help.txt",
+    "engine/shared/migrations/*.sql",
+    "configs/*.json",
+    "prompts/*.md",
+    "extensions/extensions.json",
+    "extensions/tools/**",
+    "extensions/hooks/**",
+    "extensions/providers/**",
+    "extensions/resolvers/**",
+    "templates/persona/**",
+    "personas/README.md",
+    "memory/README.md",
+    ".secrets.example",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "prepack": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --check .",
+    "gateway:start": "tsx engine/cli/index.ts gateway start",
+    "gateway:start:dev": "tsx engine/cli/index.ts gateway start --dev",
+    "gateway:stop": "tsx engine/cli/index.ts gateway stop",
+    "gateway:restart": "tsx engine/cli/index.ts gateway restart",
+    "scheduler:sync": "tsx engine/cli/index.ts scheduler sync",
+    "persona:create": "tsx engine/cli/index.ts persona create --set-active",
+    "persona:list": "tsx engine/cli/index.ts persona list",
+    "cli": "tsx engine/cli/index.ts",
+    "init": "tsx engine/cli/index.ts init"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/blessed": "^0.1.27",
+    "@types/mailparser": "^3.4.6",
+    "@types/node": "^22.13.1",
+    "@types/nodemailer": "^7.0.9",
+    "@types/smtp-server": "^3.5.12",
+    "@typescript-eslint/eslint-plugin": "^8.24.1",
+    "@typescript-eslint/parser": "^8.24.1",
+    "eslint": "^9.20.1",
+    "msw": "^2.7.3",
+    "prettier": "^3.5.1",
+    "tsup": "^8.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "cli-table3": "^0.6.5",
+    "mailparser": "^3.9.3",
+    "neo-blessed": "^0.2.0",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.1",
+    "smtp-server": "^3.18.1",
+    "ws": "^8.18.3"
+  }
+}

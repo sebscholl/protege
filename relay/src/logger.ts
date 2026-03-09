@@ -1,6 +1,6 @@
-import type { PrettyLogTheme } from '@engine/shared/runtime-config';
+import type { PrettyLogTheme } from '@relay/src/shared/theme';
 
-import { formatConsoleLine, readConsoleLineTerminator } from '@engine/shared/logger';
+import { formatConsoleLine, readConsoleLineTerminator } from '@relay/src/shared/logging';
 
 /**
  * Represents one relay console logger configuration.

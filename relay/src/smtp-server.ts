@@ -1,6 +1,6 @@
 import type { SMTPServerAddress, SMTPServerDataStream, SMTPServerSession } from 'smtp-server';
 
-import { createRelayAuthAttestation, type RelayAuthSignals } from '@engine/shared/relay-auth-attestation';
+import { createRelayAuthAttestation, type RelayAuthSignals } from '@relay/src/shared/relay-auth-attestation';
 import { SMTPServer } from 'smtp-server';
 
 import { evaluateRelayAuthSignals } from '@relay/src/auth-evaluator';

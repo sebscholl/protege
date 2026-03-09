@@ -1,4 +1,4 @@
-import { getDefaultPrettyLogTheme, readPrettyLogTheme } from '@engine/shared/runtime-config';
+import { getDefaultPrettyLogTheme, readPrettyLogTheme } from '@relay/src/shared/theme';
 import { readRelayRuntimeConfig } from '@relay/src/config';
 import { startRelayServer } from '@relay/src/index';
 import { createRelayConsoleLogger } from '@relay/src/logger';

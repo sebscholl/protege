@@ -1,6 +1,6 @@
 import type { SMTPServerSession } from 'smtp-server';
 import type { AuthenticateResult } from 'mailauth';
-import type { RelayAuthSignals } from '@engine/shared/relay-auth-attestation';
+import type { RelayAuthSignals } from '@relay/src/shared/relay-auth-attestation';
 
 type MailauthAuthenticateFn = (
   input: Buffer,

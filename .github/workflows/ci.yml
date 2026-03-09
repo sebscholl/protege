@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  quality:
+  framework-quality:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,19 +19,49 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
+          cache-dependency-path: framework/package-lock.json
 
       - name: Install dependencies
+        working-directory: framework
         run: npm ci
 
       - name: Typecheck
+        working-directory: framework
         run: npm run typecheck
 
       - name: Test
+        working-directory: framework
+        run: npm run test
+
+  relay-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: relay/package-lock.json
+
+      - name: Install dependencies
+        working-directory: relay
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: relay
+        run: npm run typecheck
+
+      - name: Test
+        working-directory: relay
         run: npm run test
 
   package-smoke:
     runs-on: ubuntu-latest
-    needs: quality
+    needs: framework-quality
 
     steps:
       - name: Checkout
@@ -42,17 +72,20 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
+          cache-dependency-path: framework/package-lock.json
 
       - name: Install dependencies
+        working-directory: framework
         run: npm ci
 
       - name: Build tarball
+        working-directory: framework
         run: npm pack
 
       - name: Install tarball in clean project
         run: |
           set -euo pipefail
-          PACKAGE_TGZ="$(ls -1 protege-*.tgz | head -n1)"
+          PACKAGE_TGZ="$(ls -1 framework/protege-*.tgz | head -n1)"
           SMOKE_DIR="/tmp/protege-smoke-ci"
           rm -rf "$SMOKE_DIR"
           mkdir -p "$SMOKE_DIR"
@@ -68,4 +101,5 @@ jobs:
           "$SMOKE_DIR/node_modules/.bin/protege" --version
 
       - name: Verify package publish payload
+        working-directory: framework
         run: npm publish --dry-run
