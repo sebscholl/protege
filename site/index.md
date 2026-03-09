@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: Protege
+  name: Protege 🥚
   text: Email-native AI agent framework
   tagline: Build AI agents you communicate with over email — like a colleague, not a chatbot.
   actions:
