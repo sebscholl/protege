@@ -125,17 +125,23 @@ Check relay logs for expected events:
 16. `auth.challengeGcIntervalMs`: Challenge garbage-collection interval.
 17. `ws.heartbeatIntervalMs`: Server heartbeat interval for websocket sessions.
 18. `ws.idleTimeoutMs`: Idle websocket timeout before connection close.
-19. All fields are strictly validated at startup; invalid types or out-of-range values fail fast with explicit errors.
+19. `dkim.enabled`: Enables DKIM signing for relay outbound SMTP.
+20. `dkim.domainName`: DKIM signing domain (for example `mail.protege.bot`).
+21. `dkim.keySelector`: DKIM DNS selector (for example `default`).
+22. `dkim.privateKeyPath`: Path to DKIM private key PEM file (resolved relative to `relay/config.json` when not absolute).
+23. `dkim.headerFieldNames`: Header list signed by DKIM.
+24. `dkim.skipFields`: Headers excluded from DKIM signing.
+25. All fields are strictly validated at startup; invalid types or out-of-range values fail fast with explicit errors.
 
 ## Outbound Deliverability (Production)
 
 For direct-to-MX outbound delivery, relay domain authentication must be configured:
 
 1. SPF record on `mail.protege.bot` authorizing relay egress IPs.
-2. PTR/rDNS for relay egress IPs pointing to `mail.protege.bot` (or your chosen mail host).
-3. Optional DKIM can be added later, but SPF + PTR is the baseline for SMTP acceptance.
+2. DKIM DNS record on `<selector>._domainkey.mail.protege.bot` and matching relay private key configured in `relay/config.json`.
+3. PTR/rDNS for relay egress IPs pointing to `mail.protege.bot` (or your chosen mail host).
 
-Without SPF/PTR alignment, providers like Gmail may reject messages as unauthenticated.
+Without SPF/DKIM/PTR alignment, providers like Gmail may reject messages as unauthenticated.
 
 ## Relay Runtime Logs
 
@@ -185,6 +191,14 @@ Example:
   "ws": {
     "heartbeatIntervalMs": 30000,
     "idleTimeoutMs": 120000
+  },
+  "dkim": {
+    "enabled": false,
+    "domainName": "mail.protege.bot",
+    "keySelector": "default",
+    "privateKeyPath": "keys/dkim.private.key",
+    "headerFieldNames": "from:sender:reply-to:subject:date:message-id:to:cc:mime-version:content-type:content-transfer-encoding",
+    "skipFields": "message-id:date"
   }
 }
 ```

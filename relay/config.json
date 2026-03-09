@@ -26,5 +26,13 @@
   "ws": {
     "idleTimeoutMs": 120000,
     "heartbeatIntervalMs": 30000
+  },
+  "dkim": {
+    "enabled": false,
+    "domainName": "mail.protege.bot",
+    "keySelector": "default",
+    "privateKeyPath": "keys/dkim.private.key",
+    "headerFieldNames": "from:sender:reply-to:subject:date:message-id:to:cc:mime-version:content-type:content-transfer-encoding",
+    "skipFields": "message-id:date"
   }
 }

@@ -210,8 +210,102 @@ For your relay to deliver outbound email reliably, configure these DNS records (
 | **A** | `relay.yourdomain.com` | `200.0.100.10` | Points the relay subdomain to your server |
 | **AAAA** | `relay.yourdomain.com` | *(your IPv6, if applicable)* | IPv6 resolution |
 | **A** | `mail.yourdomain.com` | `200.0.100.10` | Points the mail subdomain to your server |
-| **TXT** | `mail.yourdomain.com` | `v=spf1 ip4:200.0.100.10 -all` | Authorizes your IP to send mail |
-| **TXT** | `_dmarc.mail.yourdomain.com` | `v=DMARC1; p=none; rua=mailto:postmaster@yourdomain.com; adkim=s; aspf=s` | Email authentication policy |
-| **PTR** | *(set via hosting provider)* | `relay.yourdomain.com` | Reverse DNS — required for deliverability |
+| **TXT** | `mail.yourdomain.com` | `v=spf1 ip4:200.0.100.10 ip6:2001:db8::10 -all` | Authorizes your sending IPs |
+| **TXT** | `_dmarc.mail.yourdomain.com` | `v=DMARC1; p=quarantine; rua=mailto:postmaster@mail.yourdomain.com; adkim=s; aspf=s; pct=100` | DMARC policy and reporting |
+| **TXT** | `default._domainkey.mail.yourdomain.com` | `v=DKIM1; k=rsa; p=<public-key>` | DKIM public key for relay signing |
+| **PTR** | *(set via hosting provider)* | `mail.yourdomain.com` | Reverse DNS — required for deliverability |
 
 Without these, recipient mail servers may reject or spam-folder your agent's outbound emails.
+
+### DKIM Setup
+
+Generate DKIM keys on the relay host (recommended secure path):
+
+```bash
+sudo mkdir -p /etc/protege/relay
+sudo openssl genrsa -out /etc/protege/relay/dkim.private.key 2048
+sudo openssl rsa -in /etc/protege/relay/dkim.private.key -pubout -out /etc/protege/relay/dkim.public.pem
+```
+
+Extract DNS `p=` payload:
+
+```bash
+awk 'NR>1 && !/-----/ { printf "%s", $0 }' /etc/protege/relay/dkim.public.pem
+```
+
+Publish at `default._domainkey.mail.yourdomain.com`:
+
+```txt
+v=DKIM1; k=rsa; p=<public-key>
+```
+
+Enable relay-side DKIM signing in `relay/config.json`:
+
+```json
+{
+  "dkim": {
+    "enabled": true,
+    "domainName": "mail.yourdomain.com",
+    "keySelector": "default",
+    "privateKeyPath": "/etc/protege/relay/dkim.private.key",
+    "headerFieldNames": "from:sender:reply-to:subject:date:message-id:to:cc:mime-version:content-type:content-transfer-encoding",
+    "skipFields": "message-id:date"
+  }
+}
+```
+
+Set key permissions so the relay service user can read the key:
+
+```bash
+sudo chown root:root /etc/protege/relay/dkim.private.key
+sudo chmod 640 /etc/protege/relay/dkim.private.key
+```
+
+Check which OS user runs relay:
+
+```bash
+sudo systemctl cat protege-relay | rg '^User='
+```
+
+If relay runs as a non-root user, grant that user group read access to the key:
+
+```bash
+sudo chgrp <relay-user-group> /etc/protege/relay/dkim.private.key
+sudo chmod 640 /etc/protege/relay/dkim.private.key
+```
+
+Then restart relay:
+
+```bash
+sudo systemctl restart protege-relay
+sudo systemctl status protege-relay --no-pager
+```
+
+If you see `EACCES: permission denied` for `dkim.private.key`, the relay process user cannot read the key file. Re-check `User=` in the systemd unit and fix key ownership/group accordingly.
+
+### Reverse DNS (rDNS/PTR)
+
+Yes, reverse lookup is still required for production deliverability.
+
+Set PTR records at your hosting provider:
+
+1. IPv4 PTR -> `mail.yourdomain.com`
+2. IPv6 PTR -> `mail.yourdomain.com`
+
+If your provider cannot set IPv6 PTR yet:
+
+1. remove `AAAA` for mail host temporarily
+2. remove `ip6:` from SPF temporarily
+
+### Verification Commands
+
+```bash
+dig +short TXT mail.yourdomain.com @1.1.1.1
+dig +short TXT _dmarc.mail.yourdomain.com @1.1.1.1
+dig +short TXT default._domainkey.mail.yourdomain.com @1.1.1.1
+dig +short MX mail.yourdomain.com @1.1.1.1
+dig +short -x 200.0.100.10 @1.1.1.1
+dig +short -x 2001:db8::10 @1.1.1.1
+```
+
+For final confirmation, send one relay email to Gmail and verify `SPF=PASS`, `DKIM=PASS`, and `DMARC=PASS` in "Show original".

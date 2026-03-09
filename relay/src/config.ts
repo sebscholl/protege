@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 
 /**
  * Represents one relay runtime configuration.
@@ -32,6 +32,15 @@ export type RelayRuntimeConfig = {
   ws: {
     heartbeatIntervalMs: number;
     idleTimeoutMs: number;
+  };
+  dkim: {
+    enabled: boolean;
+    domainName: string;
+    keySelector: string;
+    privateKeyPath: string;
+    privateKey: string;
+    headerFieldNames: string;
+    skipFields: string;
   };
 };
 
@@ -80,6 +89,15 @@ export function readRelayRuntimeConfig(
       ws: {
         heartbeatIntervalMs: 30 * 1000,
         idleTimeoutMs: 120 * 1000,
+      },
+      dkim: {
+        enabled: false,
+        domainName: '',
+        keySelector: '',
+        privateKeyPath: '',
+        privateKey: '',
+        headerFieldNames: 'from:sender:reply-to:subject:date:message-id:to:cc:mime-version:content-type:content-transfer-encoding',
+        skipFields: 'message-id:date',
       },
     };
   }
@@ -147,7 +165,60 @@ export function validateRelayRuntimeConfig(
   })) {
     throw new Error(`Relay config at ${args.configPath} field ws must be an object.`);
   }
+  if (
+    parsed.dkim !== undefined
+    && !isRecord({
+      value: parsed.dkim,
+    })
+  ) {
+    throw new Error(`Relay config at ${args.configPath} field dkim must be an object when provided.`);
+  }
   const ws = parsed.ws as Record<string, unknown>;
+  const dkim = (parsed.dkim as Record<string, unknown> | undefined) ?? {};
+  const dkimEnabled = readBooleanWithDefault({
+    value: dkim.enabled,
+    fallback: false,
+    fieldPath: 'dkim.enabled',
+    configPath: args.configPath,
+  });
+  const dkimDomainName = readStringWithDefault({
+    value: dkim.domainName,
+    fallback: '',
+    fieldPath: 'dkim.domainName',
+    configPath: args.configPath,
+  });
+  const dkimKeySelector = readStringWithDefault({
+    value: dkim.keySelector,
+    fallback: '',
+    fieldPath: 'dkim.keySelector',
+    configPath: args.configPath,
+  });
+  const dkimPrivateKeyPath = readStringWithDefault({
+    value: dkim.privateKeyPath,
+    fallback: '',
+    fieldPath: 'dkim.privateKeyPath',
+    configPath: args.configPath,
+  });
+  const dkimHeaderFieldNames = readStringWithDefault({
+    value: dkim.headerFieldNames,
+    fallback: 'from:sender:reply-to:subject:date:message-id:to:cc:mime-version:content-type:content-transfer-encoding',
+    fieldPath: 'dkim.headerFieldNames',
+    configPath: args.configPath,
+  });
+  const dkimSkipFields = readStringWithDefault({
+    value: dkim.skipFields,
+    fallback: 'message-id:date',
+    fieldPath: 'dkim.skipFields',
+    configPath: args.configPath,
+  });
+  const dkimPrivateKey = readRelayDkimPrivateKey({
+    enabled: dkimEnabled,
+    domainName: dkimDomainName,
+    keySelector: dkimKeySelector,
+    privateKeyPath: dkimPrivateKeyPath,
+    configPath: args.configPath,
+  });
+
   return {
     host,
     port,
@@ -241,7 +312,56 @@ export function validateRelayRuntimeConfig(
         configPath: args.configPath,
       }),
     },
+    dkim: {
+      enabled: dkimEnabled,
+      domainName: dkimDomainName,
+      keySelector: dkimKeySelector,
+      privateKeyPath: dkimPrivateKeyPath,
+      privateKey: dkimPrivateKey,
+      headerFieldNames: dkimHeaderFieldNames,
+      skipFields: dkimSkipFields,
+    },
   };
+}
+
+/**
+ * Reads one relay DKIM private key from disk when DKIM signing is enabled.
+ */
+export function readRelayDkimPrivateKey(
+  args: {
+    enabled: boolean;
+    domainName: string;
+    keySelector: string;
+    privateKeyPath: string;
+    configPath: string;
+  },
+): string {
+  if (!args.enabled) {
+    return '';
+  }
+
+  if (args.domainName.trim().length === 0) {
+    throw new Error(`Relay config at ${args.configPath} field dkim.domainName must be a non-empty string when dkim.enabled is true.`);
+  }
+  if (args.keySelector.trim().length === 0) {
+    throw new Error(`Relay config at ${args.configPath} field dkim.keySelector must be a non-empty string when dkim.enabled is true.`);
+  }
+  if (args.privateKeyPath.trim().length === 0) {
+    throw new Error(`Relay config at ${args.configPath} field dkim.privateKeyPath must be a non-empty string when dkim.enabled is true.`);
+  }
+
+  const resolvedPrivateKeyPath = isAbsolute(args.privateKeyPath)
+    ? args.privateKeyPath
+    : resolve(dirname(args.configPath), args.privateKeyPath);
+  if (!existsSync(resolvedPrivateKeyPath)) {
+    throw new Error(`Relay config at ${args.configPath} references missing dkim.privateKeyPath: ${resolvedPrivateKeyPath}`);
+  }
+
+  const privateKey = readFileSync(resolvedPrivateKeyPath, 'utf8').trim();
+  if (privateKey.length === 0) {
+    throw new Error(`Relay config at ${args.configPath} references empty dkim.privateKeyPath: ${resolvedPrivateKeyPath}`);
+  }
+  return privateKey;
 }
 
 /**
@@ -305,6 +425,48 @@ export function readBoolean(
     throw new Error(`Relay config at ${args.configPath} field ${args.fieldPath} must be a boolean.`);
   }
 
+  return args.value;
+}
+
+/**
+ * Reads one optional boolean config value with fallback.
+ */
+export function readBooleanWithDefault(
+  args: {
+    value: unknown;
+    fallback: boolean;
+    fieldPath: string;
+    configPath: string;
+  },
+): boolean {
+  if (args.value === undefined) {
+    return args.fallback;
+  }
+
+  return readBoolean({
+    value: args.value,
+    fieldPath: args.fieldPath,
+    configPath: args.configPath,
+  });
+}
+
+/**
+ * Reads one optional string config value with fallback.
+ */
+export function readStringWithDefault(
+  args: {
+    value: unknown;
+    fallback: string;
+    fieldPath: string;
+    configPath: string;
+  },
+): string {
+  if (args.value === undefined) {
+    return args.fallback;
+  }
+  if (typeof args.value !== 'string') {
+    throw new Error(`Relay config at ${args.configPath} field ${args.fieldPath} must be a string.`);
+  }
   return args.value;
 }
 

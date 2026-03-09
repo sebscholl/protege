@@ -177,21 +177,28 @@ beforeAll(async (): Promise<void> => {
       host: 'mx.example.org',
       port: 25,
     }),
-    createTransportFn: (): {
+    createTransportFn: (_options): {
       sendMail: (args: { envelope: { from: string; to: string[] }; raw: Buffer }) => Promise<{ messageId: string }>;
       close: () => void;
     } => ({
-      sendMail: async (args): Promise<{ messageId: string }> => {
-        sendViaMxEnvelopeFrom = args.envelope.from;
-        sendViaMxEnvelopeTo = args.envelope.to.join(',');
-        sendViaMxRawMime = args.raw.toString('utf8');
+      ...((): {
+        sendMail: (args: { envelope: { from: string; to: string[] }; raw: Buffer }) => Promise<{ messageId: string }>;
+        close: () => void;
+      } => {
         return {
-          messageId: '<mx-delivered@example.org>',
+          sendMail: async (args): Promise<{ messageId: string }> => {
+            sendViaMxEnvelopeFrom = args.envelope.from;
+            sendViaMxEnvelopeTo = args.envelope.to.join(',');
+            sendViaMxRawMime = args.raw.toString('utf8');
+            return {
+              messageId: '<mx-delivered@example.org>',
+            };
+          },
+          close: (): void => {
+            sendViaMxClosed = true;
+          },
         };
-      },
-      close: (): void => {
-        sendViaMxClosed = true;
-      },
+      })(),
     }),
   })).messageId ?? '';
 });
@@ -275,5 +282,9 @@ describe('relay outbound target resolution and direct mx send', () => {
 
   it('returns message id from direct mx send results', () => {
     expect(sendViaMxMessageId).toBe('<mx-delivered@example.org>');
+  });
+
+  it('sends to one recipient through mx transport', () => {
+    expect(sendViaMxEnvelopeTo).toBe('user@example.org');
   });
 });

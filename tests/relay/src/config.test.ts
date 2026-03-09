@@ -12,12 +12,17 @@ let defaultSmtpMaxMessageBytes = 0;
 let defaultSmtpMaxRecipients = 0;
 let defaultWsIdleTimeoutMs = 0;
 let defaultConsoleLogFormat = '';
+let defaultDkimEnabled = false;
 let validConfigPort = 0;
 let validConfigSmtpRateLimit = 0;
 let validConsoleLogFormat = '';
+let validDkimEnabled = false;
+let validDkimDomainName = '';
+let validDkimPrivateKeyLoaded = false;
 let invalidHostThrows = false;
 let invalidSmtpThrows = false;
 let invalidRateLimitThrows = false;
+let invalidEnabledDkimThrows = false;
 
 beforeAll((): void => {
   workspace = createTestWorkspaceFromFixture({
@@ -35,6 +40,14 @@ beforeAll((): void => {
   defaultSmtpMaxRecipients = defaultConfig.smtp.maxRecipients;
   defaultWsIdleTimeoutMs = defaultConfig.ws.idleTimeoutMs;
   defaultConsoleLogFormat = defaultConfig.logging.consoleLogFormat;
+  defaultDkimEnabled = defaultConfig.dkim.enabled;
+
+  workspace.writeFile({
+    relativePath: join('relay', 'keys', 'dkim.private.key'),
+    payload: `-----BEGIN PRIVATE KEY-----
+test-private-key
+-----END PRIVATE KEY-----`,
+  });
 
   const validConfigPath = join(workspace.tempRootPath, 'relay', 'config-valid.json');
   workspace.writeFile({
@@ -68,6 +81,14 @@ beforeAll((): void => {
         heartbeatIntervalMs: 30000,
         idleTimeoutMs: 120000,
       },
+      dkim: {
+        enabled: true,
+        domainName: 'mail.protege.bot',
+        keySelector: 'default',
+        privateKeyPath: join('keys', 'dkim.private.key'),
+        headerFieldNames: 'from:to:subject:date',
+        skipFields: 'message-id',
+      },
     },
   });
   const validConfig = readRelayRuntimeConfig({
@@ -76,6 +97,9 @@ beforeAll((): void => {
   validConfigPort = validConfig.port;
   validConfigSmtpRateLimit = validConfig.rateLimits.smtpMessagesPerMinutePerIp;
   validConsoleLogFormat = validConfig.logging.consoleLogFormat;
+  validDkimEnabled = validConfig.dkim.enabled;
+  validDkimDomainName = validConfig.dkim.domainName;
+  validDkimPrivateKeyLoaded = validConfig.dkim.privateKey.includes('BEGIN PRIVATE KEY');
 
   const invalidHostConfigPath = join(workspace.tempRootPath, 'relay', 'config-invalid-host.json');
   workspace.writeFile({
@@ -108,6 +132,9 @@ beforeAll((): void => {
       ws: {
         heartbeatIntervalMs: 30000,
         idleTimeoutMs: 120000,
+      },
+      dkim: {
+        enabled: false,
       },
     },
   });
@@ -151,6 +178,9 @@ beforeAll((): void => {
         heartbeatIntervalMs: 30000,
         idleTimeoutMs: 120000,
       },
+      dkim: {
+        enabled: false,
+      },
     },
   });
   try {
@@ -193,6 +223,9 @@ beforeAll((): void => {
         heartbeatIntervalMs: 30000,
         idleTimeoutMs: 120000,
       },
+      dkim: {
+        enabled: false,
+      },
     },
   });
   try {
@@ -201,6 +234,54 @@ beforeAll((): void => {
     });
   } catch {
     invalidRateLimitThrows = true;
+  }
+
+  const invalidEnabledDkimConfigPath = join(workspace.tempRootPath, 'relay', 'config-invalid-dkim.json');
+  workspace.writeFile({
+    relativePath: join('relay', 'config-invalid-dkim.json'),
+    payload: {
+      host: '127.0.0.1',
+      port: 8080,
+      logging: {
+        consoleLogFormat: 'json',
+        prettyLogThemePath: join(workspace.tempRootPath, 'relay', 'theme.json'),
+      },
+      smtp: {
+        enabled: true,
+        host: '127.0.0.1',
+        port: 2526,
+        maxMessageBytes: 10485760,
+        maxRecipients: 1,
+      },
+      rateLimits: {
+        smtpConnectionsPerMinutePerIp: 60,
+        smtpMessagesPerMinutePerIp: 30,
+        wsAuthAttemptsPerMinutePerIp: 20,
+        denyWindowMs: 300000,
+      },
+      auth: {
+        challengeTtlSeconds: 60,
+        maxChallengeRecords: 1000,
+        challengeGcIntervalMs: 60000,
+      },
+      ws: {
+        heartbeatIntervalMs: 30000,
+        idleTimeoutMs: 120000,
+      },
+      dkim: {
+        enabled: true,
+        domainName: 'mail.protege.bot',
+        keySelector: 'default',
+        privateKeyPath: '',
+      },
+    },
+  });
+  try {
+    readRelayRuntimeConfig({
+      configPath: invalidEnabledDkimConfigPath,
+    });
+  } catch {
+    invalidEnabledDkimThrows = true;
   }
 });
 
@@ -215,6 +296,10 @@ describe('relay runtime config validation', () => {
 
   it('uses json as fallback relay console log format', () => {
     expect(defaultConsoleLogFormat).toBe('json');
+  });
+
+  it('disables dkim by default when config file is missing', () => {
+    expect(defaultDkimEnabled).toBe(false);
   });
 
   it('enables smtp by default when config file is missing', () => {
@@ -241,6 +326,18 @@ describe('relay runtime config validation', () => {
     expect(validConsoleLogFormat).toBe('pretty');
   });
 
+  it('loads dkim enabled state from config', () => {
+    expect(validDkimEnabled).toBe(true);
+  });
+
+  it('loads dkim domain value from config', () => {
+    expect(validDkimDomainName).toBe('mail.protege.bot');
+  });
+
+  it('loads dkim private key from configured file path', () => {
+    expect(validDkimPrivateKeyLoaded).toBe(true);
+  });
+
   it('fails fast when relay host is blank', () => {
     expect(invalidHostThrows).toBe(true);
   });
@@ -251,5 +348,9 @@ describe('relay runtime config validation', () => {
 
   it('fails fast when one rate limit value is not a positive integer', () => {
     expect(invalidRateLimitThrows).toBe(true);
+  });
+
+  it('fails fast when dkim is enabled without a private key path', () => {
+    expect(invalidEnabledDkimThrows).toBe(true);
   });
 });
