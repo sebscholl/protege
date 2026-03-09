@@ -18,6 +18,7 @@ import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let setupResult = {} as {
+  personaId: string;
   provider: string;
   outboundMode: string;
   relayWsUrl?: string;
@@ -36,6 +37,8 @@ let webSearchToolConfigProvider = '';
 let anthropicEnvPresent = false;
 let tavilyEnvPresent = false;
 let personaCount = 0;
+let personaKnowledgeReadmeExists = false;
+let personaResponsibilitiesReadmeExists = false;
 let rerunProvider = '';
 let rerunOutboundMode = '';
 let rerunWebSearchProvider = '';
@@ -130,6 +133,20 @@ beforeAll(async (): Promise<void> => {
       memoryDirPath: join(projectPath, 'memory'),
     },
   }).length;
+  personaKnowledgeReadmeExists = existsSync(join(
+    projectPath,
+    'personas',
+    setupResult.personaId,
+    'knowledge',
+    'README.md',
+  ));
+  personaResponsibilitiesReadmeExists = existsSync(join(
+    projectPath,
+    'personas',
+    setupResult.personaId,
+    'responsibilities',
+    'README.md',
+  ));
 
   const rerunResult = await runSetupCommand({
     argv: [
@@ -207,6 +224,14 @@ describe('setup cli command', () => {
 
   it('creates one bootstrap persona during setup flow', () => {
     expect(personaCount).toBe(1);
+  });
+
+  it('creates bootstrap persona knowledge directory readme during setup flow', () => {
+    expect(personaKnowledgeReadmeExists).toBe(true);
+  });
+
+  it('creates bootstrap persona responsibilities directory readme during setup flow', () => {
+    expect(personaResponsibilitiesReadmeExists).toBe(true);
   });
 
   it('writes .secrets file into target project path', () => {

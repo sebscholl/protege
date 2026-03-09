@@ -9,7 +9,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { initializeDatabase } from '@engine/shared/database';
 import { createPersona } from '@engine/shared/personas';
 import { listResponsibilitiesByPersona } from '@engine/scheduler/storage';
-import { parseFrontmatterMarkdown, syncPersonaResponsibilities } from '@engine/scheduler/sync';
+import {
+  isResponsibilityMarkdownFileName,
+  parseFrontmatterMarkdown,
+  syncPersonaResponsibilities,
+} from '@engine/scheduler/sync';
 import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 
 let tempRootPath = '';
@@ -22,6 +26,8 @@ let firstSyncUpserted = 0;
 let firstSyncDisabled = 0;
 let secondSyncDisabled = 0;
 let enabledCountAfterRemoval = 0;
+let readmeRecognizedAsResponsibility = true;
+let responsibilityRecognized = false;
 let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let repoRootPath = '';
 
@@ -102,6 +108,13 @@ beforeAll((): void => {
     db: db as ProtegeDatabase,
     personaId,
   }).filter((item) => item.enabled).length;
+
+  readmeRecognizedAsResponsibility = isResponsibilityMarkdownFileName({
+    fileName: 'README.md',
+  });
+  responsibilityRecognized = isResponsibilityMarkdownFileName({
+    fileName: 'daily-brief.md',
+  });
 });
 
 afterAll((): void => {
@@ -124,5 +137,9 @@ describe('scheduler sync', () => {
 
   it('retains only explicitly enabled files as enabled after reconcile', () => {
     expect(enabledCountAfterRemoval).toBe(0);
+  });
+
+  it('ignores README.md inside responsibilities directories', () => {
+    expect([readmeRecognizedAsResponsibility, responsibilityRecognized]).toEqual([false, true]);
   });
 });

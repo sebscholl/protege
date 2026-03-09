@@ -3,6 +3,8 @@ import type {
   HarnessToolExecutionContext,
 } from '@protege-pack/toolkit';
 
+import { normalizeToolTextContent } from '../shared/content-normalization';
+
 /**
  * Represents accepted input payload for edit_file tool execution.
  */
@@ -100,9 +102,14 @@ export function normalizeEditFileInput(
     value: args.input.oldText,
     fieldName: 'oldText',
   });
-  const newText = readContentString({
-    value: args.input.newText,
-    fieldName: 'newText',
+  const newText = normalizeToolTextContent({
+    content: readContentString({
+      value: args.input.newText,
+      fieldName: 'newText',
+    }),
+  });
+  const normalizedOldText = normalizeToolTextContent({
+    content: oldText,
   });
   const replaceAll = readOptionalBoolean({
     value: args.input.replaceAll,
@@ -110,7 +117,7 @@ export function normalizeEditFileInput(
   });
   return {
     path,
-    oldText,
+    oldText: normalizedOldText,
     newText,
     replaceAll,
   };

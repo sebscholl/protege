@@ -3,6 +3,8 @@ import type {
   HarnessToolExecutionContext,
 } from '@protege-pack/toolkit';
 
+import { normalizeToolTextContent } from '../shared/content-normalization';
+
 /**
  * Represents accepted input payload for write_file tool execution.
  */
@@ -90,10 +92,26 @@ export function normalizeWriteFileInput(
   const content = readContentString({
     value: args.input.content,
   });
+  const normalizedContent = normalizeWriteFileContent({
+    content,
+  });
   return {
     path,
-    content,
+    content: normalizedContent,
   };
+}
+
+/**
+ * Normalizes write_file content by decoding likely double-escaped model payloads.
+ */
+export function normalizeWriteFileContent(
+  args: {
+    content: string;
+  },
+): string {
+  return normalizeToolTextContent({
+    content: args.content,
+  });
 }
 
 /**

@@ -920,7 +920,7 @@ export function runWriteFileRuntimeAction(
   return {
     path: targetPath,
     bytesWritten: Buffer.byteLength(content, 'utf8'),
-  };
+  }
 }
 
 /**

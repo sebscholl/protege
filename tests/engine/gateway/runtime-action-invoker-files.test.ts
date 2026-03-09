@@ -17,6 +17,9 @@ let outsideReadContent = '';
 let outsideFilePath = '';
 let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 
+/**
+ * Creates one deterministic inbound message for runtime file-action tests.
+ */
 function createFileActionsInboundMessage(): ReturnType<typeof createInboundMessage> {
   return createInboundMessage({
     personaId: 'persona-test',

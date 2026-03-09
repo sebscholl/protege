@@ -1,5 +1,6 @@
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import {
+  cpSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -7,7 +8,8 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Represents persisted persona metadata.
@@ -68,6 +70,72 @@ export function resolvePersonaMemoryDirPath(
 }
 
 /**
+ * Returns the workspace root path associated with one persona roots configuration.
+ */
+export function resolveWorkspaceRootPathFromPersonaRoots(
+  args: {
+    roots: PersonaRoots;
+  },
+): string {
+  return join(args.roots.personasDirPath, '..');
+}
+
+/**
+ * Resolves package root path from module location for internal template loading.
+ */
+export function resolvePersonaTemplatePackageRootDirPath(): string {
+  let currentDirPath = dirname(fileURLToPath(import.meta.url));
+  for (let depth = 0; depth < 8; depth += 1) {
+    const packageJsonPath = join(currentDirPath, 'package.json');
+    const templateDirPath = join(currentDirPath, 'templates', 'persona');
+    if (existsSync(packageJsonPath) && existsSync(templateDirPath)) {
+      return currentDirPath;
+    }
+
+    const nextDirPath = dirname(currentDirPath);
+    if (nextDirPath === currentDirPath) {
+      break;
+    }
+    currentDirPath = nextDirPath;
+  }
+
+  throw new Error('Unable to resolve package root for persona template scaffolding.');
+}
+
+/**
+ * Resolves the internal template directory path used to scaffold new persona config folders.
+ */
+export function resolvePersonaTemplateDirPath(
+): string {
+  return join(resolvePersonaTemplatePackageRootDirPath(), 'templates', 'persona');
+}
+
+/**
+ * Copies template directory contents into one newly created persona config directory.
+ */
+export function copyPersonaTemplateContents(
+  args: {
+    templateDirPath: string;
+    targetDirPath: string;
+  },
+): void {
+  if (!existsSync(args.templateDirPath)) {
+    throw new Error(`Persona template directory is missing: ${args.templateDirPath}`);
+  }
+
+  const templateEntries = readdirSync(args.templateDirPath, { withFileTypes: true });
+  for (const entry of templateEntries) {
+    const sourcePath = join(args.templateDirPath, entry.name);
+    const targetPath = join(args.targetDirPath, entry.name);
+    cpSync(sourcePath, targetPath, {
+      recursive: true,
+      force: false,
+      errorOnExist: false,
+    });
+  }
+}
+
+/**
  * Returns paths for one persona's temporal db, active memory, logs, and attachments.
  */
 export function resolvePersonaMemoryPaths(
@@ -125,6 +193,10 @@ export function createPersona(
 
   const memoryPaths = resolvePersonaMemoryPaths({ personaId, roots });
   mkdirSync(configDirPath, { recursive: true });
+  copyPersonaTemplateContents({
+    templateDirPath: resolvePersonaTemplateDirPath(),
+    targetDirPath: configDirPath,
+  });
   mkdirSync(memoryPaths.logsDirPath, { recursive: true });
   mkdirSync(memoryPaths.attachmentsDirPath, { recursive: true });
 
@@ -137,7 +209,9 @@ export function createPersona(
 
   const effectiveEmailDomain = args.emailDomain
     ?? readDefaultPersonaEmailDomain({
-      workspaceRootPath: args.roots ? join(args.roots.personasDirPath, '..') : undefined,
+      workspaceRootPath: resolveWorkspaceRootPathFromPersonaRoots({
+        roots,
+      }),
     });
   const metadata: PersonaMetadata = {
     personaId,

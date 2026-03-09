@@ -12,6 +12,12 @@ let runtimeReplaceAll = false;
 let appliedEdits = -1;
 let missingOldTextError = '';
 let invalidReplaceAllError = '';
+let decodedQuotedOldText = '';
+let decodedQuotedNewText = '';
+let decodedUnquotedOldText = '';
+let decodedUnquotedNewText = '';
+let preservedEscapedOldText = '';
+let preservedEscapedNewText = '';
 
 beforeAll(async (): Promise<void> => {
   const tool = createEditFileTool();
@@ -80,6 +86,78 @@ beforeAll(async (): Promise<void> => {
   } catch (error) {
     invalidReplaceAllError = (error as Error).message;
   }
+
+  await tool.execute({
+    input: {
+      path: 'README.md',
+      oldText: '"line one\\nline two"',
+      newText: '"line one\\nline done"',
+    },
+    context: {
+      runtime: {
+        invoke: async (
+          args: {
+            action: string;
+            payload: Record<string, unknown>;
+          },
+        ): Promise<Record<string, unknown>> => {
+          decodedQuotedOldText = String(args.payload.oldText ?? '');
+          decodedQuotedNewText = String(args.payload.newText ?? '');
+          return {
+            appliedEdits: 1,
+          };
+        },
+      },
+    },
+  });
+
+  await tool.execute({
+    input: {
+      path: 'README.md',
+      oldText: 'line one\\nline two\\nline three',
+      newText: 'line one\\nline changed\\nline three',
+    },
+    context: {
+      runtime: {
+        invoke: async (
+          args: {
+            action: string;
+            payload: Record<string, unknown>;
+          },
+        ): Promise<Record<string, unknown>> => {
+          decodedUnquotedOldText = String(args.payload.oldText ?? '');
+          decodedUnquotedNewText = String(args.payload.newText ?? '');
+          return {
+            appliedEdits: 1,
+          };
+        },
+      },
+    },
+  });
+
+  await tool.execute({
+    input: {
+      path: 'README.md',
+      oldText: 'const literal = "\\\\n";',
+      newText: 'const literal = "\\\\n changed";',
+    },
+    context: {
+      runtime: {
+        invoke: async (
+          args: {
+            action: string;
+            payload: Record<string, unknown>;
+          },
+        ): Promise<Record<string, unknown>> => {
+          preservedEscapedOldText = String(args.payload.oldText ?? '');
+          preservedEscapedNewText = String(args.payload.newText ?? '');
+          return {
+            appliedEdits: 1,
+          };
+        },
+      },
+    },
+  });
 });
 
 describe('edit_file tool', () => {
@@ -121,5 +199,29 @@ describe('edit_file tool', () => {
 
   it('fails when replaceAll is not boolean', () => {
     expect(invalidReplaceAllError.includes('replaceAll')).toBe(true);
+  });
+
+  it('decodes quoted JSON-string oldText payloads before runtime invoke', () => {
+    expect(decodedQuotedOldText).toBe('line one\nline two');
+  });
+
+  it('decodes quoted JSON-string newText payloads before runtime invoke', () => {
+    expect(decodedQuotedNewText).toBe('line one\nline done');
+  });
+
+  it('decodes unquoted escaped oldText payloads when likely double-escaped', () => {
+    expect(decodedUnquotedOldText).toBe('line one\nline two\nline three');
+  });
+
+  it('decodes unquoted escaped newText payloads when likely double-escaped', () => {
+    expect(decodedUnquotedNewText).toBe('line one\nline changed\nline three');
+  });
+
+  it('preserves oldText escaped literals when decode heuristic does not apply', () => {
+    expect(preservedEscapedOldText).toBe('const literal = "\\\\n";');
+  });
+
+  it('preserves newText escaped literals when decode heuristic does not apply', () => {
+    expect(preservedEscapedNewText).toBe('const literal = "\\\\n changed";');
   });
 });

@@ -157,11 +157,28 @@ export function readResponsibilityFilesFromDirectory(
   }
 
   const fileNames = readdirSync(args.dirPath)
-    .filter((fileName) => fileName.endsWith('.md'))
+    .filter((fileName) => isResponsibilityMarkdownFileName({
+      fileName,
+    }))
     .sort();
   return fileNames.map((fileName) => parseResponsibilityFile({
     filePath: join(args.dirPath, fileName),
   }));
+}
+
+/**
+ * Returns true when one markdown file name should be parsed as a responsibility definition.
+ */
+export function isResponsibilityMarkdownFileName(
+  args: {
+    fileName: string;
+  },
+): boolean {
+  if (!args.fileName.endsWith('.md')) {
+    return false;
+  }
+
+  return args.fileName.toLowerCase() !== 'readme.md';
 }
 
 /**
@@ -268,4 +285,3 @@ export function hashPrompt(
 ): string {
   return createHash('sha256').update(args.prompt, 'utf8').digest('hex');
 }
-

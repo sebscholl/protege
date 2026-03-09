@@ -26,6 +26,13 @@ let listedPersonasCount = 0;
 let resolvedPersonaId = '';
 let personaPassportExists = false;
 let personaActiveMemoryExists = false;
+let personaKnowledgeDirExists = false;
+let personaKnowledgeReadmeExists = false;
+let personaKnowledgeIndexExists = false;
+let personaResponsibilitiesDirExists = false;
+let personaResponsibilitiesReadmeExists = false;
+let personaPromptExists = false;
+let personaPromptContainsTemplateHeading = false;
 let extractedLocalPart = '';
 let derivedPersonaIdLength = 0;
 let resolvedAliasPersonaId = '';
@@ -98,6 +105,14 @@ beforeAll((): void => {
 
   personaPassportExists = existsSync(join(configDirPath, 'passport.key'));
   personaActiveMemoryExists = existsSync(memoryPaths.activeMemoryPath);
+  personaKnowledgeDirExists = existsSync(join(configDirPath, 'knowledge'));
+  personaKnowledgeReadmeExists = existsSync(join(configDirPath, 'knowledge', 'README.md'));
+  personaKnowledgeIndexExists = existsSync(join(configDirPath, 'knowledge', 'CONTENT.md'));
+  personaResponsibilitiesDirExists = existsSync(join(configDirPath, 'responsibilities'));
+  personaResponsibilitiesReadmeExists = existsSync(join(configDirPath, 'responsibilities', 'README.md'));
+  personaPromptExists = existsSync(join(configDirPath, 'PERSONA.md'));
+  personaPromptContainsTemplateHeading = readFileSync(join(configDirPath, 'PERSONA.md'), 'utf8')
+    .includes('# Persona');
 
   extractedLocalPart = extractEmailLocalPart({
     emailAddress: `${createdPersona.emailLocalPart}@relay-protege-mail.com`,
@@ -201,6 +216,34 @@ describe('shared persona model', () => {
 
   it('materializes active.md in persona memory namespace', () => {
     expect(personaActiveMemoryExists).toBe(true);
+  });
+
+  it('materializes persona knowledge directory in config namespace', () => {
+    expect(personaKnowledgeDirExists).toBe(true);
+  });
+
+  it('materializes persona knowledge README in config namespace', () => {
+    expect(personaKnowledgeReadmeExists).toBe(true);
+  });
+
+  it('materializes persona knowledge CONTENT index in config namespace', () => {
+    expect(personaKnowledgeIndexExists).toBe(true);
+  });
+
+  it('materializes persona responsibilities directory in config namespace', () => {
+    expect(personaResponsibilitiesDirExists).toBe(true);
+  });
+
+  it('materializes persona responsibilities README in config namespace', () => {
+    expect(personaResponsibilitiesReadmeExists).toBe(true);
+  });
+
+  it('materializes PERSONA.md from the persona template directory', () => {
+    expect(personaPromptExists).toBe(true);
+  });
+
+  it('copies template persona prompt content into PERSONA.md', () => {
+    expect(personaPromptContainsTemplateHeading).toBe(true);
   });
 
   it('lists created personas from config directory metadata', () => {

@@ -1,6 +1,7 @@
 {
   "thread": [
     "load-file(prompts/system.md)",
+    "load-file(prompts/security-policy.md)",
     "load-file(personas/{persona_id}/PERSONA.md)",
     "load-file(memory/{persona_id}/active.md)",
     "thread-memory-state",

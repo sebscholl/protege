@@ -23,3 +23,4 @@ Creates or overwrites UTF-8 text files.
 
 1. Parent directories are created when missing.
 2. Runtime path policy in v1 allows local-machine paths outside workspace root.
+3. Tool input is normalized to decode likely double-escaped model payloads before write.

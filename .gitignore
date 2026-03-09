@@ -12,6 +12,7 @@ coverage/
 scratchpad.md
 tmp/
 demo/
+clone-local/
 
 # Runtime memory artifacts (keep directory docs tracked)
 memory/**

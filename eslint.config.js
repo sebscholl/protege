@@ -3,7 +3,7 @@ import tsParser from '@typescript-eslint/parser';
 
 export default [
   {
-    ignores: ['node_modules/**', 'dist/**', 'site/.vitepress/cache/**']
+    ignores: ['node_modules/**', 'dist/**', 'site/.vitepress/cache/**', 'clone-local/**']
   },
   {
     files: ['**/*.ts'],
@@ -31,7 +31,7 @@ export default [
           patterns: [
             {
               group: ['@engine/*', '@extensions/*', '@configs/*', '@memory/*', '@relay/*'],
-              message: 'Extension code must import only from protege/toolkit for framework APIs.'
+              message: 'Extension code must import only from @protege-pack/toolkit for framework APIs.'
             }
           ]
         }

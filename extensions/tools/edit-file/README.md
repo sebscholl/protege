@@ -25,3 +25,4 @@ Edits UTF-8 text files with literal replacement semantics.
 
 1. Matching is literal in v1 (no regex).
 2. Runtime path policy in v1 allows local-machine paths outside workspace root.
+3. Tool input is normalized to decode likely double-escaped model payloads before edit matching.

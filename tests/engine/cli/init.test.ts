@@ -17,6 +17,8 @@ let gatewayConfigExists = false;
 let securityConfigExists = false;
 let toolsReadmeExists = false;
 let threadMemoryHookExists = false;
+let personaTemplateExists = true;
+let personaTemplateKnowledgeIndexExists = true;
 let inferenceLocalExampleExists = false;
 let initializedInferenceHasNoProvidersBlock = false;
 let initializedExtensionsIncludesOpenAiProvider = false;
@@ -42,6 +44,8 @@ beforeAll(async (): Promise<void> => {
   securityConfigExists = existsSync(join(projectPath, 'configs', 'security.json'));
   toolsReadmeExists = existsSync(join(projectPath, 'extensions', 'tools', 'README.md'));
   threadMemoryHookExists = existsSync(join(projectPath, 'extensions', 'hooks', 'thread-memory-updater', 'index.ts'));
+  personaTemplateExists = existsSync(join(projectPath, 'templates', 'persona', 'PERSONA.md'));
+  personaTemplateKnowledgeIndexExists = existsSync(join(projectPath, 'templates', 'persona', 'knowledge', 'CONTENT.md'));
   inferenceLocalExampleExists = existsSync(join(projectPath, 'configs', 'inference.local.example.json'));
   const inferenceJson = JSON.parse(readFileSync(join(projectPath, 'configs', 'inference.json'), 'utf8')) as {
     providers?: unknown;
@@ -123,6 +127,14 @@ describe('init cli command', () => {
 
   it('writes default thread-memory hook scaffold into target path', () => {
     expect(threadMemoryHookExists).toBe(true);
+  });
+
+  it('does not scaffold internal persona templates into target path', () => {
+    expect(personaTemplateExists).toBe(false);
+  });
+
+  it('does not scaffold internal persona knowledge template index into target path', () => {
+    expect(personaTemplateKnowledgeIndexExists).toBe(false);
   });
 
   it('does not scaffold inference.local example config files', () => {

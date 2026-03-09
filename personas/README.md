@@ -5,11 +5,16 @@ Extension Surface: Yes
 Each persona has its own configuration and identity material.
 
 Every persona directory should contain persona metadata and a `passport.key` file used for relay identity/auth.
+Persona scaffolding is copied from `templates/persona/` when `createPersona` runs.
 
 Standard files:
 
 1. `persona.json` with persona id, full public key local-part, and metadata.
 2. `passport.key` with raw private key material for signing/auth.
+3. `PERSONA.md` copied from `templates/persona/PERSONA.md`.
+4. `knowledge/README.md` copied from `templates/persona/knowledge/README.md`.
+5. `knowledge/CONTENT.md` copied from `templates/persona/knowledge/CONTENT.md`.
+6. `responsibilities/README.md` copied from `templates/persona/responsibilities/README.md`.
 
 Optional `persona.json` routing field:
 
