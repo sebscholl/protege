@@ -19,17 +19,20 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
+          cache-dependency-path: framework/package-lock.json
 
       - name: Install dependencies
+        working-directory: framework
         run: npm ci
 
       - name: Build tarball
+        working-directory: framework
         run: npm pack
 
       - name: Fresh workspace install and init
         run: |
           set -euo pipefail
-          PACKAGE_TGZ="$(ls -1 protege-*.tgz | head -n1)"
+          PACKAGE_TGZ="$(ls -1 framework/protege-*.tgz | head -n1)"
           INSTALL_DIR="$(mktemp -d /tmp/protege-cli-install-XXXXXX)"
           WORKSPACE_DIR="$(mktemp -d /tmp/protege-cli-workspace-XXXXXX)"
           echo "INSTALL_DIR=$INSTALL_DIR" >> "$GITHUB_ENV"

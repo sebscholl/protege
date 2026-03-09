@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { RelayAuthAttestation } from '@engine/shared/relay-auth-attestation';
+import type { RelayAuthAttestation } from '@relay/src/shared/relay-auth-attestation';
 import type { RelaySessionRegistry } from '@relay/src/session-registry';
 import { readRelaySessionByPublicKey } from '@relay/src/session-registry';
 import {

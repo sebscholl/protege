@@ -6,13 +6,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/load-env.sh"
 
 APP_DIR="${APP_DIR:-/opt/protege}"
+RELAY_DIR="${RELAY_DIR:-${APP_DIR}/relay}"
 SERVICE_NAME="${SERVICE_NAME:-protege-relay}"
 
-cd "${APP_DIR}"
+cd "${RELAY_DIR}"
 
 npm ci
 npm run typecheck
-npm run test -- tests/relay/index.test.ts tests/relay/src/*.test.ts tests/relay/src/auth/*.test.ts tests/relay/scripts/*.test.ts
+npm run test -- tests/index.test.ts tests/src/*.test.ts tests/src/auth/*.test.ts tests/scripts/*.test.ts
 
 sudo systemctl daemon-reload
 sudo systemctl restart "${SERVICE_NAME}"
