@@ -1,14 +1,12 @@
 import { defineConfig } from 'vitepress';
 import { withMermaid } from 'vitepress-plugin-mermaid';
 
-const repositoryName = process.env.GITHUB_REPOSITORY?.split('/')[1];
-const githubPagesBase = repositoryName ? `/${repositoryName}/` : '/';
-const base = process.env.GITHUB_ACTIONS === 'true' ? githubPagesBase : '/';
-
 export default withMermaid(defineConfig({
   title: 'Protege',
   description: 'Email-native AI agent framework',
-  base,
+  // GitHub Pages is served behind a custom domain in production, so asset
+  // paths must stay rooted at `/` instead of the repository name.
+  base: '/',
   srcDir: '.',
   head: [
     ['meta', { property: 'og:image', content: '/og-image.png' }],
