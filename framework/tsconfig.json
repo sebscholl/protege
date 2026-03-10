@@ -10,14 +10,29 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@protege-pack/toolkit": ["engine/toolkit/index.ts"],
-      "@engine/*": ["engine/*"],
-      "@extensions/*": ["extensions/*"],
-      "@configs/*": ["configs/*"],
-      "@memory/*": ["memory/*"],
-      "@tests/*": ["tests/*"]
+      "protege-toolkit": [
+        "engine/toolkit/index.ts"
+      ],
+      "@engine/*": [
+        "engine/*"
+      ],
+      "@extensions/*": [
+        "extensions/*"
+      ],
+      "@configs/*": [
+        "configs/*"
+      ],
+      "@memory/*": [
+        "memory/*"
+      ],
+      "@tests/*": [
+        "tests/*"
+      ]
     },
-    "types": ["node", "vitest/globals"]
+    "types": [
+      "node",
+      "vitest/globals"
+    ]
   },
   "include": [
     "engine",

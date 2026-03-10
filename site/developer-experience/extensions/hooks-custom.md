@@ -17,7 +17,7 @@ extensions/hooks/slack-alert/
 import type {
   HarnessHookOnEvent,
   HarnessHookResult,
-} from '@protege-pack/toolkit';
+} from 'protege-toolkit';
 
 export const onEvent: HarnessHookOnEvent = async (
   event,

@@ -1,6 +1,6 @@
 {
-  "name": "@protege-pack/site",
-  "version": "0.1.0",
+  "name": "protege-site",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "scripts": {

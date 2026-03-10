@@ -1,12 +1,12 @@
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from '@protege-pack/toolkit';
+} from 'protege-toolkit';
 
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
-import { isValidEmailAddress } from '@protege-pack/toolkit';
+import { isValidEmailAddress } from 'protege-toolkit';
 
 /**
  * Represents the accepted input payload schema for send_email execution.
@@ -33,7 +33,7 @@ export type SendEmailToolInput = {
 /**
  * Represents one typed validation error for invalid send_email inputs.
  */
-export class SendEmailToolInputError extends Error {}
+export class SendEmailToolInputError extends Error { }
 
 /**
  * Resolves the default configuration path for the send-email extension.

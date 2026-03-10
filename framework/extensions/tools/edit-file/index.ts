@@ -1,7 +1,7 @@
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from '@protege-pack/toolkit';
+} from 'protege-toolkit';
 
 import { normalizeToolTextContent } from '../shared/content-normalization';
 
@@ -18,7 +18,7 @@ export type EditFileToolInput = {
 /**
  * Represents one typed validation error for invalid edit_file inputs.
  */
-export class EditFileToolInputError extends Error {}
+export class EditFileToolInputError extends Error { }
 
 /**
  * Creates one edit_file tool definition with validated input execution behavior.

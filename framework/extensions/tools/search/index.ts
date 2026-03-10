@@ -1,7 +1,7 @@
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from '@protege-pack/toolkit';
+} from 'protege-toolkit';
 
 /**
  * Represents accepted input payload for search tool execution.
@@ -16,7 +16,7 @@ export type SearchToolInput = {
 /**
  * Represents one typed validation error for invalid search inputs.
  */
-export class SearchToolInputError extends Error {}
+export class SearchToolInputError extends Error { }
 
 /**
  * Creates one search tool definition with validated input execution behavior.

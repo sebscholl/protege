@@ -82,7 +82,7 @@ Open follow-ups:
 
 ## Release State
 
-Status: Preparing `@protege-pack/toolkit@0.0.1-alpha.0`
+Status: Preparing `protege-toolkit@0.0.1-alpha.0`
 
 Ready:
 
@@ -100,7 +100,7 @@ Remaining before publish:
 
 ## Next Session Focus
 
-1. Complete alpha release verification and publish flow for `@protege-pack/toolkit`.
+1. Complete alpha release verification and publish flow for `protege-toolkit`.
 2. Continue docs quality pass focused on approachability and accuracy.
 3. Run fresh multi-persona validation on a non-dev machine.
 4. Expand observability and introspection after alpha packaging is stable.

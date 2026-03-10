@@ -11,7 +11,7 @@
 7. Multi-parameter methods use typed object arguments where appropriate.
 8. Unique argument shapes use inline types unless shared.
 9. No deep relative imports between top-level domains; aliases used.
-10. Extension modules (`extensions/**`) import framework APIs from `@protege-pack/toolkit` only (no `@engine/*`/internal aliases).
+10. Extension modules (`extensions/**`) import framework APIs from `protege-toolkit` only (no `@engine/*`/internal aliases).
 11. Required folder `README.md` files are added/updated.
 12. Test file paths mirror source file paths under `tests/` (for example `engine/x.ts` -> `tests/engine/x.test.ts`).
 

@@ -2,6 +2,8 @@
 
 Email-native AI agent focused on simplicity, interoperability, and self-sovereignty.
 
+Documentation: https://docs.protege.bot
+
 ## Why Protege
 
 1. Email-first interface using open protocols.
@@ -13,7 +15,7 @@ Email-native AI agent focused on simplicity, interoperability, and self-sovereig
 1. Gateway, harness core loop, relay mode, and key operator commands are implemented.
 2. Framework packaging for npm distribution is in alpha release preparation.
 3. First-party tools include `web_fetch` and provider-agnostic `web_search` (Tavily/Perplexity adapters).
-4. Current release target is `@protege-pack/toolkit@0.0.1-alpha.0`.
+4. Current release target is `protege-toolkit@0.0.1-alpha.0`.
 5. Remaining major scope after alpha is continued hardening, observability, and UX polish.
 
 See `../docs/status.md` for milestone-level progress and release posture.
@@ -22,7 +24,7 @@ See `../docs/status.md` for milestone-level progress and release posture.
 
 1. Install:
 ```bash
-npm install -g @protege-pack/toolkit
+npm install -g protege-toolkit
 ```
 2. Create and enter a project directory:
 ```bash
@@ -71,11 +73,11 @@ Most CLI commands render pretty output by default and switch to raw JSON with `-
 
 ## User Docs (Site)
 
-1. `site/index.md`
-2. `site/getting-started/index.md`
-3. `site/reference/cli.md`
-4. `site/reference/chat.md`
-5. `site/reference/troubleshooting.md`
+1. https://docs.protege.bot
+2. https://docs.protege.bot/getting-started/
+3. https://docs.protege.bot/reference/cli
+4. https://docs.protege.bot/reference/chat
+5. https://docs.protege.bot/reference/troubleshooting
 
 ## Internal Docs
 

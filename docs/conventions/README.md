@@ -28,7 +28,7 @@ These conventions apply to:
 
 Boundary note:
 
-1. Extension code under `extensions/**` uses `@protege-pack/toolkit` as its framework import surface.
+1. Extension code under `extensions/**` uses `protege-toolkit` as its framework import surface.
 2. Core/runtime code uses internal aliases (`@engine/*`, `@extensions/*`, etc.).
 
 ## Change Policy

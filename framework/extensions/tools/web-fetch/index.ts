@@ -1,7 +1,7 @@
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from '@protege-pack/toolkit';
+} from 'protege-toolkit';
 
 /**
  * Represents accepted input payload for web fetch tool execution.
@@ -15,7 +15,7 @@ export type WebFetchToolInput = {
 /**
  * Represents one typed validation error for invalid web fetch inputs.
  */
-export class WebFetchToolInputError extends Error {}
+export class WebFetchToolInputError extends Error { }
 
 /**
  * Creates one web_fetch tool definition with validated input execution behavior.

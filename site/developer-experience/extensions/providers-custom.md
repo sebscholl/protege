@@ -22,8 +22,8 @@ import type {
   HarnessProviderAdapter,
   HarnessProviderGenerateRequest,
   HarnessProviderGenerateResponse,
-} from '@protege-pack/toolkit';
-import { HarnessProviderError } from '@protege-pack/toolkit';
+} from 'protege-toolkit';
+import { HarnessProviderError } from 'protege-toolkit';
 
 export function createOllamaProviderAdapter(args: {
   config: { baseUrl: string };

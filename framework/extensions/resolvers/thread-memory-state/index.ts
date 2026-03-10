@@ -1,4 +1,4 @@
-import type { HarnessResolverDefinition } from '@protege-pack/toolkit';
+import type { HarnessResolverDefinition } from 'protege-toolkit';
 
 /**
  * Placeholder resolver for future DB-backed thread memory summaries.

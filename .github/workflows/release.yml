@@ -25,6 +25,17 @@ jobs:
         working-directory: framework
         run: npm ci
 
+      - name: Resolve npm dist-tag
+        id: verify_tag
+        working-directory: framework
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if [[ "${VERSION}" == *-* ]]; then
+            echo "tag=alpha" >> "${GITHUB_OUTPUT}"
+          else
+            echo "tag=latest" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Typecheck
         working-directory: framework
         run: npm run typecheck
@@ -39,7 +50,7 @@ jobs:
 
       - name: Verify package publish payload
         working-directory: framework
-        run: npm publish --dry-run
+        run: npm publish --dry-run --tag "${{ steps.verify_tag.outputs.tag }}"
 
   publish:
     runs-on: ubuntu-latest
@@ -65,11 +76,22 @@ jobs:
         working-directory: framework
         run: npm ci
 
+      - name: Resolve npm dist-tag
+        id: publish_tag
+        working-directory: framework
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if [[ "${VERSION}" == *-* ]]; then
+            echo "tag=alpha" >> "${GITHUB_OUTPUT}"
+          else
+            echo "tag=latest" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         working-directory: framework
-        run: npm publish --access public --provenance
+        run: npm publish --tag "${{ steps.publish_tag.outputs.tag }}" --provenance
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2

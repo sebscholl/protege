@@ -1,7 +1,7 @@
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from '@protege-pack/toolkit';
+} from 'protege-toolkit';
 
 /**
  * Represents the supported web search provider names in v1.
@@ -36,7 +36,7 @@ export type WebSearchToolInput = {
 /**
  * Represents one typed validation error for invalid web search inputs.
  */
-export class WebSearchToolInputError extends Error {}
+export class WebSearchToolInputError extends Error { }
 
 /**
  * Default web_search configuration used when no manifest override is provided.

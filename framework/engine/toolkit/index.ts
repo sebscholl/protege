@@ -1,7 +1,7 @@
 /**
  * Exposes the supported extension-author surface for Protege runtime integrations.
  *
- * Use `import { ... } from '@protege-pack/toolkit'` from tools/hooks/resolvers/providers.
+ * Use `import { ... } from 'protege-toolkit'` from tools/hooks/resolvers/providers.
  */
 export {
   HOOK_EVENT,

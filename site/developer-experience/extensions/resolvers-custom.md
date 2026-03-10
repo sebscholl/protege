@@ -50,7 +50,7 @@ extensions/resolvers/relationship-context/
 ```ts
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import type { HarnessResolverDefinition } from '@protege-pack/toolkit';
+import type { HarnessResolverDefinition } from 'protege-toolkit';
 
 export const resolver: HarnessResolverDefinition = {
   name: 'relationship-context',

@@ -1,7 +1,7 @@
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from '@protege-pack/toolkit';
+} from 'protege-toolkit';
 
 /**
  * Represents accepted input payload for shell tool execution.
@@ -16,7 +16,7 @@ export type ShellToolInput = {
 /**
  * Represents one typed validation error for invalid shell inputs.
  */
-export class ShellToolInputError extends Error {}
+export class ShellToolInputError extends Error { }
 
 /**
  * Creates one shell tool definition with validated input execution behavior.

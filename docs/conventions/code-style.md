@@ -16,7 +16,7 @@ Example:
 ```ts
 import type { IncomingHttpHeaders } from 'node:http';
 
-import type { HarnessToolDefinition } from '@protege-pack/toolkit';
+import type { HarnessToolDefinition } from 'protege-toolkit';
 
 import { z } from 'zod';
 
@@ -29,7 +29,7 @@ Import rules differ for extension code vs core code.
 
 ### Extension code (`extensions/**`)
 
-1. Framework imports MUST come from `@protege-pack/toolkit`.
+1. Framework imports MUST come from `protege-toolkit`.
 2. Internal framework aliases MUST NOT be imported:
    - `@engine/*`
    - `@extensions/*`
@@ -41,7 +41,7 @@ Import rules differ for extension code vs core code.
 Example:
 
 ```ts
-import type { HarnessToolDefinition } from '@protege-pack/toolkit';
+import type { HarnessToolDefinition } from 'protege-toolkit';
 
 import { readFileSync } from 'node:fs';
 ```

@@ -1,7 +1,7 @@
 # Release Runbook
 
 This page documents the release process for Protege maintainers.
-Current release target: `@protege-pack/toolkit@0.0.1-alpha.0`.
+Current release target: `protege-toolkit@0.0.1-alpha.0`.
 
 ## CI Pipelines
 
@@ -11,6 +11,12 @@ Current release target: `@protege-pack/toolkit@0.0.1-alpha.0`.
 | **CLI E2E** | PRs and pushes to `main` | Full command-level smoke test from packed tarball |
 | **Release** | `v*` tags and manual dispatch | Verify + publish to npm + create GitHub release |
 | **Docs** | Pushes to `main` | Build VitePress and deploy to GitHub Pages |
+
+Release publishing behavior:
+
+1. Stable versions publish to npm with the `latest` dist-tag.
+2. Prerelease versions (for example `0.0.1-alpha.0`) publish to npm with the `alpha` dist-tag.
+3. Automated releases publish from GitHub Actions with `--provenance`.
 
 ## Release Procedure
 
@@ -40,8 +46,8 @@ Current release target: `@protege-pack/toolkit@0.0.1-alpha.0`.
 
 7. **Verify:**
    ```bash
-   npm view @protege-pack/toolkit version
-   npm install -g @protege-pack/toolkit@X.Y.Z
+   npm view protege-toolkit version
+   npm install -g protege-toolkit@X.Y.Z
    protege --version
    ```
 

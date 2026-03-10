@@ -51,7 +51,7 @@ This primary example calls GitHub directly and returns the final tool result obj
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from '@protege-pack/toolkit';
+} from 'protege-toolkit';
 
 import { request } from 'node:https';
 

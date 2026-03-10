@@ -1,7 +1,7 @@
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from '@protege-pack/toolkit';
+} from 'protege-toolkit';
 
 import { normalizeToolTextContent } from '../shared/content-normalization';
 
@@ -16,7 +16,7 @@ export type WriteFileToolInput = {
 /**
  * Represents one typed validation error for invalid write_file inputs.
  */
-export class WriteFileToolInputError extends Error {}
+export class WriteFileToolInputError extends Error { }
 
 /**
  * Creates one write_file tool definition with validated input execution behavior.

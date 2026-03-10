@@ -1,18 +1,18 @@
-import type { HookEventPayloadByName, HarnessHookResult } from '@protege-pack/toolkit';
-import type { ThreadMemoryState } from '@protege-pack/toolkit';
-import type { HarnessStoredMessage, HarnessThreadToolEvent } from '@protege-pack/toolkit';
-import type { ProtegeDatabase } from '@protege-pack/toolkit';
+import type { HookEventPayloadByName, HarnessHookResult } from 'protege-toolkit';
+import type { ThreadMemoryState } from 'protege-toolkit';
+import type { HarnessStoredMessage, HarnessThreadToolEvent } from 'protege-toolkit';
+import type { ProtegeDatabase } from 'protege-toolkit';
 
-import { initializeDatabase } from '@protege-pack/toolkit';
-import { resolvePersonaMemoryPaths } from '@protege-pack/toolkit';
-import { HOOK_EVENT } from '@protege-pack/toolkit';
-import { listThreadMessages, listThreadToolEventsByThread } from '@protege-pack/toolkit';
+import { initializeDatabase } from 'protege-toolkit';
+import { resolvePersonaMemoryPaths } from 'protege-toolkit';
+import { HOOK_EVENT } from 'protege-toolkit';
+import { listThreadMessages, listThreadToolEventsByThread } from 'protege-toolkit';
 import {
   readThreadMemoryState,
   upsertThreadMemoryState,
-} from '@protege-pack/toolkit';
-import { synthesizeMemoryText } from '@protege-pack/toolkit';
-import { resolveMigrationsDirPath } from '@protege-pack/toolkit';
+} from 'protege-toolkit';
+import { synthesizeMemoryText } from 'protege-toolkit';
+import { resolveMigrationsDirPath } from 'protege-toolkit';
 
 /**
  * Represents one resolved thread-memory updater config payload.

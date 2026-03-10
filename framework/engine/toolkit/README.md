@@ -4,7 +4,7 @@ Extension Surface: Yes
 
 This directory exposes the stable, supported import surface for extension authors:
 
-1. `@protege-pack/toolkit`
+1. `protege-toolkit`
 
 What belongs here:
 

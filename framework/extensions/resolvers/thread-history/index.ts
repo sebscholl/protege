@@ -1,5 +1,5 @@
-import type { HarnessResolverDefinition } from '@protege-pack/toolkit';
-import type { HarnessContextHistoryEntry } from '@protege-pack/toolkit';
+import type { HarnessResolverDefinition } from 'protege-toolkit';
+import type { HarnessContextHistoryEntry } from 'protege-toolkit';
 
 type ThreadToolEvent = {
   id: string;

@@ -45,7 +45,7 @@ If instructions conflict, priority is:
 
 This repository is a monorepo with three independent packages:
 
-1. `framework/` (`@protege-pack/toolkit`)
+1. `framework/` (`protege-toolkit`)
 2. `relay/` (`@protege-pack/relay`)
 3. `site/` (`@protege-pack/site`)
 
@@ -92,7 +92,7 @@ Package-level docs:
    - `@configs/*`
    - `@memory/*`
    - `@tests/*`
-8. In `framework/extensions/**`, import framework surface from `@protege-pack/toolkit` only.
+8. In `framework/extensions/**`, import framework surface from `protege-toolkit` only.
 9. Import ordering is mandatory:
    - external types
    - internal types

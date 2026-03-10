@@ -1,7 +1,15 @@
 {
-  "name": "@protege-pack/toolkit",
-  "version": "0.0.1-alpha.0",
+  "name": "protege-toolkit",
+  "version": "0.0.1-alpha.1",
   "description": "Email-native AI agent CLI focused on simplicity, interoperability, and self-sovereignty.",
+  "homepage": "https://docs.protege.bot",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sebscholl/protege.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sebscholl/protege/issues"
+  },
   "private": false,
   "type": "module",
   "bin": {
@@ -16,9 +24,6 @@
       "import": "./dist/main.js",
       "types": "./dist/main.d.ts"
     }
-  },
-  "publishConfig": {
-    "access": "restricted"
   },
   "files": [
     "dist/",

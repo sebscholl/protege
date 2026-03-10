@@ -31,7 +31,7 @@ export default [
           patterns: [
             {
               group: ['@engine/*', '@extensions/*', '@configs/*', '@memory/*'],
-              message: 'Extension code must import only from @protege-pack/toolkit for framework APIs.'
+              message: 'Extension code must import only from protege-toolkit for framework APIs.'
             }
           ]
         }

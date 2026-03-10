@@ -3,12 +3,12 @@ import type {
   HarnessProviderGenerateRequest,
   HarnessProviderGenerateResponse,
   HarnessProviderMessage,
-} from '@protege-pack/toolkit';
+} from 'protege-toolkit';
 
 import {
   HarnessProviderError,
   parseProviderModelId,
-} from '@protege-pack/toolkit';
+} from 'protege-toolkit';
 
 /**
  * Represents one Grok adapter runtime dependency configuration.

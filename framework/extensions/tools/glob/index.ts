@@ -1,7 +1,7 @@
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from '@protege-pack/toolkit';
+} from 'protege-toolkit';
 
 /**
  * Represents accepted input payload for glob tool execution.
@@ -15,7 +15,7 @@ export type GlobToolInput = {
 /**
  * Represents one typed validation error for invalid glob inputs.
  */
-export class GlobToolInputError extends Error {}
+export class GlobToolInputError extends Error { }
 
 /**
  * Creates one glob tool definition with validated input execution behavior.

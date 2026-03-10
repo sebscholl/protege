@@ -1,7 +1,7 @@
 import type {
   HarnessToolDefinition,
   HarnessToolExecutionContext,
-} from '@protege-pack/toolkit';
+} from 'protege-toolkit';
 
 /**
  * Represents accepted input payload for read_file tool execution.
@@ -13,7 +13,7 @@ export type ReadFileToolInput = {
 /**
  * Represents one typed validation error for invalid read_file inputs.
  */
-export class ReadFileToolInputError extends Error {}
+export class ReadFileToolInputError extends Error { }
 
 /**
  * Creates one read_file tool definition with validated input execution behavior.
