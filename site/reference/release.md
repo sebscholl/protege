@@ -1,7 +1,7 @@
 # Release Runbook
 
 This page documents the release process for Protege maintainers.
-Current release target: `protege-toolkit@0.0.1-alpha.0`.
+Current release target: `protege-toolkit@0.0.1-alpha.1`.
 
 ## CI Pipelines
 
@@ -15,7 +15,7 @@ Current release target: `protege-toolkit@0.0.1-alpha.0`.
 Release publishing behavior:
 
 1. Stable versions publish to npm with the `latest` dist-tag.
-2. Prerelease versions (for example `0.0.1-alpha.0`) publish to npm with the `alpha` dist-tag.
+2. Prerelease versions (for example `0.0.1-alpha.1`) publish to npm with the `alpha` dist-tag.
 3. Automated releases publish from GitHub Actions with `--provenance`.
 
 ## Release Procedure
@@ -47,7 +47,7 @@ Release publishing behavior:
 7. **Verify:**
    ```bash
    npm view protege-toolkit version
-   npm install -g protege-toolkit@X.Y.Z
+   npm install -g protege-toolkit@alpha
    protege --version
    ```
 
@@ -61,7 +61,7 @@ Release publishing behavior:
 
 ## Alpha Notes
 
-1. Use prerelease semver for the initial public package, for example `0.0.1-alpha.0`.
+1. Use prerelease semver for the initial public package, for example `0.0.1-alpha.1`.
 2. Publish only the framework package unless relay packaging is explicitly part of the release scope.
 3. Treat alpha releases as developer-targeted and document known limitations in the GitHub release notes.
 

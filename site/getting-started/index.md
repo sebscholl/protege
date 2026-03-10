@@ -11,7 +11,7 @@ Get Protege running and send your first email to an AI agent in about 5 minutes.
 ## Step 1: Install Protege
 
 ```bash
-npm install -g protege
+npm install -g protege-toolkit@alpha
 ```
 
 Verify the installation:
