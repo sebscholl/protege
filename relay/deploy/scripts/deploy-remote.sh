@@ -5,8 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/load-env.sh"
 
-APP_DIR="${APP_DIR:-/opt/protege}"
-RELAY_DIR="${RELAY_DIR:-${APP_DIR}/relay}"
+RELAY_DIR="${RELAY_DIR:-/opt/protege/relay}"
 SERVICE_NAME="${SERVICE_NAME:-protege-relay}"
 
 cd "${RELAY_DIR}"

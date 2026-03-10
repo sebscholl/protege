@@ -7,8 +7,8 @@ source "${SCRIPT_DIR}/load-env.sh"
 
 SSH_HOST="${RELAY_SSH_HOST:?RELAY_SSH_HOST is required}"
 SSH_USER="${RELAY_SSH_USER:-root}"
-REMOTE_DIR="${RELAY_REMOTE_DIR:-/opt/protege}"
-APP_DIR="${APP_DIR:-${REMOTE_DIR}}"
+REMOTE_DIR="${RELAY_REMOTE_DIR:-/opt/protege/relay}"
+RELAY_DIR="${RELAY_DIR:-${REMOTE_DIR}}"
 SERVICE_NAME="${SERVICE_NAME:-protege-relay}"
 RELAY_DOMAIN="${RELAY_DOMAIN:-relay.protege.bot}"
 INSTALL_CERTBOT="${INSTALL_CERTBOT:-false}"
@@ -16,4 +16,4 @@ INSTALL_CERTBOT="${INSTALL_CERTBOT:-false}"
 "${SCRIPT_DIR}/sync-to-server.sh"
 
 ssh "${SSH_USER}@${SSH_HOST}" \
-  "cd ${REMOTE_DIR} && APP_DIR='${APP_DIR}' SERVICE_NAME='${SERVICE_NAME}' RELAY_DOMAIN='${RELAY_DOMAIN}' INSTALL_CERTBOT='${INSTALL_CERTBOT}' bash relay/deploy/scripts/host-setup-remote.sh"
+  "cd ${REMOTE_DIR} && RELAY_DIR='${RELAY_DIR}' SERVICE_NAME='${SERVICE_NAME}' RELAY_DOMAIN='${RELAY_DOMAIN}' INSTALL_CERTBOT='${INSTALL_CERTBOT}' bash deploy/scripts/host-setup-remote.sh"

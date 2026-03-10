@@ -7,8 +7,8 @@ source "${SCRIPT_DIR}/load-env.sh"
 
 SSH_HOST="${RELAY_SSH_HOST:?RELAY_SSH_HOST is required}"
 SSH_USER="${RELAY_SSH_USER:-root}"
-REMOTE_DIR="${RELAY_REMOTE_DIR:-/opt/protege}"
+REMOTE_DIR="${RELAY_REMOTE_DIR:-/opt/protege/relay}"
 
 "${SCRIPT_DIR}/sync-to-server.sh"
 
-ssh "${SSH_USER}@${SSH_HOST}" "cd ${REMOTE_DIR} && bash relay/deploy/scripts/deploy-remote.sh"
+ssh "${SSH_USER}@${SSH_HOST}" "cd ${REMOTE_DIR} && bash deploy/scripts/deploy-remote.sh"

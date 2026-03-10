@@ -54,7 +54,7 @@ export type RelayRuntimeConfig = {
  * Resolves default relay config path under relay directory.
  */
 export function resolveDefaultRelayConfigPath(): string {
-  return join(process.cwd(), 'relay', 'config.json');
+  return join(process.cwd(), 'config.json');
 }
 
 /**
@@ -72,7 +72,7 @@ export function readRelayRuntimeConfig(
       port: 8080,
       logging: {
         consoleLogFormat: 'json',
-        prettyLogThemePath: join(process.cwd(), 'relay', 'theme.json'),
+        prettyLogThemePath: join(process.cwd(), 'theme.json'),
       },
       smtp: {
         enabled: true,

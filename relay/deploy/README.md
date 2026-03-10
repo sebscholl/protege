@@ -13,7 +13,7 @@ Production deployment assets for running the optional Relay service on a VPS wit
 
 1. `nginx/relay.protege.bot.conf`: Nginx site config for `relay.protege.bot`.
 2. `systemd/protege-relay.service`: systemd unit file for relay runtime.
-3. `scripts/sync-to-server.sh`: pushes local repo files to VPS with `rsync`.
+3. `scripts/sync-to-server.sh`: pushes only the local `relay/` package files to VPS with `rsync`.
 4. `scripts/deploy-remote.sh`: runs on VPS to install deps, run checks, and restart systemd.
 5. `scripts/host-setup-remote.sh`: runs on VPS to install host packages and wire systemd/nginx.
 6. `scripts/server-bootstrap.sh`: local wrapper that syncs and executes host setup over SSH.
@@ -24,7 +24,7 @@ Production deployment assets for running the optional Relay service on a VPS wit
 
 ```bash
 sudo adduser --disabled-password --gecos "" protege
-sudo mkdir -p /opt/protege
+sudo mkdir -p /opt/protege/relay
 sudo chown -R protege:protege /opt/protege
 ```
 
@@ -56,7 +56,10 @@ RELAY_DOMAIN=relay.protege.bot
 Environment variables are loaded from repository `.relay.env` automatically by deploy scripts.
 You can still export variables in your shell to override defaults.
 
-Sync behavior (`sync-to-server.sh`) intentionally excludes:
+Sync behavior (`sync-to-server.sh`) copies only the local `relay/` directory into the remote relay directory.
+The script creates the remote relay directory automatically before running `rsync`.
+
+Excluded from sync:
 
 1. VCS/CI internals (`.git`, `.github`).
 2. Local dependency/runtime folders (`node_modules`, `/tmp`, `/memory`).
@@ -67,8 +70,7 @@ Suggested `.relay.env` keys:
 ```bash
 RELAY_SSH_HOST=187.77.78.12
 RELAY_SSH_USER=root
-RELAY_REMOTE_DIR=/opt/protege
-APP_DIR=/opt/protege
+RELAY_REMOTE_DIR=/opt/protege/relay
 SERVICE_NAME=protege-relay
 RELAY_DOMAIN=relay.protege.bot
 ```
@@ -76,26 +78,26 @@ RELAY_DOMAIN=relay.protege.bot
 From local machine:
 
 ```bash
-npm run relay:deploy:sync
+cd relay && npm run relay:deploy:sync
 ```
 
 On VPS (or via SSH command from local):
 
 ```bash
-cd /opt/protege
+cd /opt/protege/relay
 npm run relay:deploy:remote
 ```
 
 Full sync + remote deploy in one command:
 
 ```bash
-npm run relay:deploy
+cd relay && npm run relay:deploy
 ```
 
 First-time host bootstrap (sync + package install + systemd/nginx wiring):
 
 ```bash
-npm run relay:server:bootstrap
+cd relay && npm run relay:server:bootstrap
 ```
 
 TLS certificate is still one-time manual:
@@ -107,10 +109,10 @@ ssh "${RELAY_SSH_USER}@${RELAY_SSH_HOST}" "sudo certbot --nginx -d ${RELAY_DOMAI
 Server operation wrappers (from local, via SSH):
 
 ```bash
-npm run relay:server:restart
-npm run relay:server:status
-npm run relay:server:health
-npm run relay:server:logs
+cd relay && npm run relay:server:restart
+cd relay && npm run relay:server:status
+cd relay && npm run relay:server:health
+cd relay && npm run relay:server:logs
 ```
 
 ## Notes

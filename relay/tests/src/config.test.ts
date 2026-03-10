@@ -19,6 +19,9 @@ let validConsoleLogFormat = '';
 let validDkimEnabled = false;
 let validDkimDomainName = '';
 let validDkimPrivateKeyLoaded = false;
+let defaultPathConfigSmtpPort = 0;
+let defaultPathConfigThemePath = '';
+let explicitPackageConfigSmtpPort = 0;
 let invalidHostThrows = false;
 let invalidSmtpThrows = false;
 let invalidRateLimitThrows = false;
@@ -100,6 +103,15 @@ test-private-key
   validDkimEnabled = validConfig.dkim.enabled;
   validDkimDomainName = validConfig.dkim.domainName;
   validDkimPrivateKeyLoaded = validConfig.dkim.privateKey.includes('BEGIN PRIVATE KEY');
+
+  process.chdir(join(workspace.tempRootPath, 'relay'));
+  const defaultPathConfig = readRelayRuntimeConfig();
+  defaultPathConfigSmtpPort = defaultPathConfig.smtp.port;
+  defaultPathConfigThemePath = defaultPathConfig.logging.prettyLogThemePath;
+  process.chdir(workspace.previousCwd);
+  explicitPackageConfigSmtpPort = readRelayRuntimeConfig({
+    configPath: join(workspace.tempRootPath, 'relay', 'config.json'),
+  }).smtp.port;
 
   const invalidHostConfigPath = join(workspace.tempRootPath, 'relay', 'config-invalid-host.json');
   workspace.writeFile({
@@ -286,6 +298,7 @@ test-private-key
 });
 
 afterAll((): void => {
+  process.chdir(workspace.previousCwd);
   workspace.cleanup();
 });
 
@@ -336,6 +349,14 @@ describe('relay runtime config validation', () => {
 
   it('loads dkim private key from configured file path', () => {
     expect(validDkimPrivateKeyLoaded).toBe(true);
+  });
+
+  it('loads relay package-root config when cwd is the relay directory', () => {
+    expect(defaultPathConfigSmtpPort).toBe(explicitPackageConfigSmtpPort);
+  });
+
+  it('loads relay package-root theme path when cwd is the relay directory', () => {
+    expect(defaultPathConfigThemePath.endsWith('/relay/theme.json')).toBe(true);
   });
 
   it('fails fast when relay host is blank', () => {
