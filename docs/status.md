@@ -1,6 +1,6 @@
 # Project Status
 
-Last Updated: 2026-03-06
+Last Updated: 2026-03-10
 
 This file tracks implementation progress against:
 
@@ -13,7 +13,7 @@ This file tracks implementation progress against:
 2. Milestone 2: Complete (core), with ongoing UX hardening
 3. Milestone 3: Complete
 4. Milestone 4: Complete
-5. Packaging/docs consolidation: In progress
+5. Alpha release readiness: In progress
 
 ## Milestone 1 (Gateway)
 
@@ -80,15 +80,30 @@ Open follow-ups:
 
 1. Continue E2E reliability expansion where needed.
 
-## Next Session Focus (2026-03-08)
+## Release State
 
-1. Deep site/docs quality pass for developer learning and exploration flow.
-2. Daemonization design + CLI ops workflow (start/stop/restart/status/logs/info):
-   - see `docs/milestones/daemon-runtime-and-ops-plan.md`.
-3. Relay security/reliability hardening roadmap:
-   - see `docs/milestones/relay-security-and-reliability-plan.md`.
-4. Fresh mini-PC validation with multi-persona responsibilities + custom hooks/resolvers.
-5. Introspection and observability expansion (token/spend/context metrics + richer debugging events).
+Status: Preparing `@protege-pack/toolkit@0.0.1-alpha.0`
+
+Ready:
+
+1. Framework package is structured for npm distribution with CLI entrypoint.
+2. Relay package is separated operationally from framework packaging.
+3. Site/docs package is separated for independent docs deployment.
+4. Core gateway, harness, scheduler, relay, extensions, and chat flows are implemented.
+
+Remaining before publish:
+
+1. Full package-local quality gate run across `framework/`, `relay/`, and `site/`.
+2. Fresh-machine smoke test from packed framework tarball.
+3. Release notes and known alpha limitations pass.
+4. Publish workflow execution and post-publish install verification.
+
+## Next Session Focus
+
+1. Complete alpha release verification and publish flow for `@protege-pack/toolkit`.
+2. Continue docs quality pass focused on approachability and accuracy.
+3. Run fresh multi-persona validation on a non-dev machine.
+4. Expand observability and introspection after alpha packaging is stable.
 
 ## Active ADR Coverage
 

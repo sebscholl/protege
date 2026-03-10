@@ -8,6 +8,12 @@ This repository contains three fully separate packages:
 
 Each package has its own `package.json`, scripts, dependencies, and tests.
 
+## Current Release Posture
+
+1. `framework/` is being prepared for `@protege-pack/toolkit@0.0.1-alpha.0`.
+2. `relay/` remains a separate deployable server package and is not bundled into the framework npm publish.
+3. `site/` remains a separate docs package and deploy target.
+
 ## Working model
 
 Run commands from the package directory you are working on.
