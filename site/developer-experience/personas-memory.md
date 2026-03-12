@@ -140,8 +140,8 @@ enabled: true
 ---
 
 Search the web for the top 5 technology news stories from the past 24 hours.
-Summarize each story in 2-3 sentences. Email the digest to admin@example.com
-with the subject "Daily Tech Digest - [today's date]".
+Summarize each story in 2-3 sentences. Email the digest to admin@example.com.
+Put the digest in the email body and use the subject "Daily Tech Digest - [today's date]".
 ```
 
 **Frontmatter fields:**

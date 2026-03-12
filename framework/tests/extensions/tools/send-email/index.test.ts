@@ -9,6 +9,8 @@ import {
 let toolName = '';
 let schemaType = '';
 let toolDescription = '';
+let requiredFields: string[] = [];
+let textFieldDescription = '';
 let sentMessageSource = '';
 let validationMessage = '';
 let invalidRecipientMessage = '';
@@ -33,6 +35,16 @@ beforeAll(async (): Promise<void> => {
   toolName = tool.name;
   toolDescription = tool.description;
   schemaType = String(tool.inputSchema.type ?? '');
+  requiredFields = Array.isArray(tool.inputSchema.required)
+    ? tool.inputSchema.required.filter((value): value is string => typeof value === 'string')
+    : [];
+  textFieldDescription = typeof (
+    (tool.inputSchema.properties as Record<string, Record<string, unknown>> | undefined)?.text?.description
+  ) === 'string'
+    ? (
+      (tool.inputSchema.properties as Record<string, Record<string, unknown>>).text.description as string
+    )
+    : '';
 
   const transport = createTransport({
     streamTransport: true,
@@ -373,6 +385,14 @@ describe('send-email tool extension', () => {
 
   it('documents that user-visible replies require send_email delivery', () => {
     expect(toolDescription.includes('user to receive your response')).toBe(true);
+  });
+
+  it('declares text as a required send_email field', () => {
+    expect(requiredFields.includes('text')).toBe(true);
+  });
+
+  it('describes text as the required email body field', () => {
+    expect(textFieldDescription.includes('Required for every email')).toBe(true);
   });
 
   it('builds and sends outbound email payload using tool executor', () => {

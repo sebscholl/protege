@@ -72,7 +72,7 @@ export function createSendEmailTool(
   });
   return {
     name: 'send_email',
-    description: 'Send an outbound email message to one or more recipients. Use this whenever you want the user to receive your response.',
+    description: 'Send an outbound email message to one or more recipients. Use this whenever you want the user to receive your response. Always include both subject and text.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -80,56 +80,77 @@ export function createSendEmailTool(
       properties: {
         to: {
           type: 'array',
+          description: 'Recipient email addresses. Use concrete email addresses only.',
           items: { type: 'string' },
           minItems: 1,
         },
         subject: {
           type: 'string',
+          description: 'Email subject line.',
         },
         text: {
           type: 'string',
+          description: 'Plain-text email body. Required for every email, including short replies and scheduled digests.',
         },
         from: {
           type: 'string',
+          description: 'Optional sender override. Runtime may ignore this and enforce persona sender identity.',
         },
         cc: {
           type: 'array',
+          description: 'Optional CC recipient email addresses.',
           items: { type: 'string' },
         },
         bcc: {
           type: 'array',
+          description: 'Optional BCC recipient email addresses.',
           items: { type: 'string' },
         },
         html: {
           type: 'string',
+          description: 'Optional HTML email body. Provide text as well.',
         },
         inReplyTo: {
           type: 'string',
+          description: 'Optional Message-ID for explicit threading control.',
         },
         references: {
           type: 'array',
+          description: 'Optional Message-ID references for explicit threading control.',
           items: { type: 'string' },
         },
         threadingMode: {
           type: 'string',
+          description: 'Threading behavior. reply_current keeps the current thread. new_thread starts a separate conversation.',
           enum: ['reply_current', 'new_thread'],
         },
         headers: {
           type: 'object',
+          description: 'Optional string headers to include on the outbound email.',
           additionalProperties: {
             type: 'string',
           },
         },
         attachments: {
           type: 'array',
+          description: 'Optional file attachments resolved from local filesystem paths.',
           items: {
             type: 'object',
             additionalProperties: false,
             required: ['path'],
             properties: {
-              path: { type: 'string' },
-              filename: { type: 'string' },
-              contentType: { type: 'string' },
+              path: {
+                type: 'string',
+                description: 'Local filesystem path to attach.',
+              },
+              filename: {
+                type: 'string',
+                description: 'Optional attachment filename override.',
+              },
+              contentType: {
+                type: 'string',
+                description: 'Optional attachment MIME type override.',
+              },
             },
           },
         },

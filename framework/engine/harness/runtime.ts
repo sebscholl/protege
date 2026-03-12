@@ -384,6 +384,7 @@ export async function executeProviderToolLoop(
       toolCalls: response.toolCalls,
     });
     for (const toolCall of response.toolCalls) {
+      const toolDefinition = args.registry[toolCall.name];
       args.persistToolEvent?.({
         eventType: 'tool_call',
         toolName: toolCall.name,
@@ -433,6 +434,7 @@ export async function executeProviderToolLoop(
           toolName: toolCall.name,
           toolCallId: toolCall.id,
           input: toolCall.input,
+          inputSchema: toolDefinition?.inputSchema,
           error,
         });
         providerMessages.push({
@@ -507,6 +509,7 @@ export function buildToolFailureResult(
     toolName: string;
     toolCallId: string;
     input: Record<string, unknown>;
+    inputSchema?: Record<string, unknown>;
     error: unknown;
   },
 ): Record<string, unknown> {
@@ -518,6 +521,11 @@ export function buildToolFailureResult(
     toolName: args.toolName,
     toolCallId: args.toolCallId,
     input: args.input,
+    toolContract: {
+      requiredFields: readRequiredToolInputFields({
+        inputSchema: args.inputSchema,
+      }),
+    },
     error: {
       code: 'tool_execution_failed',
       name: errorObject.name,
@@ -527,6 +535,24 @@ export function buildToolFailureResult(
       }),
     },
   };
+}
+
+/**
+ * Reads required tool-input field names from one JSON-schema-like input schema.
+ */
+export function readRequiredToolInputFields(
+  args: {
+    inputSchema: Record<string, unknown> | undefined;
+  },
+): string[] {
+  const required = args.inputSchema?.required;
+  if (!Array.isArray(required)) {
+    return [];
+  }
+
+  return required.filter(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0,
+  );
 }
 
 /**
@@ -820,6 +846,7 @@ export function buildInboundRoutingContextNote(
     `- references: ${references.join(', ') || 'none'}`,
     'If responding by email, use send_email with concrete email addresses. Do not use labels like "user".',
     'For normal replies, send_email.to should usually include reply_to_default.',
+    'send_email requires both subject and text. Put the message body in send_email.text.',
     'Threading defaults to replying on the current message. Only set send_email.threadingMode to "new_thread" when intentionally starting a separate thread.',
   ].join('\n');
 }

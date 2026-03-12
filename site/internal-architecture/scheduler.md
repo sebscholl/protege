@@ -32,7 +32,8 @@ enabled: true
 
 Generate a summary of all conversations from the past week.
 Include key topics, action items, and any unresolved questions.
-Email the report to admin@example.com with subject "Weekly Agent Report".
+Email the report to admin@example.com.
+Use the email body for the report content and the subject "Weekly Agent Report".
 ```
 
 The `schedule` field uses standard 5-field cron syntax:
