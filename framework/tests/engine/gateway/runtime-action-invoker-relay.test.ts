@@ -52,7 +52,7 @@ beforeAll(async (): Promise<void> => {
     payload: {
       to: ['receiver@example.com'],
       subject: 'Relay Tool Reply',
-      text: 'hello from relay runtime action',
+      body: 'hello from relay runtime action',
     },
   });
   relayMessageIdLength = String(result.messageId ?? '').length;

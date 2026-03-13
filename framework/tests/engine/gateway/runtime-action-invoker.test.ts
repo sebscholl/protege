@@ -14,7 +14,7 @@ let unknownActionError = '';
 let missingRecipientError = '';
 let invalidRecipientError = '';
 let missingSubjectError = '';
-let missingTextError = '';
+let missingBodyError = '';
 let emailSendMessageId = '';
 let replyFromAddress = '';
 let replySubject = '';
@@ -87,7 +87,7 @@ beforeAll(async (): Promise<void> => {
       action: 'email.send',
       payload: {
         subject: 'Hello',
-        text: 'Body',
+        body: 'Body',
       },
     });
   } catch (error) {
@@ -100,7 +100,7 @@ beforeAll(async (): Promise<void> => {
       payload: {
         to: ['user'],
         subject: 'Hello',
-        text: 'Body',
+        body: 'Body',
       },
     });
   } catch (error) {
@@ -112,7 +112,7 @@ beforeAll(async (): Promise<void> => {
       action: 'email.send',
       payload: {
         to: ['receiver@example.com'],
-        text: 'Body',
+        body: 'Body',
       },
     });
   } catch (error) {
@@ -128,7 +128,7 @@ beforeAll(async (): Promise<void> => {
       },
     });
   } catch (error) {
-    missingTextError = (error as Error).message;
+    missingBodyError = (error as Error).message;
   }
 
   const sent = await invoke({
@@ -136,7 +136,7 @@ beforeAll(async (): Promise<void> => {
     payload: {
       to: ['receiver@example.com'],
       subject: 'Tool Subject',
-      text: 'Tool Body',
+      body: 'Tool Body',
       from: 'protege@localhost',
     },
   });
@@ -168,7 +168,7 @@ beforeAll(async (): Promise<void> => {
     payload: {
       to: ['sender@example.com'],
       subject: 'Manual Test',
-      text: 'Reply body',
+      body: 'Reply body',
     },
     personaSenderAddress: 'persona@example.com',
   });
@@ -183,7 +183,7 @@ beforeAll(async (): Promise<void> => {
       to: ['sender@example.com'],
       cc: ['patricia@example.com'],
       subject: 'Manual Test',
-      text: 'Reply body',
+      body: 'Reply body',
     },
     personaSenderAddress: 'persona@example.com',
   });
@@ -197,7 +197,7 @@ beforeAll(async (): Promise<void> => {
       to: ['sender@example.com'],
       from: 'spoofed@example.com',
       subject: 'Manual Test',
-      text: 'Reply body',
+      body: 'Reply body',
     },
     personaSenderAddress: 'persona@example.com',
   });
@@ -223,7 +223,7 @@ beforeAll(async (): Promise<void> => {
     payload: {
       to: ['sender@example.com'],
       subject: 'Manual Test',
-      text: 'Reply body',
+      body: 'Reply body',
     },
     personaSenderAddress: 'persona@example.com',
   });
@@ -252,7 +252,7 @@ beforeAll(async (): Promise<void> => {
       subject: 'Custom Subject That Should Be Ignored',
       inReplyTo: '<different-anchor@example.com>',
       references: ['<different-root@example.com>'],
-      text: 'Reply body',
+      body: 'Reply body',
     },
     personaSenderAddress: 'persona@example.com',
   });
@@ -282,7 +282,7 @@ beforeAll(async (): Promise<void> => {
       inReplyTo: '<new-thread-anchor@example.com>',
       threadingMode: 'new_thread',
       references: ['<new-thread-root@example.com>'],
-      text: 'Reply body',
+      body: 'Reply body',
     },
     personaSenderAddress: 'persona@example.com',
   });
@@ -309,7 +309,7 @@ beforeAll(async (): Promise<void> => {
     payload: {
       to: ['sender@example.com'],
       subject: 'Attachment test',
-      text: 'Reply body',
+      body: 'Reply body',
       attachments: [
         {
           path: join(process.cwd(), 'tests', 'fixtures', 'email', 'email-plain.eml'),
@@ -341,7 +341,7 @@ beforeAll(async (): Promise<void> => {
       payload: {
         to: ['sender@example.com'],
         subject: 'Invalid attachment',
-        text: 'Reply body',
+        body: 'Reply body',
         attachments: ['not-an-object'],
       },
       personaSenderAddress: 'persona@example.com',
@@ -371,7 +371,7 @@ beforeAll(async (): Promise<void> => {
       payload: {
         to: ['sender@example.com'],
         subject: 'Missing attachment path',
-        text: 'Reply body',
+        body: 'Reply body',
         attachments: [
           {
             path: '',
@@ -469,7 +469,7 @@ describe('gateway runtime action invoker hardening', () => {
   });
 
   it('rejects email.send without text body', () => {
-    expect(missingTextError.includes('payload.text')).toBe(true);
+    expect(missingBodyError.includes('payload.body')).toBe(true);
   });
 
   it('sends email and returns message id for valid payloads', () => {

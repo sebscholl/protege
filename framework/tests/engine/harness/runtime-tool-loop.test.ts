@@ -167,7 +167,7 @@ beforeAll(async (): Promise<void> => {
               input: {
                 to: ['receiver-a@example.com'],
                 subject: 'A',
-                text: 'A body',
+                body: 'A body',
               },
             },
             {
@@ -176,7 +176,7 @@ beforeAll(async (): Promise<void> => {
               input: {
                 to: ['receiver-b@example.com'],
                 subject: 'B',
-                text: 'B body',
+                body: 'B body',
               },
             },
           ],
@@ -258,7 +258,7 @@ beforeAll(async (): Promise<void> => {
             input: {
               to: ['receiver-a@example.com'],
               subject: 'A',
-              text: 'A body',
+              body: 'A body',
             },
           },
           {
@@ -267,7 +267,7 @@ beforeAll(async (): Promise<void> => {
             input: {
               to: ['receiver-b@example.com'],
               subject: 'B',
-              text: 'B body',
+              body: 'B body',
             },
           },
         ],
@@ -405,7 +405,7 @@ beforeAll(async (): Promise<void> => {
             input: {
               to: ['receiver@example.com'],
               subject: 'Recovered after tool error',
-              text: 'I recovered by taking a different action.',
+              body: 'I recovered by taking a different action.',
             },
           },
         ],
@@ -469,7 +469,7 @@ beforeAll(async (): Promise<void> => {
         return {
           text: '',
           toolCalls: [{
-            id: 'call_send_email_missing_text',
+            id: 'call_send_email_missing_body',
             name: 'send_email',
             input: {
               to: ['receiver@example.com'],
@@ -499,21 +499,21 @@ beforeAll(async (): Promise<void> => {
         text: '',
         toolCalls: [{
           id: 'call_send_email_fixed',
-          name: 'send_email',
-          input: {
-            to: ['receiver@example.com'],
-            subject: 'Recovered body',
-            text: 'Recovered after reading required fields.',
-          },
-        }],
-      };
+            name: 'send_email',
+            input: {
+              to: ['receiver@example.com'],
+              subject: 'Recovered body',
+              body: 'Recovered after reading required fields.',
+            },
+          }],
+        };
     },
   };
 
   await executeProviderToolLoop({
     adapter: sendEmailRecoveryAdapter,
     modelId: 'openai/gpt-4.1',
-    messages: [{ role: 'user', parts: [{ type: 'text', text: 'Recover missing send_email text.' }] }],
+    messages: [{ role: 'user', parts: [{ type: 'text', text: 'Recover missing send_email body.' }] }],
     tools: [{
       name: 'send_email',
       description: 'Send email.',
@@ -625,7 +625,7 @@ describe('harness provider tool loop hardening', () => {
   });
 
   it('includes required schema fields in tool failure feedback', () => {
-    expect(sendEmailFailureRequiredFields.includes('text')).toBe(true);
+    expect(sendEmailFailureRequiredFields.includes('body')).toBe(true);
   });
 
   it('allows recovery after send_email validation failure', () => {

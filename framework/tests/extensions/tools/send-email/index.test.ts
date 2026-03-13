@@ -10,7 +10,7 @@ let toolName = '';
 let schemaType = '';
 let toolDescription = '';
 let requiredFields: string[] = [];
-let textFieldDescription = '';
+let bodyFieldDescription = '';
 let sentMessageSource = '';
 let validationMessage = '';
 let invalidRecipientMessage = '';
@@ -38,11 +38,11 @@ beforeAll(async (): Promise<void> => {
   requiredFields = Array.isArray(tool.inputSchema.required)
     ? tool.inputSchema.required.filter((value): value is string => typeof value === 'string')
     : [];
-  textFieldDescription = typeof (
-    (tool.inputSchema.properties as Record<string, Record<string, unknown>> | undefined)?.text?.description
+  bodyFieldDescription = typeof (
+    (tool.inputSchema.properties as Record<string, Record<string, unknown>> | undefined)?.body?.description
   ) === 'string'
     ? (
-      (tool.inputSchema.properties as Record<string, Record<string, unknown>>).text.description as string
+      (tool.inputSchema.properties as Record<string, Record<string, unknown>>).body.description as string
     )
     : '';
 
@@ -55,7 +55,7 @@ beforeAll(async (): Promise<void> => {
     input: {
       to: ['receiver@example.com'],
       subject: 'Tool extension execution',
-      text: 'Hello from extension.',
+      body: 'Hello from extension.',
     },
     context: {
       runtime: {
@@ -75,7 +75,7 @@ beforeAll(async (): Promise<void> => {
             cc: args.payload.cc as string[] | undefined,
             bcc: args.payload.bcc as string[] | undefined,
             subject: args.payload.subject as string,
-            text: args.payload.text as string,
+            text: args.payload.body as string,
             html: args.payload.html as string | undefined,
             inReplyTo: args.payload.inReplyTo as string | undefined,
             references: args.payload.references as string[] | undefined,
@@ -95,7 +95,7 @@ beforeAll(async (): Promise<void> => {
     await tool.execute({
       input: {
         to: ['receiver@example.com'],
-        text: 'Missing subject.',
+        body: 'Missing subject.',
       },
       context: {
         runtime: {
@@ -112,7 +112,7 @@ beforeAll(async (): Promise<void> => {
       input: {
         to: ['user'],
         subject: 'Invalid recipient',
-        text: 'Hello.',
+        body: 'Hello.',
       },
       context: {
         runtime: {
@@ -129,7 +129,7 @@ beforeAll(async (): Promise<void> => {
       input: {
         to: ['first.last+alerts@example.com'],
         subject: 'Plus accepted',
-        text: 'Hello.',
+        body: 'Hello.',
       },
       context: {
         runtime: {
@@ -147,7 +147,7 @@ beforeAll(async (): Promise<void> => {
       input: {
         to: ['ops@mail.service.example.com'],
         subject: 'Subdomain accepted',
-        text: 'Hello.',
+        body: 'Hello.',
       },
       context: {
         runtime: {
@@ -165,7 +165,7 @@ beforeAll(async (): Promise<void> => {
       input: {
         to: ['Patricia.Smith@Example.COM'],
         subject: 'Case accepted',
-        text: 'Hello.',
+        body: 'Hello.',
       },
       context: {
         runtime: {
@@ -183,7 +183,7 @@ beforeAll(async (): Promise<void> => {
       input: {
         to: ['user@localhost'],
         subject: 'Localhost accepted',
-        text: 'Hello.',
+        body: 'Hello.',
       },
       context: {
         runtime: {
@@ -201,7 +201,7 @@ beforeAll(async (): Promise<void> => {
       input: {
         to: ['invalid-address'],
         subject: 'Invalid',
-        text: 'Hello.',
+        body: 'Hello.',
       },
       context: {
         runtime: {
@@ -218,7 +218,7 @@ beforeAll(async (): Promise<void> => {
       input: {
         to: ['  sender@example.com'],
         subject: 'Whitespace invalid',
-        text: 'Hello.',
+        body: 'Hello.',
       },
       context: {
         runtime: {
@@ -235,7 +235,7 @@ beforeAll(async (): Promise<void> => {
       input: {
         to: ['sender@example'],
         subject: 'Missing TLD',
-        text: 'Hello.',
+        body: 'Hello.',
       },
       context: {
         runtime: {
@@ -252,7 +252,7 @@ beforeAll(async (): Promise<void> => {
       input: {
         to: ['sender@example.com'],
         subject: 'New thread mode',
-        text: 'Hello.',
+        body: 'Hello.',
         threadingMode: 'new_thread',
       },
       context: {
@@ -282,7 +282,7 @@ beforeAll(async (): Promise<void> => {
       input: {
         to: ['sender@example.com'],
         subject: 'Invalid threading mode',
-        text: 'Hello.',
+        body: 'Hello.',
         threadingMode: 'invalid_mode',
       },
       context: {
@@ -300,7 +300,7 @@ beforeAll(async (): Promise<void> => {
       input: {
         to: ['sender@example.com'],
         subject: 'Attachment forwarding',
-        text: 'Hello.',
+        body: 'Hello.',
         attachments: [
           {
             path: '/tmp/report.txt',
@@ -356,7 +356,7 @@ beforeAll(async (): Promise<void> => {
       input: {
         to: ['sender@example.com'],
         subject: 'Invalid attachment path',
-        text: 'Hello.',
+        body: 'Hello.',
         attachments: [
           {
             path: '',
@@ -387,12 +387,12 @@ describe('send-email tool extension', () => {
     expect(toolDescription.includes('user to receive your response')).toBe(true);
   });
 
-  it('declares text as a required send_email field', () => {
-    expect(requiredFields.includes('text')).toBe(true);
+  it('declares body as a required send_email field', () => {
+    expect(requiredFields.includes('body')).toBe(true);
   });
 
-  it('describes text as the required email body field', () => {
-    expect(textFieldDescription.includes('Required for every email')).toBe(true);
+  it('describes body as the required email body field', () => {
+    expect(bodyFieldDescription.includes('Required for every email')).toBe(true);
   });
 
   it('builds and sends outbound email payload using tool executor', () => {

@@ -1347,9 +1347,13 @@ export function createChatRuntimeActionInvoker(
     const subject = typeof runtimeArgs.payload.subject === 'string' && runtimeArgs.payload.subject.trim()
       ? runtimeArgs.payload.subject
       : args.message.subject;
-    const text = typeof runtimeArgs.payload.text === 'string' ? runtimeArgs.payload.text : '';
-    if (!text.trim()) {
-      throw new Error('email.send requires non-empty payload.text.');
+    const body = typeof runtimeArgs.payload.body === 'string'
+      ? runtimeArgs.payload.body
+      : typeof runtimeArgs.payload.text === 'string'
+        ? runtimeArgs.payload.text
+        : '';
+    if (!body.trim()) {
+      throw new Error('email.send requires non-empty payload.body.');
     }
 
     const outboundMessageId = `<chat.outbound.${randomUUID()}@localhost>`;
@@ -1362,7 +1366,7 @@ export function createChatRuntimeActionInvoker(
         sender: args.personaMailboxIdentity,
         recipients: to,
         subject,
-        text,
+        text: body,
         receivedAt: new Date().toISOString(),
         metadata: {
           chat_local_delivery: true,

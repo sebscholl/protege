@@ -21,7 +21,7 @@ Required:
 
 1. `to: string[]`
 2. `subject: string`
-3. `text: string`
+3. `body: string`
 
 Optional:
 

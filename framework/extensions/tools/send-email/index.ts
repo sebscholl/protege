@@ -14,7 +14,7 @@ import { isValidEmailAddress } from 'protege-toolkit';
 export type SendEmailToolInput = {
   to: string[];
   subject: string;
-  text: string;
+  body: string;
   from?: string;
   cc?: string[];
   bcc?: string[];
@@ -72,11 +72,11 @@ export function createSendEmailTool(
   });
   return {
     name: 'send_email',
-    description: 'Send an outbound email message to one or more recipients. Use this whenever you want the user to receive your response. Always include both subject and text.',
+    description: 'Send an outbound email message to one or more recipients. Use this whenever you want the user to receive your response. Always include both subject and body.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
-      required: ['to', 'subject', 'text'],
+      required: ['to', 'subject', 'body'],
       properties: {
         to: {
           type: 'array',
@@ -88,7 +88,7 @@ export function createSendEmailTool(
           type: 'string',
           description: 'Email subject line.',
         },
-        text: {
+        body: {
           type: 'string',
           description: 'Plain-text email body. Required for every email, including short replies and scheduled digests.',
         },
@@ -108,7 +108,7 @@ export function createSendEmailTool(
         },
         html: {
           type: 'string',
-          description: 'Optional HTML email body. Provide text as well.',
+          description: 'Optional HTML email body. Provide body as well.',
         },
         inReplyTo: {
           type: 'string',
@@ -251,9 +251,9 @@ export function normalizeSendEmailInput(
     value: args.input.subject,
     fieldName: 'subject',
   });
-  const text = readRequiredString({
-    value: args.input.text,
-    fieldName: 'text',
+  const body = readRequiredString({
+    value: args.input.body,
+    fieldName: 'body',
   });
   void args.config;
   const from = readOptionalString({ value: args.input.from });
@@ -264,7 +264,7 @@ export function normalizeSendEmailInput(
     cc: readOptionalEmailAddressArray({ value: args.input.cc, fieldName: 'cc' }),
     bcc: readOptionalEmailAddressArray({ value: args.input.bcc, fieldName: 'bcc' }),
     subject,
-    text,
+    body,
     html: readOptionalString({ value: args.input.html }),
     inReplyTo: readOptionalString({ value: args.input.inReplyTo }),
     references: readOptionalStringArray({ value: args.input.references, fieldName: 'references' }),

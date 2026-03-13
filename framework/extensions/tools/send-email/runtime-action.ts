@@ -76,11 +76,13 @@ export function buildEmailSendRequestFromAction(
     throw new Error('email.send requires non-empty payload.subject.');
   }
 
-  const text = typeof args.payload.text === 'string'
-    ? args.payload.text
-    : '';
-  if (text.trim().length === 0) {
-    throw new Error('email.send requires non-empty payload.text.');
+  const body = typeof args.payload.body === 'string'
+    ? args.payload.body
+    : typeof args.payload.text === 'string'
+      ? args.payload.text
+      : '';
+  if (body.trim().length === 0) {
+    throw new Error('email.send requires non-empty payload.body.');
   }
 
   const inReplyTo = threadingMode === 'new_thread'
@@ -112,7 +114,7 @@ export function buildEmailSendRequestFromAction(
     cc: toAddresses({ value: args.payload.cc }),
     bcc: toAddresses({ value: args.payload.bcc }),
     subject,
-    text,
+    text: body,
     html: typeof args.payload.html === 'string'
       ? args.payload.html
       : undefined,

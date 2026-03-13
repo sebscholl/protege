@@ -100,7 +100,7 @@ beforeAll(async (): Promise<void> => {
                   arguments: JSON.stringify({
                     to: ['sender@example.com'],
                     subject: 'Trace',
-                    text: 'Trace body',
+                    body: 'Trace body',
                   }),
                 },
               }],
