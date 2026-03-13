@@ -82,7 +82,7 @@ Open follow-ups:
 
 ## Release State
 
-Status: Preparing `protege-toolkit@0.0.1-alpha.1`
+Status: Preparing `protege-toolkit@0.0.1-alpha.2`
 
 Ready:
 

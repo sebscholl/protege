@@ -1,7 +1,7 @@
 # Release Runbook
 
 This page documents the release process for Protege maintainers.
-Current release target: `protege-toolkit@0.0.1-alpha.1`.
+Current release target: `protege-toolkit@0.0.1-alpha.2`.
 
 ## CI Pipelines
 

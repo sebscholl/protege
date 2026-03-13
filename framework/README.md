@@ -15,7 +15,7 @@ Documentation: https://docs.protege.bot
 1. Gateway, harness core loop, relay mode, and key operator commands are implemented.
 2. Framework packaging for npm distribution is in alpha release preparation.
 3. First-party tools include `web_fetch` and provider-agnostic `web_search` (Tavily/Perplexity adapters).
-4. Current release target is `protege-toolkit@0.0.1-alpha.1`.
+4. Current release target is `protege-toolkit@0.0.1-alpha.2`.
 5. Remaining major scope after alpha is continued hardening, observability, and UX polish.
 
 See `../docs/status.md` for milestone-level progress and release posture.

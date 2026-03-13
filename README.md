@@ -12,7 +12,7 @@ Each package has its own `package.json`, scripts, dependencies, and tests.
 
 ## Current Release Posture
 
-1. `framework/` is being prepared for `protege-toolkit@0.0.1-alpha.1`.
+1. `framework/` is being prepared for `protege-toolkit@0.0.1-alpha.2`.
 2. `relay/` remains a separate deployable server package and is not bundled into the framework npm publish.
 3. `site/` remains a separate docs package and deploy target.
 
