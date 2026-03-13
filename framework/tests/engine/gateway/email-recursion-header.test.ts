@@ -21,7 +21,7 @@ beforeAll((): void => {
     payload: {
       to: ['receiver@example.com'],
       subject: 'Reply',
-      text: 'Body',
+      body: 'Body',
     },
     defaultRecursionDepth: 6,
   });
@@ -43,7 +43,7 @@ beforeAll((): void => {
     payload: {
       to: ['receiver@example.com'],
       subject: 'Reply',
-      text: 'Body',
+      body: 'Body',
     },
     defaultRecursionDepth: 6,
   });
@@ -55,7 +55,7 @@ beforeAll((): void => {
     payload: {
       to: ['receiver@example.com'],
       subject: 'Reply',
-      text: 'Body',
+      body: 'Body',
       headers: {
         'X-Protege-Recursion': '999',
       },

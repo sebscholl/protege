@@ -27,7 +27,7 @@
               "receiver@example.com"
             ],
             "subject": "Tool Subject",
-            "text": "Tool Body"
+            "body": "Tool Body"
           }
         }
       ],

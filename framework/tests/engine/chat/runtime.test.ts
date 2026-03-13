@@ -104,7 +104,7 @@ beforeAll(async (): Promise<void> => {
     payload: {
       to: ['user@localhost'],
       subject: 'Re: Local Chat',
-      text: 'response',
+      body: 'response',
     },
   });
   const countRow = (db as ProtegeDatabase).prepare(`

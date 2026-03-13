@@ -22,6 +22,16 @@ export type {
 } from '@engine/harness/tools/contract';
 
 export type {
+  GatewayLogger,
+  InboundNormalizedMessage,
+  OutboundReplyRequest,
+} from '@engine/gateway/types';
+
+export {
+  buildReplySubject,
+} from '@engine/gateway/threading';
+
+export type {
   HarnessResolverDefinition,
   HarnessResolverEntry,
   ResolverInvocation,

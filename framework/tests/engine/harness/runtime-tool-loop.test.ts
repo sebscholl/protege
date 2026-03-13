@@ -28,6 +28,8 @@ let recoveryFirstToolErrorCode = '';
 let recoveryFirstToolErrorMessage = '';
 let recoveryFirstToolInputPath = '';
 let recoveryToolInvokedActions: string[] = [];
+let sendEmailFailureRequiredFields: string[] = [];
+let sendEmailRecoveryInvokedActions: string[] = [];
 let unknownToolFailureHasInputContext = false;
 let unknownToolFailureHasStackPreview = false;
 let receivedEventIncludesToolInputs = false;
@@ -165,7 +167,7 @@ beforeAll(async (): Promise<void> => {
               input: {
                 to: ['receiver-a@example.com'],
                 subject: 'A',
-                text: 'A body',
+                body: 'A body',
               },
             },
             {
@@ -174,7 +176,7 @@ beforeAll(async (): Promise<void> => {
               input: {
                 to: ['receiver-b@example.com'],
                 subject: 'B',
-                text: 'B body',
+                body: 'B body',
               },
             },
           ],
@@ -256,7 +258,7 @@ beforeAll(async (): Promise<void> => {
             input: {
               to: ['receiver-a@example.com'],
               subject: 'A',
-              text: 'A body',
+              body: 'A body',
             },
           },
           {
@@ -265,7 +267,7 @@ beforeAll(async (): Promise<void> => {
             input: {
               to: ['receiver-b@example.com'],
               subject: 'B',
-              text: 'B body',
+              body: 'B body',
             },
           },
         ],
@@ -403,7 +405,7 @@ beforeAll(async (): Promise<void> => {
             input: {
               to: ['receiver@example.com'],
               subject: 'Recovered after tool error',
-              text: 'I recovered by taking a different action.',
+              body: 'I recovered by taking a different action.',
             },
           },
         ],
@@ -449,6 +451,96 @@ beforeAll(async (): Promise<void> => {
       },
     },
   })).responseText;
+
+  const sendEmailRecoveryAdapter: HarnessProviderAdapter = {
+    providerId: 'openai',
+    capabilities: {
+      tools: true,
+      structuredOutput: false,
+      streaming: false,
+    },
+    generate: async (
+      args: {
+        request: HarnessProviderGenerateRequest;
+      },
+    ) => {
+      const toolMessages = args.request.messages.filter((message) => message.role === 'tool');
+      if (toolMessages.length === 0) {
+        return {
+          text: '',
+          toolCalls: [{
+            id: 'call_send_email_missing_body',
+            name: 'send_email',
+            input: {
+              to: ['receiver@example.com'],
+              subject: 'Missing body',
+            },
+          }],
+        };
+      }
+
+      if (toolMessages.length > 1) {
+        return {
+          text: 'Recovered after send_email validation failure.',
+          toolCalls: [],
+        };
+      }
+
+      const firstToolPayload = JSON.parse(toolMessages[0]?.parts[0]?.text ?? '{}') as Record<string, unknown>;
+      sendEmailFailureRequiredFields = (
+        typeof firstToolPayload.toolContract === 'object'
+        && firstToolPayload.toolContract !== null
+        && Array.isArray((firstToolPayload.toolContract as Record<string, unknown>).requiredFields)
+      )
+        ? (firstToolPayload.toolContract as Record<string, unknown>).requiredFields as string[]
+        : [];
+
+      return {
+        text: '',
+        toolCalls: [{
+          id: 'call_send_email_fixed',
+            name: 'send_email',
+            input: {
+              to: ['receiver@example.com'],
+              subject: 'Recovered body',
+              body: 'Recovered after reading required fields.',
+            },
+          }],
+        };
+    },
+  };
+
+  await executeProviderToolLoop({
+    adapter: sendEmailRecoveryAdapter,
+    modelId: 'openai/gpt-4.1',
+    messages: [{ role: 'user', parts: [{ type: 'text', text: 'Recover missing send_email body.' }] }],
+    tools: [{
+      name: 'send_email',
+      description: 'Send email.',
+      inputSchema: { type: 'object' },
+    }],
+    registry,
+    maxTurns: 3,
+    toolContext: {
+      runtime: {
+        invoke: async (
+          args: {
+            action: string;
+            payload: Record<string, unknown>;
+          },
+        ): Promise<Record<string, unknown>> => {
+          sendEmailRecoveryInvokedActions.push(args.action);
+          return {
+            messageId: `fixture-${args.payload.subject as string}`,
+          };
+        },
+      },
+      logger: {
+        info: (): void => undefined,
+        error: (): void => undefined,
+      },
+    },
+  });
 });
 
 describe('harness provider tool loop hardening', () => {
@@ -530,5 +622,13 @@ describe('harness provider tool loop hardening', () => {
 
   it('returns final assistant text after recovery tool execution', () => {
     expect(recoveryResponseText).toBe('Recovered successfully after tool failure.');
+  });
+
+  it('includes required schema fields in tool failure feedback', () => {
+    expect(sendEmailFailureRequiredFields.includes('body')).toBe(true);
+  });
+
+  it('allows recovery after send_email validation failure', () => {
+    expect(sendEmailRecoveryInvokedActions.join(',')).toBe('email.send');
   });
 });

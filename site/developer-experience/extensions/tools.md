@@ -16,7 +16,7 @@ The most important tool. This is how your agent replies to messages and communic
 {
   "to": ["alice@example.com"],
   "subject": "Weekly Report",
-  "text": "Here's your summary...",
+  "body": "Here's your summary...",
   "cc": ["bob@example.com"],
   "threadingMode": "reply_current"
 }

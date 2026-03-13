@@ -21,7 +21,7 @@
                 "type": "function",
                 "function": {
                   "name": "send_email",
-                  "arguments": "{\"to\":[\"receiver@example.com\"],\"subject\":\"Tool Subject\",\"text\":\"Tool Body\",\"from\":\"protege@localhost\"}"
+                  "arguments": "{\"to\":[\"receiver@example.com\"],\"subject\":\"Tool Subject\",\"body\":\"Tool Body\",\"from\":\"protege@localhost\"}"
                 }
               }
             ]

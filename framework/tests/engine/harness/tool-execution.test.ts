@@ -26,7 +26,7 @@ beforeAll(async (): Promise<void> => {
     input: {
       to: ['receiver@example.com'],
       subject: 'Tool registry execution',
-      text: 'Hello from send_email.',
+      body: 'Hello from send_email.',
       from: 'protege@localhost',
     },
     context: {
@@ -47,7 +47,7 @@ beforeAll(async (): Promise<void> => {
             cc: args.payload.cc as string[] | undefined,
             bcc: args.payload.bcc as string[] | undefined,
             subject: args.payload.subject as string,
-            text: args.payload.text as string,
+            text: args.payload.body as string,
             html: args.payload.html as string | undefined,
             inReplyTo: args.payload.inReplyTo as string | undefined,
             references: args.payload.references as string[] | undefined,
