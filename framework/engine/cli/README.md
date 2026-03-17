@@ -13,7 +13,7 @@ Key commands:
 3. `protege persona create|list|info|delete ... [--json]`
 4. `protege relay bootstrap [--relay-ws-url <ws://...>] [--json]`
 5. `protege init [--path <dir>] [--force] [--json]`
-6. `protege setup [--path <dir>] [--force] [--provider <openai|anthropic|gemini|grok>] [--outbound <relay|local>] [--non-interactive] ... [--json]`
+6. `protege setup [--path <dir>] [--force] [--provider <openai|anthropic|gemini|grok|openrouter>] [--outbound <relay|local>] [--non-interactive] ... [--json]`
 7. `protege status [--json]`
 8. `protege logs [--follow] [--tail <n>] [--scope <gateway|harness|relay|scheduler|chat|all>] [--json]`
 9. `protege doctor [--json]`

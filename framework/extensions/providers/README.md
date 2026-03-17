@@ -12,6 +12,7 @@ Current built-in adapters:
 2. `anthropic/`
 3. `gemini/`
 4. `grok/`
+5. `openrouter/`
 
 Provider directory contract:
 

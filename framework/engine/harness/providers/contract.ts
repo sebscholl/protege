@@ -1,7 +1,7 @@
 /**
  * Enumerates provider identifiers supported by Protege v1.
  */
-export type HarnessProviderId = 'openai' | 'anthropic' | 'gemini' | 'grok';
+export type HarnessProviderId = 'openai' | 'anthropic' | 'gemini' | 'grok' | 'openrouter';
 
 /**
  * Enumerates normalized provider capabilities used by harness orchestration.
@@ -180,7 +180,8 @@ export function isSupportedProviderId(
   return args.providerId === 'openai'
     || args.providerId === 'anthropic'
     || args.providerId === 'gemini'
-    || args.providerId === 'grok';
+    || args.providerId === 'grok'
+    || args.providerId === 'openrouter';
 }
 
 /**

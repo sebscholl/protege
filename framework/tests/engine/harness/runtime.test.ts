@@ -48,6 +48,8 @@ let geminiAdapterProviderId = '';
 let geminiMissingApiKeyMessage = '';
 let grokAdapterProviderId = '';
 let grokMissingApiKeyMessage = '';
+let openRouterAdapterProviderId = '';
+let openRouterMissingApiKeyMessage = '';
 let acceptsNonEmptyTerminalResponse = false;
 let acceptsEmptyTerminalResponseWithActions = false;
 let rejectsEmptyTerminalResponseWithoutActions = false;
@@ -143,7 +145,7 @@ beforeAll((): void => {
   try {
     createProviderAdapter({
       providerConfig: {},
-      provider: 'mistral' as 'openai' | 'anthropic' | 'gemini' | 'grok',
+      provider: 'mistral' as 'openai' | 'anthropic' | 'gemini' | 'grok' | 'openrouter',
     });
   } catch (error) {
     unsupportedProviderCode = (error as HarnessProviderError).code;
@@ -189,6 +191,20 @@ beforeAll((): void => {
     });
   } catch (error) {
     grokMissingApiKeyMessage = (error as Error).message;
+  }
+  openRouterAdapterProviderId = createProviderAdapter({
+    providerConfig: {
+      apiKey: 'openrouter-test',
+    },
+    provider: 'openrouter',
+  }).providerId;
+  try {
+    createProviderAdapter({
+      providerConfig: {},
+      provider: 'openrouter',
+    });
+  } catch (error) {
+    openRouterMissingApiKeyMessage = (error as Error).message;
   }
 
   migrationsDirExists = existsSync(resolveMigrationsDirPath());
@@ -265,6 +281,14 @@ describe('harness runtime helpers', () => {
 
   it('fails grok provider selection when grok credentials are missing', () => {
     expect(grokMissingApiKeyMessage).toContain('Missing Grok API key');
+  });
+
+  it('creates openrouter provider adapter when openrouter credentials are present', () => {
+    expect(openRouterAdapterProviderId).toBe('openrouter');
+  });
+
+  it('fails openrouter provider selection when openrouter credentials are missing', () => {
+    expect(openRouterMissingApiKeyMessage).toContain('Missing OpenRouter API key');
   });
 
   it('resolves one existing migrations directory path', () => {

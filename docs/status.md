@@ -33,7 +33,7 @@ Status: Complete (core)
 
 Completed:
 
-1. Provider adapter boundary with OpenAI/Anthropic/Gemini/Grok.
+1. Provider adapter boundary with OpenAI/Anthropic/Gemini/Grok/OpenRouter.
 2. Thread history persistence and context assembly.
 3. Tool registry and execution loop.
 4. Thread tool-trace persistence and continuity.
@@ -115,3 +115,4 @@ Latest active ADR sequence includes:
 4. `docs/adr/0036-harness-context-pipeline-and-resolver-extension-boundary-v1.md`
 5. `docs/adr/0037-memory-synthesis-hooks-and-chained-events-v1.md`
 6. `docs/adr/0038-gateway-auth-policy-dual-ingress-v1.md`
+7. `docs/adr/0039-openrouter-native-provider-v1.md`

@@ -10,6 +10,7 @@ import {
 } from '@engine/harness/providers/contract';
 
 let supportedProviderCheck = false;
+let supportedOpenRouterProviderCheck = false;
 let unsupportedProviderCheck = false;
 let parsedProviderId = '';
 let parsedModelName = '';
@@ -25,6 +26,11 @@ describe('harness provider contract', () => {
   it('recognizes supported provider ids', () => {
     supportedProviderCheck = isSupportedProviderId({ providerId: 'openai' });
     expect(supportedProviderCheck).toBe(true);
+  });
+
+  it('recognizes openrouter as a supported provider id', () => {
+    supportedOpenRouterProviderCheck = isSupportedProviderId({ providerId: 'openrouter' });
+    expect(supportedOpenRouterProviderCheck).toBe(true);
   });
 
   it('rejects unsupported provider ids', () => {

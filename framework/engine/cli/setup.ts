@@ -1,5 +1,6 @@
 import type { DoctorReport } from '@engine/cli/doctor';
 import type { InitCommandResult } from '@engine/cli/init';
+import type { HarnessProviderId } from '@engine/harness/providers/contract';
 import type { ExtensionManifest, ToolManifestEntry } from '@engine/harness/tools/registry';
 import type { GatewayRuntimeConfig } from '@engine/gateway/index';
 import type { PersonaMetadata } from '@engine/shared/personas';
@@ -38,7 +39,7 @@ export type SetupWebSearchProvider = 'none' | 'perplexity' | 'tavily';
 export type SetupCommandOptions = {
   targetPath: string;
   force: boolean;
-  provider: 'openai' | 'anthropic' | 'gemini' | 'grok';
+  provider: HarnessProviderId;
   inferenceApiKey?: string;
   outboundMode: SetupOutboundMode;
   relayWsUrl: string;
@@ -137,7 +138,7 @@ export function parseSetupArgs(
     if (token === '--path') {
       const candidatePath = args.argv[index + 1];
       if (!candidatePath || candidatePath.trim().length === 0) {
-        throw new Error('Usage: protege setup [--path <dir>] [--reset|--force] [--provider <openai|anthropic|gemini|grok>] [--inference-api-key <key>] [--outbound <relay|local>] [--relay-ws-url <url>] [--web-search-provider <none|perplexity|tavily>] [--web-search-api-key <key>] [--admin-contact-email <email>] [--doctor]');
+        throw new Error('Usage: protege setup [--path <dir>] [--reset|--force] [--provider <openai|anthropic|gemini|grok|openrouter>] [--inference-api-key <key>] [--outbound <relay|local>] [--relay-ws-url <url>] [--web-search-provider <none|perplexity|tavily>] [--web-search-api-key <key>] [--admin-contact-email <email>] [--doctor]');
       }
       targetPath = resolve(candidatePath);
       index += 1;
@@ -364,7 +365,7 @@ export async function promptSetupCommandOptions(
     const provider = parseProviderName({
       value: await promptWithDefault({
         prompt,
-        label: 'Inference provider (openai|anthropic|gemini|grok)',
+        label: 'Inference provider (openai|anthropic|gemini|grok|openrouter)',
         defaultValue: args.seed.provider,
       }),
     });
@@ -450,7 +451,8 @@ export function hydrateSetupSeedFromExistingProject(
     if (inferenceConfig.provider === 'openai'
       || inferenceConfig.provider === 'anthropic'
       || inferenceConfig.provider === 'gemini'
-      || inferenceConfig.provider === 'grok') {
+      || inferenceConfig.provider === 'grok'
+      || inferenceConfig.provider === 'openrouter') {
       seeded.provider = inferenceConfig.provider;
     }
   }
@@ -606,11 +608,15 @@ export function parseProviderName(
     value: string | undefined;
   },
 ): SetupCommandOptions['provider'] {
-  if (args.value === 'openai' || args.value === 'anthropic' || args.value === 'gemini' || args.value === 'grok') {
+  if (args.value === 'openai'
+    || args.value === 'anthropic'
+    || args.value === 'gemini'
+    || args.value === 'grok'
+    || args.value === 'openrouter') {
     return args.value;
   }
 
-  throw new Error('Invalid --provider value. Expected one of: openai, anthropic, gemini, grok.');
+  throw new Error('Invalid --provider value. Expected one of: openai, anthropic, gemini, grok, openrouter.');
 }
 
 /**
@@ -1027,6 +1033,9 @@ export function readProviderApiKeyEnvName(
   }
   if (args.provider === 'gemini') {
     return 'GEMINI_API_KEY';
+  }
+  if (args.provider === 'openrouter') {
+    return 'OPENROUTER_API_KEY';
   }
 
   return 'GROK_API_KEY';

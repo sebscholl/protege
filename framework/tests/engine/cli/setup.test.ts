@@ -7,6 +7,7 @@ import { runCli } from '@engine/cli/index';
 import {
   hasSetupConfigFlags,
   parseSetupArgs,
+  readProviderApiKeyEnvName,
   readSetupNextCommand,
   runSetupCommand,
   validateEmailAddress,
@@ -44,6 +45,8 @@ let rerunOutboundMode = '';
 let rerunWebSearchProvider = '';
 let rerunAdminContactEmail = '';
 let rerunNextCommand = '';
+let parsedOpenRouterProvider = '';
+let openRouterEnvName = '';
 
 beforeAll(async (): Promise<void> => {
   workspace = createTestWorkspaceFromFixture({
@@ -163,6 +166,12 @@ beforeAll(async (): Promise<void> => {
     admin_contact_email?: string;
   };
   rerunAdminContactEmail = rerunSystemConfig.admin_contact_email ?? '';
+  parsedOpenRouterProvider = parseSetupArgs({
+    argv: ['--provider', 'openrouter', '--non-interactive'],
+  }).options.provider;
+  openRouterEnvName = readProviderApiKeyEnvName({
+    provider: 'openrouter',
+  });
 });
 
 afterAll((): void => {
@@ -256,6 +265,14 @@ describe('setup cli command', () => {
 
   it('returns deterministic next command when doctor is not requested', () => {
     expect(rerunNextCommand).toBe('protege doctor && protege gateway start');
+  });
+
+  it('parses openrouter as a valid setup provider', () => {
+    expect(parsedOpenRouterProvider).toBe('openrouter');
+  });
+
+  it('maps openrouter setup credentials to OPENROUTER_API_KEY', () => {
+    expect(openRouterEnvName).toBe('OPENROUTER_API_KEY');
   });
 });
 
