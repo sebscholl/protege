@@ -1,0 +1,21 @@
+{
+  "request": {
+    "method": "POST",
+    "pathPattern": "^/api/v1/chat/completions$"
+  },
+  "response": {
+    "status": 500,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "error": {
+        "message": "Fixture internal error"
+      }
+    }
+  },
+  "meta": {
+    "service": "openrouter",
+    "name": "chat completions server error"
+  }
+}

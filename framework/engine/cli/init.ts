@@ -338,6 +338,14 @@ export function buildInitCopyMappings(
       targetRelativePath: 'extensions/providers/grok/config.json',
     },
     {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'providers', 'openrouter', 'index.ts'),
+      targetRelativePath: 'extensions/providers/openrouter/index.ts',
+    },
+    {
+      sourceFilePath: join(args.packageRootDirPath, 'extensions', 'providers', 'openrouter', 'config.json'),
+      targetRelativePath: 'extensions/providers/openrouter/config.json',
+    },
+    {
       sourceFilePath: join(args.packageRootDirPath, 'extensions', 'resolvers', 'README.md'),
       targetRelativePath: 'extensions/resolvers/README.md',
     },

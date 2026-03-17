@@ -22,6 +22,7 @@ let personaTemplateKnowledgeIndexExists = true;
 let inferenceLocalExampleExists = false;
 let initializedInferenceHasNoProvidersBlock = false;
 let initializedExtensionsIncludesOpenAiProvider = false;
+let initializedExtensionsIncludesOpenRouterProvider = false;
 let initializedAdminContactEmailBlank = false;
 let sentinelPreserved = false;
 
@@ -65,6 +66,13 @@ beforeAll(async (): Promise<void> => {
     }
 
     return entry.name === 'openai';
+  }) ?? false;
+  initializedExtensionsIncludesOpenRouterProvider = extensionsManifest.providers?.some((entry) => {
+    if (typeof entry === 'string') {
+      return entry === 'openrouter';
+    }
+
+    return entry.name === 'openrouter';
   }) ?? false;
   const systemJson = JSON.parse(readFileSync(join(projectPath, 'configs', 'system.json'), 'utf8')) as {
     admin_contact_email?: unknown;
@@ -147,6 +155,10 @@ describe('init cli command', () => {
 
   it('scaffolds openai provider in extensions manifest', () => {
     expect(initializedExtensionsIncludesOpenAiProvider).toBe(true);
+  });
+
+  it('scaffolds openrouter provider in extensions manifest', () => {
+    expect(initializedExtensionsIncludesOpenRouterProvider).toBe(true);
   });
 
   it('scaffolds blank admin contact email by default', () => {

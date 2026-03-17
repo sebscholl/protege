@@ -1,4 +1,4 @@
-import type { HookEventPayloadByName, HarnessHookResult } from 'protege-toolkit';
+import type { HarnessProviderId, HookEventPayloadByName, HarnessHookResult } from 'protege-toolkit';
 import type { ThreadMemoryState } from 'protege-toolkit';
 import type { HarnessStoredMessage, HarnessThreadToolEvent } from 'protege-toolkit';
 import type { ProtegeDatabase } from 'protege-toolkit';
@@ -18,7 +18,7 @@ import { resolveMigrationsDirPath } from 'protege-toolkit';
  * Represents one resolved thread-memory updater config payload.
  */
 export type ThreadMemoryUpdaterConfig = {
-  provider?: 'openai' | 'anthropic' | 'gemini' | 'grok';
+  provider?: HarnessProviderId;
   model?: string;
   promptPath: string;
   maxOutputTokens?: number;
@@ -45,13 +45,13 @@ export type ThreadMemoryUpdaterDependencies = {
     },
   ) => void;
   synthesize: (args: {
-    provider?: 'openai' | 'anthropic' | 'gemini' | 'grok';
+    provider?: HarnessProviderId;
     model?: string;
     promptPath: string;
     maxOutputTokens?: number;
     inputText: string;
   }) => Promise<{
-    provider: 'openai' | 'anthropic' | 'gemini' | 'grok';
+    provider: HarnessProviderId;
     model: string;
     outputText: string;
   }>;
@@ -348,6 +348,7 @@ export function readProviderValue(
     || args.value === 'anthropic'
     || args.value === 'gemini'
     || args.value === 'grok'
+    || args.value === 'openrouter'
     ? args.value
     : undefined;
 }

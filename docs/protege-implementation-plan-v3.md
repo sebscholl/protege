@@ -17,7 +17,7 @@ Implementation progress is tracked in `docs/status.md`.
 1. Primary v1 user: anyone with basic terminal competency.
 2. Default onboarding path: relay-first.
 3. Local direct SMTP mode: advanced path users can graduate to.
-4. Provider model: pluggable adapters for OpenAI, Anthropic, Gemini, Grok.
+4. Provider model: pluggable adapters for OpenAI, Anthropic, Gemini, Grok, OpenRouter.
 5. Local data protection: no encryption-at-rest in v1.
 6. Extension trust: trusted in-process execution.
 7. Reliability bar: no silent failures, retry up to 3x, notify owner on terminal failure.
@@ -78,7 +78,7 @@ Relay abuse controls are network-level (IP rate limits and temporary IP blocklis
 
 ## Provider Parity Policy
 
-1. Adapters exist for OpenAI, Anthropic, Gemini, Grok.
+1. Adapters exist for OpenAI, Anthropic, Gemini, Grok, OpenRouter.
 2. All providers must implement the normalized capabilities:
    - `generate()`
    - `generateWithTools()`

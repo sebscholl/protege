@@ -1,4 +1,4 @@
-import type { HookEventPayloadByName, HarnessHookResult } from 'protege-toolkit';
+import type { HarnessProviderId, HookEventPayloadByName, HarnessHookResult } from 'protege-toolkit';
 import type { PersonaMemorySynthesisState, ThreadMemoryState } from 'protege-toolkit';
 import type { ProtegeDatabase } from 'protege-toolkit';
 
@@ -21,7 +21,7 @@ import { resolveMigrationsDirPath } from 'protege-toolkit';
  * Represents one resolved active-memory updater config payload.
  */
 export type ActiveMemoryUpdaterConfig = {
-  provider?: 'openai' | 'anthropic' | 'gemini' | 'grok';
+  provider?: HarnessProviderId;
   model?: string;
   promptPath: string;
   maxOutputTokens?: number;
@@ -42,13 +42,13 @@ export type ActiveMemoryUpdaterDependencies = {
   clearDirty: (db: ProtegeDatabase, personaId: string) => void;
   markFailure: (db: ProtegeDatabase, personaId: string, message: string) => void;
   synthesize: (args: {
-    provider?: 'openai' | 'anthropic' | 'gemini' | 'grok';
+    provider?: HarnessProviderId;
     model?: string;
     promptPath: string;
     maxOutputTokens?: number;
     inputText: string;
   }) => Promise<{
-    provider: 'openai' | 'anthropic' | 'gemini' | 'grok';
+    provider: HarnessProviderId;
     model: string;
     outputText: string;
   }>;
@@ -356,6 +356,7 @@ export function readProviderValue(
     || args.value === 'anthropic'
     || args.value === 'gemini'
     || args.value === 'grok'
+    || args.value === 'openrouter'
     ? args.value
     : undefined;
 }

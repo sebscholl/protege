@@ -40,6 +40,7 @@ Accepted ADRs:
 36. `0036-harness-context-pipeline-and-resolver-extension-boundary-v1.md`
 37. `0037-memory-synthesis-hooks-and-chained-events-v1.md`
 38. `0038-gateway-auth-policy-dual-ingress-v1.md`
+39. `0039-openrouter-native-provider-v1.md`
 
 Notes:
 

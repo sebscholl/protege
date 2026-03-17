@@ -3,7 +3,8 @@
     "openai",
     "anthropic",
     "gemini",
-    "grok"
+    "grok",
+    "openrouter"
   ],
   "tools": [
     "shell",

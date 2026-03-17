@@ -12,6 +12,7 @@ import { loadSystemPrompt, readInferenceRuntimeConfig } from '@engine/harness/co
 import type {
   HarnessProviderAdapter,
   HarnessProviderMessage,
+  HarnessProviderModelId,
   HarnessProviderTool,
 } from '@engine/harness/providers/contract';
 import { HarnessProviderError } from '@engine/harness/providers/contract';
@@ -20,6 +21,7 @@ import { createAnthropicProviderAdapter } from '@extensions/providers/anthropic'
 import { createGeminiProviderAdapter } from '@extensions/providers/gemini';
 import { createGrokProviderAdapter } from '@extensions/providers/grok';
 import { createOpenAiProviderAdapter } from '@extensions/providers/openai';
+import { createOpenRouterProviderAdapter } from '@extensions/providers/openrouter';
 import { storeInboundMessage, storeOutboundMessage, storeThreadToolEvent } from '@engine/harness/storage';
 import type { HarnessToolExecutionContext, HarnessToolRegistry } from '@engine/harness/tools/contract';
 import { executeRegisteredTool, loadToolRegistry } from '@engine/harness/tools/registry';
@@ -325,7 +327,7 @@ export type ProviderToolLoopResult = {
 export async function executeProviderToolLoop(
   args: {
     adapter: HarnessProviderAdapter;
-    modelId: `${'openai' | 'anthropic' | 'gemini' | 'grok'}/${string}`;
+    modelId: HarnessProviderModelId;
     messages: HarnessProviderMessage[];
     tools: HarnessProviderTool[];
     temperature?: number;
@@ -887,7 +889,7 @@ export function createProviderAdapter(
       baseUrl?: string;
       version?: string;
     };
-    provider: 'openai' | 'anthropic' | 'gemini' | 'grok';
+    provider: HarnessProviderAdapter['providerId'];
   },
 ): HarnessProviderAdapter {
   if (args.provider === 'openai') {
@@ -940,6 +942,20 @@ export function createProviderAdapter(
     }
 
     return createGrokProviderAdapter({
+      config: {
+        apiKey,
+        baseUrl: args.providerConfig.baseUrl,
+      },
+    });
+  }
+
+  if (args.provider === 'openrouter') {
+    const apiKey = args.providerConfig.apiKey;
+    if (!apiKey) {
+      throw new Error('Missing OpenRouter API key. Set providers[].config.api_key_env in extensions/extensions.json and export that env var.');
+    }
+
+    return createOpenRouterProviderAdapter({
       config: {
         apiKey,
         baseUrl: args.providerConfig.baseUrl,

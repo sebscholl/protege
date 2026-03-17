@@ -10,6 +10,7 @@ let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
 let resolvedOpenAiApiKey = '';
 let resolvedOpenAiBaseUrl = '';
 let resolvedDefaultEnvName = '';
+let resolvedOpenRouterDefaultEnvName = '';
 let missingProviderErrorMessage = '';
 
 beforeAll((): void => {
@@ -59,6 +60,11 @@ beforeAll((): void => {
     manifestPath: join(workspace.tempRootPath, 'extensions-empty.json'),
   });
   resolvedDefaultEnvName = resolvedFromDefaults.apiKeyEnv ?? '';
+  const resolvedOpenRouterFromDefaults = resolveSelectedProviderRuntimeConfig({
+    provider: 'openrouter',
+    manifestPath: join(workspace.tempRootPath, 'extensions-empty.json'),
+  });
+  resolvedOpenRouterDefaultEnvName = resolvedOpenRouterFromDefaults.apiKeyEnv ?? '';
 
   try {
     resolveSelectedProviderRuntimeConfig({
@@ -90,5 +96,9 @@ describe('provider runtime config resolver', () => {
 
   it('falls back to default provider env mapping when manifest has no providers section', () => {
     expect(resolvedDefaultEnvName).toBe('ANTHROPIC_API_KEY');
+  });
+
+  it('uses the built-in default env mapping for openrouter', () => {
+    expect(resolvedOpenRouterDefaultEnvName).toBe('OPENROUTER_API_KEY');
   });
 });
