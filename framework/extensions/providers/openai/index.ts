@@ -103,7 +103,10 @@ export async function generateWithOpenAi(
         },
       })),
       temperature: args.request.temperature,
-      max_tokens: args.request.maxOutputTokens,
+      ...resolveOpenAiOutputTokensParam({
+        modelName: parsedModel.modelName,
+        maxOutputTokens: args.request.maxOutputTokens,
+      }),
     }),
   });
 
@@ -278,6 +281,30 @@ export function mapOpenAiHttpError(
     code: 'unavailable',
     message: args.bodyText || `OpenAI request failed with status ${args.status}.`,
   });
+}
+
+/**
+ * Returns the correct output-token parameter for one OpenAI model name.
+ *
+ * Reasoning-series models (o1, o3, o4) require `max_completion_tokens`.
+ * Standard models use `max_tokens`.
+ */
+export function resolveOpenAiOutputTokensParam(
+  args: {
+    modelName: string;
+    maxOutputTokens?: number;
+  },
+): Record<string, number> {
+  if (args.maxOutputTokens === undefined) {
+    return {};
+  }
+
+  const isReasoningModel = /^o[134]/.test(args.modelName);
+  if (isReasoningModel) {
+    return { max_completion_tokens: args.maxOutputTokens };
+  }
+
+  return { max_tokens: args.maxOutputTokens };
 }
 
 /**
