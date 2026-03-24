@@ -385,7 +385,8 @@ export async function executeProviderToolLoop(
       parts: response.text ? [{ type: 'text', text: response.text }] : [],
       toolCalls: response.toolCalls,
     });
-    for (const toolCall of response.toolCalls) {
+    for (let toolIndex = 0; toolIndex < response.toolCalls.length; toolIndex += 1) {
+      const toolCall = response.toolCalls[toolIndex];
       const toolDefinition = args.registry[toolCall.name];
       args.persistToolEvent?.({
         eventType: 'tool_call',
@@ -453,6 +454,28 @@ export async function executeProviderToolLoop(
           toolCallId: toolCall.id,
           payload: toolFailureResult,
         });
+        for (let skippedIndex = toolIndex + 1; skippedIndex < response.toolCalls.length; skippedIndex += 1) {
+          const skipped = response.toolCalls[skippedIndex];
+          const skippedResult = buildSkippedToolResult({
+            toolName: skipped.name,
+            toolCallId: skipped.id,
+            reason: `Skipped: prior tool "${toolCall.name}" (${toolCall.id}) failed.`,
+          });
+          providerMessages.push({
+            role: 'tool',
+            toolCallId: skipped.id,
+            parts: [{
+              type: 'text',
+              text: JSON.stringify(skippedResult),
+            }],
+          });
+          args.persistToolEvent?.({
+            eventType: 'tool_result',
+            toolName: skipped.name,
+            toolCallId: skipped.id,
+            payload: skippedResult,
+          });
+        }
         break;
       }
       args.toolContext.logger?.info({
@@ -535,6 +558,27 @@ export function buildToolFailureResult(
       stackPreview: toErrorStackPreview({
         stack: errorObject.stack,
       }),
+    },
+  };
+}
+
+/**
+ * Builds one structured skipped-tool payload for tool calls not executed due to a prior failure.
+ */
+export function buildSkippedToolResult(
+  args: {
+    toolName: string;
+    toolCallId: string;
+    reason: string;
+  },
+): Record<string, unknown> {
+  return {
+    ok: false,
+    toolName: args.toolName,
+    toolCallId: args.toolCallId,
+    error: {
+      code: 'tool_call_skipped',
+      message: args.reason,
     },
   };
 }

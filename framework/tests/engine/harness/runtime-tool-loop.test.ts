@@ -33,6 +33,11 @@ let sendEmailRecoveryInvokedActions: string[] = [];
 let unknownToolFailureHasInputContext = false;
 let unknownToolFailureHasStackPreview = false;
 let receivedEventIncludesToolInputs = false;
+let skippedBatchToolResultCount = 0;
+let skippedBatchSkippedErrorCode = '';
+let skippedBatchInvokedActions: string[] = [];
+let skippedBatchResponseText = '';
+let skippedBatchPersistedEvents: Array<{ eventType: string; toolCallId: string; toolName: string }> = [];
 
 beforeAll(async (): Promise<void> => {
   const adapter = createOpenAiProviderAdapter({
@@ -541,6 +546,94 @@ beforeAll(async (): Promise<void> => {
       },
     },
   });
+
+  const skippedBatchAdapter: HarnessProviderAdapter = {
+    providerId: 'openai',
+    capabilities: {
+      tools: true,
+      structuredOutput: false,
+      streaming: false,
+    },
+    generate: async (
+      args: {
+        request: HarnessProviderGenerateRequest;
+      },
+    ) => {
+      const toolMessages = args.request.messages.filter(
+        (message) => message.role === 'tool',
+      );
+      if (toolMessages.length === 0) {
+        return {
+          text: '',
+          toolCalls: [
+            { id: 'call_batch_1', name: 'send_email', input: { to: ['a@test.com'], subject: 'A', body: 'A' } },
+            { id: 'call_batch_2', name: 'send_email', input: { to: ['b@test.com'], subject: 'B', body: 'B' } },
+            { id: 'call_batch_3', name: 'send_email', input: { to: ['c@test.com'], subject: 'C', body: 'C' } },
+          ],
+        };
+      }
+
+      skippedBatchToolResultCount = toolMessages.length;
+      const thirdToolPayload = JSON.parse(toolMessages[2]?.parts[0]?.text ?? '{}') as Record<string, unknown>;
+      const errorPayload = typeof thirdToolPayload.error === 'object' && thirdToolPayload.error !== null
+        ? thirdToolPayload.error as Record<string, unknown>
+        : {};
+      skippedBatchSkippedErrorCode = typeof errorPayload.code === 'string' ? errorPayload.code : '';
+
+      return {
+        text: 'Recovered after skipped batch.',
+        toolCalls: [],
+      };
+    },
+  };
+
+  let invokeCount = 0;
+  skippedBatchResponseText = (await executeProviderToolLoop({
+    adapter: skippedBatchAdapter,
+    modelId: 'openai/gpt-4.1',
+    messages: [{ role: 'user', parts: [{ type: 'text', text: 'Skipped batch test.' }] }],
+    tools: [{
+      name: 'send_email',
+      description: 'Send email.',
+      inputSchema: { type: 'object' },
+    }],
+    registry,
+    maxTurns: 3,
+    toolContext: {
+      runtime: {
+        invoke: async (
+          args: {
+            action: string;
+            payload: Record<string, unknown>;
+          },
+        ): Promise<Record<string, unknown>> => {
+          invokeCount += 1;
+          skippedBatchInvokedActions.push(args.action);
+          if (invokeCount === 2) {
+            throw new Error('smtp unavailable for B');
+          }
+          return { messageId: `fixture-${args.payload.subject as string}` };
+        },
+      },
+      logger: {
+        info: (): void => undefined,
+        error: (): void => undefined,
+      },
+    },
+    persistToolEvent: (
+      event: {
+        eventType: string;
+        toolCallId: string;
+        toolName: string;
+      },
+    ): void => {
+      skippedBatchPersistedEvents.push({
+        eventType: event.eventType,
+        toolCallId: event.toolCallId,
+        toolName: event.toolName,
+      });
+    },
+  })).responseText;
 });
 
 describe('harness provider tool loop hardening', () => {
@@ -630,5 +723,28 @@ describe('harness provider tool loop hardening', () => {
 
   it('allows recovery after send_email validation failure', () => {
     expect(sendEmailRecoveryInvokedActions.join(',')).toBe('email.send');
+  });
+
+  it('pushes skipped result messages for unprocessed tool calls after mid-batch failure', () => {
+    expect(skippedBatchToolResultCount).toBe(3);
+  });
+
+  it('marks skipped tool results with tool_call_skipped error code', () => {
+    expect(skippedBatchSkippedErrorCode).toBe('tool_call_skipped');
+  });
+
+  it('does not invoke runtime actions for skipped tool calls', () => {
+    expect(skippedBatchInvokedActions.length).toBe(2);
+  });
+
+  it('persists tool_result events for skipped tool calls', () => {
+    const skippedResults = skippedBatchPersistedEvents.filter(
+      (event) => event.toolCallId === 'call_batch_3' && event.eventType === 'tool_result',
+    );
+    expect(skippedResults.length).toBe(1);
+  });
+
+  it('returns final text after recovering from a mid-batch failure with skipped results', () => {
+    expect(skippedBatchResponseText).toBe('Recovered after skipped batch.');
   });
 });
