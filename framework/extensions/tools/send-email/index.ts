@@ -110,20 +110,6 @@ export function createSendEmailTool(
           type: 'string',
           description: 'Optional HTML email body. Provide body as well.',
         },
-        inReplyTo: {
-          type: 'string',
-          description: 'Optional Message-ID for explicit threading control.',
-        },
-        references: {
-          type: 'array',
-          description: 'Optional Message-ID references for explicit threading control.',
-          items: { type: 'string' },
-        },
-        threadingMode: {
-          type: 'string',
-          description: 'Threading behavior. reply_current keeps the current thread. new_thread starts a separate conversation.',
-          enum: ['reply_current', 'new_thread'],
-        },
         headers: {
           type: 'object',
           description: 'Optional string headers to include on the outbound email.',

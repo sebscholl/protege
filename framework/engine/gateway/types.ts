@@ -53,7 +53,7 @@ export type OutboundReplyRequest = {
   subject: string;
   text: string;
   html?: string;
-  inReplyTo: string;
+  inReplyTo?: string;
   references: string[];
   headers?: Record<string, string>;
   attachments?: OutboundAttachment[];

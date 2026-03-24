@@ -44,7 +44,39 @@ export function readAttachmentNamesFromRuntimePayload(
 }
 
 /**
- * Builds one outbound reply request from a runtime email.send action payload.
+ * Infers threading mode by checking whether any outbound recipient is the
+ * person who sent the inbound message. If the agent is replying to the
+ * sender, the email threads as a reply. If the agent is emailing someone
+ * new, it starts a fresh thread.
+ */
+export function inferThreadingModeFromRecipients(
+  args: {
+    to: unknown[];
+    inboundSenderAddress: string;
+  },
+): 'reply_current' | 'new_thread' {
+  const normalizedSender = args.inboundSenderAddress.trim().toLowerCase();
+  const recipientMatchesSender = args.to.some(
+    (item) => typeof item === 'string' && item.trim().toLowerCase() === normalizedSender,
+  );
+
+  return recipientMatchesSender ? 'reply_current' : 'new_thread';
+}
+
+/**
+ * Builds one outbound email request from a runtime email.send action payload.
+ *
+ * Threading is determined in one of two ways:
+ *   1. Explicit — the caller passes `threadingMode` in the payload (internal use only).
+ *   2. Inferred — when `threadingMode` is absent, the framework checks whether
+ *      any `to` recipient matches the inbound sender. If yes → reply_current.
+ *      If no → new_thread.
+ *
+ * The two modes produce different outbound headers:
+ *   reply_current — subject becomes "Re: <original>", In-Reply-To and
+ *                   References point back to the inbound message.
+ *   new_thread    — subject is the caller's value, no In-Reply-To or
+ *                   References headers are set.
  */
 export function buildEmailSendRequestFromAction(
   args: {
@@ -54,45 +86,31 @@ export function buildEmailSendRequestFromAction(
     defaultRecursionDepth?: number;
   },
 ): OutboundReplyRequest {
-  const threadingMode = readEmailSendThreadingMode({
-    value: args.payload.threadingMode,
-  });
-  const to = Array.isArray(args.payload.to)
-    ? args.payload.to.filter(
-      (item): item is string => typeof item === 'string' && item.trim().length > 0,
-    )
-    : [];
-  if (to.length === 0) {
-    throw new Error('email.send requires non-empty payload.to recipients.');
-  }
-  if (to.some((address) => !isEmailAddress({ value: address }))) {
-    throw new Error('email.send requires payload.to recipients to be valid email addresses.');
-  }
+  const to = readValidatedRecipients({ payload: args.payload });
+  const payloadSubject = readValidatedSubject({ payload: args.payload });
+  const body = readValidatedBody({ payload: args.payload });
 
-  const payloadSubject = typeof args.payload.subject === 'string'
-    ? args.payload.subject
-    : '';
-  if (payloadSubject.trim().length === 0) {
-    throw new Error('email.send requires non-empty payload.subject.');
-  }
+  const threadingMode = args.payload.threadingMode !== undefined
+    ? readEmailSendThreadingMode({ value: args.payload.threadingMode })
+    : inferThreadingModeFromRecipients({
+        to,
+        inboundSenderAddress: args.message.from[0]?.address ?? '',
+      });
 
-  const body = typeof args.payload.body === 'string'
-    ? args.payload.body
-    : typeof args.payload.text === 'string'
-      ? args.payload.text
-      : '';
-  if (body.trim().length === 0) {
-    throw new Error('email.send requires non-empty payload.body.');
-  }
+  const { subject, inReplyTo, references } = threadingMode === 'reply_current'
+    ? {
+        subject: buildReplySubject({ subject: args.message.subject }),
+        inReplyTo: args.message.messageId,
+        references: args.message.references,
+      }
+    : {
+        subject: payloadSubject,
+        inReplyTo: typeof args.payload.inReplyTo === 'string'
+          ? args.payload.inReplyTo
+          : undefined,
+        references: toStringArray({ value: args.payload.references }) ?? [],
+      };
 
-  const inReplyTo = threadingMode === 'new_thread'
-    ? (typeof args.payload.inReplyTo === 'string' ? args.payload.inReplyTo : args.message.messageId)
-    : args.message.messageId;
-  const subject = resolveReplySubject({
-    message: args.message,
-    inReplyTo,
-    payloadSubject,
-  });
   const fromAddress = resolveReplyFromAddress({
     personaSenderAddress: args.personaSenderAddress,
   });
@@ -108,23 +126,78 @@ export function buildEmailSendRequestFromAction(
 
   return {
     to: to.map((address) => ({ address })),
-    from: {
-      address: fromAddress,
-    },
+    from: { address: fromAddress },
     cc: toAddresses({ value: args.payload.cc }),
     bcc: toAddresses({ value: args.payload.bcc }),
     subject,
     text: body,
-    html: typeof args.payload.html === 'string'
-      ? args.payload.html
-      : undefined,
+    html: typeof args.payload.html === 'string' ? args.payload.html : undefined,
     inReplyTo,
-    references: threadingMode === 'new_thread'
-      ? (toStringArray({ value: args.payload.references }) ?? [])
-      : args.message.references,
+    references,
     headers,
     attachments: toOutboundAttachments({ value: args.payload.attachments }),
   };
+}
+
+/**
+ * Reads and validates the `to` recipients from one email.send payload.
+ */
+function readValidatedRecipients(
+  args: {
+    payload: Record<string, unknown>;
+  },
+): string[] {
+  const to = Array.isArray(args.payload.to)
+    ? args.payload.to.filter(
+      (item): item is string => typeof item === 'string' && item.trim().length > 0,
+    )
+    : [];
+  if (to.length === 0) {
+    throw new Error('email.send requires non-empty payload.to recipients.');
+  }
+  if (to.some((address) => !isEmailAddress({ value: address }))) {
+    throw new Error('email.send requires payload.to recipients to be valid email addresses.');
+  }
+
+  return to;
+}
+
+/**
+ * Reads and validates the `subject` from one email.send payload.
+ */
+function readValidatedSubject(
+  args: {
+    payload: Record<string, unknown>;
+  },
+): string {
+  const subject = typeof args.payload.subject === 'string'
+    ? args.payload.subject
+    : '';
+  if (subject.trim().length === 0) {
+    throw new Error('email.send requires non-empty payload.subject.');
+  }
+
+  return subject;
+}
+
+/**
+ * Reads and validates the `body` from one email.send payload.
+ */
+function readValidatedBody(
+  args: {
+    payload: Record<string, unknown>;
+  },
+): string {
+  const body = typeof args.payload.body === 'string'
+    ? args.payload.body
+    : typeof args.payload.text === 'string'
+      ? args.payload.text
+      : '';
+  if (body.trim().length === 0) {
+    throw new Error('email.send requires non-empty payload.body.');
+  }
+
+  return body;
 }
 
 /**
@@ -201,12 +274,14 @@ export function resolveReplyFromAddress(
 }
 
 /**
- * Resolves reply subject for threaded replies while preserving explicit new-thread subjects.
+ * Returns "Re: <original subject>" when `inReplyTo` matches the inbound
+ * message id (indicating a threaded reply). Returns the caller's subject
+ * for any other value (indicating a new thread or explicit override).
  */
 export function resolveReplySubject(
   args: {
     message: InboundNormalizedMessage;
-    inReplyTo: string;
+    inReplyTo?: string;
     payloadSubject: string;
   },
 ): string {

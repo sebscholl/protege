@@ -52,11 +52,15 @@ export async function sendGatewayReply(
     baseDelayMs: 200,
   };
 
-  const parentId = normalizeMessageId({ value: args.request.inReplyTo });
-  const references = buildReplyReferences({
-    inboundReferences: args.request.references,
-    parentMessageId: parentId,
-  });
+  const parentId = args.request.inReplyTo
+    ? normalizeMessageId({ value: args.request.inReplyTo })
+    : undefined;
+  const references = parentId
+    ? buildReplyReferences({
+        inboundReferences: args.request.references,
+        parentMessageId: parentId,
+      })
+    : undefined;
 
   let attempt = 0;
   while (attempt < retryPolicy.maxAttempts) {
@@ -68,7 +72,7 @@ export async function sendGatewayReply(
           correlationId: args.correlationId ?? null,
           attempt,
           to: args.request.to.map((item) => item.address),
-          inReplyTo: parentId,
+          inReplyTo: parentId ?? null,
         },
       });
 
@@ -96,7 +100,7 @@ export async function sendGatewayReply(
           correlationId: args.correlationId ?? null,
           attempt,
           to: args.request.to.map((item) => item.address),
-          inReplyTo: parentId,
+          inReplyTo: parentId ?? null,
         },
       });
       return info;
@@ -141,11 +145,15 @@ export async function sendGatewayReplyViaRelay(
     maxAttempts: 3,
     baseDelayMs: 200,
   };
-  const parentId = normalizeMessageId({ value: args.request.inReplyTo });
-  const references = buildReplyReferences({
-    inboundReferences: args.request.references,
-    parentMessageId: parentId,
-  });
+  const parentId = args.request.inReplyTo
+    ? normalizeMessageId({ value: args.request.inReplyTo })
+    : undefined;
+  const references = parentId
+    ? buildReplyReferences({
+        inboundReferences: args.request.references,
+        parentMessageId: parentId,
+      })
+    : undefined;
 
   let attempt = 0;
   while (attempt < retryPolicy.maxAttempts) {
@@ -155,7 +163,7 @@ export async function sendGatewayReplyViaRelay(
         request: {
           ...args.request,
           inReplyTo: parentId,
-          references,
+          references: references ?? args.request.references,
         },
       });
       const envelopeRecipients = deriveEnvelopeRecipients({
