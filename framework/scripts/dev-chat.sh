@@ -13,12 +13,12 @@ TMP_DIR="$(mktemp -d)"
 PERSONA="${1:-}"
 
 echo "Creating temp workspace at $TMP_DIR"
-npx tsx "$FRAMEWORK_DIR/engine/cli/main.ts" init "$TMP_DIR"
+cd "$FRAMEWORK_DIR" && npx tsx engine/cli/main.ts init --path "$TMP_DIR"
 
 cd "$TMP_DIR"
 
 if [ -n "$PERSONA" ]; then
-  exec npx tsx "$FRAMEWORK_DIR/engine/cli/main.ts" chat --persona "$PERSONA"
+  exec npx tsx --tsconfig "$FRAMEWORK_DIR/tsconfig.json" "$FRAMEWORK_DIR/engine/cli/main.ts" chat --persona "$PERSONA"
 else
-  exec npx tsx "$FRAMEWORK_DIR/engine/cli/main.ts" chat
+  exec npx tsx --tsconfig "$FRAMEWORK_DIR/tsconfig.json" "$FRAMEWORK_DIR/engine/cli/main.ts" chat
 fi
