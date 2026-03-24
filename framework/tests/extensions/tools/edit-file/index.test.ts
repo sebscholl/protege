@@ -3,33 +3,37 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { createEditFileTool } from '@extensions/tools/edit-file/index';
 
 let toolName = '';
+let toolDescription = '';
 let schemaType = '';
+let requiredFields: string[] = [];
 let runtimeAction = '';
 let runtimePath = '';
-let runtimeOldText = '';
-let runtimeNewText = '';
-let runtimeReplaceAll = false;
-let appliedEdits = -1;
-let missingOldTextError = '';
-let invalidReplaceAllError = '';
-let decodedQuotedOldText = '';
-let decodedQuotedNewText = '';
-let decodedUnquotedOldText = '';
-let decodedUnquotedNewText = '';
-let preservedEscapedOldText = '';
-let preservedEscapedNewText = '';
+let runtimeStartLine = -1;
+let runtimeEndLine = -1;
+let runtimeContent = '';
+let removedLines = -1;
+let insertedLines = -1;
+let missingStartLineError = '';
+let missingEndLineError = '';
+let invalidStartLineTypeError = '';
+let startAfterEndError = '';
+let missingContentError = '';
 
 beforeAll(async (): Promise<void> => {
   const tool = createEditFileTool();
   toolName = tool.name;
+  toolDescription = tool.description;
   schemaType = String(tool.inputSchema.type ?? '');
+  requiredFields = Array.isArray(tool.inputSchema.required)
+    ? tool.inputSchema.required.filter((value): value is string => typeof value === 'string')
+    : [];
 
   const result = await tool.execute({
     input: {
-      path: 'README.md',
-      oldText: 'old',
-      newText: 'new',
-      replaceAll: true,
+      path: 'src/app.ts',
+      startLine: 5,
+      endLine: 7,
+      content: 'function hello() {\n  return "world";\n}',
     },
     context: {
       runtime: {
@@ -41,123 +45,64 @@ beforeAll(async (): Promise<void> => {
         ): Promise<Record<string, unknown>> => {
           runtimeAction = args.action;
           runtimePath = String(args.payload.path ?? '');
-          runtimeOldText = String(args.payload.oldText ?? '');
-          runtimeNewText = String(args.payload.newText ?? '');
-          runtimeReplaceAll = Boolean(args.payload.replaceAll);
+          runtimeStartLine = Number(args.payload.startLine ?? -1);
+          runtimeEndLine = Number(args.payload.endLine ?? -1);
+          runtimeContent = String(args.payload.content ?? '');
           return {
-            appliedEdits: 2,
+            removedLines: 3,
+            insertedLines: 3,
           };
         },
       },
     },
   });
-  appliedEdits = Number(result.appliedEdits ?? -1);
+  removedLines = Number(result.removedLines ?? -1);
+  insertedLines = Number(result.insertedLines ?? -1);
 
   try {
     await tool.execute({
-      input: {
-        path: 'README.md',
-        newText: 'new',
-      },
-      context: {
-        runtime: {
-          invoke: async (): Promise<Record<string, unknown>> => ({}),
-        },
-      },
+      input: { path: 'src/app.ts', endLine: 5, content: 'new' },
+      context: { runtime: { invoke: async (): Promise<Record<string, unknown>> => ({}) } },
     });
   } catch (error) {
-    missingOldTextError = (error as Error).message;
+    missingStartLineError = (error as Error).message;
   }
 
   try {
     await tool.execute({
-      input: {
-        path: 'README.md',
-        oldText: 'old',
-        newText: 'new',
-        replaceAll: 'yes',
-      },
-      context: {
-        runtime: {
-          invoke: async (): Promise<Record<string, unknown>> => ({}),
-        },
-      },
+      input: { path: 'src/app.ts', startLine: 5, content: 'new' },
+      context: { runtime: { invoke: async (): Promise<Record<string, unknown>> => ({}) } },
     });
   } catch (error) {
-    invalidReplaceAllError = (error as Error).message;
+    missingEndLineError = (error as Error).message;
   }
 
-  await tool.execute({
-    input: {
-      path: 'README.md',
-      oldText: '"line one\\nline two"',
-      newText: '"line one\\nline done"',
-    },
-    context: {
-      runtime: {
-        invoke: async (
-          args: {
-            action: string;
-            payload: Record<string, unknown>;
-          },
-        ): Promise<Record<string, unknown>> => {
-          decodedQuotedOldText = String(args.payload.oldText ?? '');
-          decodedQuotedNewText = String(args.payload.newText ?? '');
-          return {
-            appliedEdits: 1,
-          };
-        },
-      },
-    },
-  });
+  try {
+    await tool.execute({
+      input: { path: 'src/app.ts', startLine: 'five', endLine: 7, content: 'new' },
+      context: { runtime: { invoke: async (): Promise<Record<string, unknown>> => ({}) } },
+    });
+  } catch (error) {
+    invalidStartLineTypeError = (error as Error).message;
+  }
 
-  await tool.execute({
-    input: {
-      path: 'README.md',
-      oldText: 'line one\\nline two\\nline three',
-      newText: 'line one\\nline changed\\nline three',
-    },
-    context: {
-      runtime: {
-        invoke: async (
-          args: {
-            action: string;
-            payload: Record<string, unknown>;
-          },
-        ): Promise<Record<string, unknown>> => {
-          decodedUnquotedOldText = String(args.payload.oldText ?? '');
-          decodedUnquotedNewText = String(args.payload.newText ?? '');
-          return {
-            appliedEdits: 1,
-          };
-        },
-      },
-    },
-  });
+  try {
+    await tool.execute({
+      input: { path: 'src/app.ts', startLine: 10, endLine: 5, content: 'new' },
+      context: { runtime: { invoke: async (): Promise<Record<string, unknown>> => ({}) } },
+    });
+  } catch (error) {
+    startAfterEndError = (error as Error).message;
+  }
 
-  await tool.execute({
-    input: {
-      path: 'README.md',
-      oldText: 'const literal = "\\\\n";',
-      newText: 'const literal = "\\\\n changed";',
-    },
-    context: {
-      runtime: {
-        invoke: async (
-          args: {
-            action: string;
-            payload: Record<string, unknown>;
-          },
-        ): Promise<Record<string, unknown>> => {
-          preservedEscapedOldText = String(args.payload.oldText ?? '');
-          preservedEscapedNewText = String(args.payload.newText ?? '');
-          return {
-            appliedEdits: 1,
-          };
-        },
-      },
-    },
-  });
+  try {
+    await tool.execute({
+      input: { path: 'src/app.ts', startLine: 5, endLine: 7 },
+      context: { runtime: { invoke: async (): Promise<Record<string, unknown>> => ({}) } },
+    });
+  } catch (error) {
+    missingContentError = (error as Error).message;
+  }
 });
 
 describe('edit_file tool', () => {
@@ -169,59 +114,59 @@ describe('edit_file tool', () => {
     expect(schemaType).toBe('object');
   });
 
+  it('requires path, startLine, endLine, and content fields', () => {
+    expect(requiredFields).toEqual(['path', 'startLine', 'endLine', 'content']);
+  });
+
+  it('describes line-range replacement behavior', () => {
+    expect(toolDescription.includes('line')).toBe(true);
+  });
+
   it('invokes runtime action file.edit', () => {
     expect(runtimeAction).toBe('file.edit');
   });
 
-  it('forwards path payload to runtime', () => {
-    expect(runtimePath).toBe('README.md');
+  it('forwards path to runtime payload', () => {
+    expect(runtimePath).toBe('src/app.ts');
   });
 
-  it('forwards oldText payload to runtime', () => {
-    expect(runtimeOldText).toBe('old');
+  it('forwards startLine to runtime payload', () => {
+    expect(runtimeStartLine).toBe(5);
   });
 
-  it('forwards newText payload to runtime', () => {
-    expect(runtimeNewText).toBe('new');
+  it('forwards endLine to runtime payload', () => {
+    expect(runtimeEndLine).toBe(7);
   });
 
-  it('forwards replaceAll payload to runtime', () => {
-    expect(runtimeReplaceAll).toBe(true);
+  it('forwards content to runtime payload', () => {
+    expect(runtimeContent).toBe('function hello() {\n  return "world";\n}');
   });
 
-  it('returns runtime edit metadata unchanged', () => {
-    expect(appliedEdits).toBe(2);
+  it('returns runtime removedLines metadata', () => {
+    expect(removedLines).toBe(3);
   });
 
-  it('fails when required oldText is missing', () => {
-    expect(missingOldTextError.includes('oldText')).toBe(true);
+  it('returns runtime insertedLines metadata', () => {
+    expect(insertedLines).toBe(3);
   });
 
-  it('fails when replaceAll is not boolean', () => {
-    expect(invalidReplaceAllError.includes('replaceAll')).toBe(true);
+  it('fails when startLine is missing', () => {
+    expect(missingStartLineError.includes('startLine')).toBe(true);
   });
 
-  it('decodes quoted JSON-string oldText payloads before runtime invoke', () => {
-    expect(decodedQuotedOldText).toBe('line one\nline two');
+  it('fails when endLine is missing', () => {
+    expect(missingEndLineError.includes('endLine')).toBe(true);
   });
 
-  it('decodes quoted JSON-string newText payloads before runtime invoke', () => {
-    expect(decodedQuotedNewText).toBe('line one\nline done');
+  it('fails when startLine is not an integer', () => {
+    expect(invalidStartLineTypeError.includes('startLine')).toBe(true);
   });
 
-  it('decodes unquoted escaped oldText payloads when likely double-escaped', () => {
-    expect(decodedUnquotedOldText).toBe('line one\nline two\nline three');
+  it('fails when startLine is greater than endLine', () => {
+    expect(startAfterEndError.includes('startLine')).toBe(true);
   });
 
-  it('decodes unquoted escaped newText payloads when likely double-escaped', () => {
-    expect(decodedUnquotedNewText).toBe('line one\nline changed\nline three');
-  });
-
-  it('preserves oldText escaped literals when decode heuristic does not apply', () => {
-    expect(preservedEscapedOldText).toBe('const literal = "\\\\n";');
-  });
-
-  it('preserves newText escaped literals when decode heuristic does not apply', () => {
-    expect(preservedEscapedNewText).toBe('const literal = "\\\\n changed";');
+  it('fails when content is missing', () => {
+    expect(missingContentError.includes('content')).toBe(true);
   });
 });

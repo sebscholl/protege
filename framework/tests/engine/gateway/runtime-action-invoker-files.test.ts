@@ -11,10 +11,9 @@ let tempRootPath = '';
 let readContent = '';
 let writeContent = '';
 let editedContent = '';
-let editAppliedCount = -1;
-let editTextNotFoundError = '';
-let windowsEditedContent = '';
-let windowsEditAppliedCount = -1;
+let editRemovedLines = -1;
+let editInsertedLines = -1;
+let editOutOfBoundsError = '';
 let outsideReadContent = '';
 let outsideFilePath = '';
 let workspace!: ReturnType<typeof createTestWorkspaceFromFixture>;
@@ -44,11 +43,7 @@ beforeAll(async (): Promise<void> => {
   });
   workspace.writeFile({
     relativePath: 'tmp/edit-target.txt',
-    payload: 'alpha beta alpha',
-  });
-  workspace.writeFile({
-    relativePath: 'tmp/windows-edit-target.txt',
-    payload: 'first\r\nsecond\r\nthird',
+    payload: 'line 1\nline 2\nline 3\nline 4\n',
   });
   outsideFilePath = join('/tmp', 'protege-outside-runtime-read.txt');
   writeFileSync(outsideFilePath, 'outside-content', 'utf8');
@@ -82,36 +77,27 @@ beforeAll(async (): Promise<void> => {
     action: 'file.edit',
     payload: {
       path: 'tmp/edit-target.txt',
-      oldText: 'alpha',
-      newText: 'omega',
-      replaceAll: true,
+      startLine: 2,
+      endLine: 3,
+      content: 'replaced 2\nreplaced 3',
     },
   });
-  editAppliedCount = Number(editResult.appliedEdits ?? -1);
+  editRemovedLines = Number(editResult.removedLines ?? -1);
+  editInsertedLines = Number(editResult.insertedLines ?? -1);
   editedContent = readFileSync(join(tempRootPath, 'tmp', 'edit-target.txt'), 'utf8');
-
-  const windowsEditResult = await invoke({
-    action: 'file.edit',
-    payload: {
-      path: 'tmp/windows-edit-target.txt',
-      oldText: 'first\nsecond',
-      newText: 'first\nupdated',
-    },
-  });
-  windowsEditAppliedCount = Number(windowsEditResult.appliedEdits ?? -1);
-  windowsEditedContent = readFileSync(join(tempRootPath, 'tmp', 'windows-edit-target.txt'), 'utf8');
 
   try {
     await invoke({
       action: 'file.edit',
       payload: {
         path: 'tmp/edit-target.txt',
-        oldText: 'not-present',
-        newText: 'x',
+        startLine: 0,
+        endLine: 1,
+        content: 'x',
       },
     });
   } catch (error) {
-    editTextNotFoundError = (error as Error).message;
+    editOutOfBoundsError = (error as Error).message;
   }
 
   const outsideReadResult = await invoke({
@@ -136,24 +122,20 @@ describe('gateway runtime action invoker file actions', () => {
     expect(writeContent).toBe('written-content');
   });
 
-  it('applies literal replacements through file.edit action', () => {
-    expect(editedContent).toBe('omega beta omega');
+  it('replaces a line range through file.edit action', () => {
+    expect(editedContent).toBe('line 1\nreplaced 2\nreplaced 3\nline 4\n');
   });
 
-  it('returns applied edit count for file.edit action', () => {
-    expect(editAppliedCount).toBe(2);
+  it('returns removedLines count for file.edit action', () => {
+    expect(editRemovedLines).toBe(2);
   });
 
-  it('matches oldText against CRLF files when payload uses LF newlines', () => {
-    expect(windowsEditAppliedCount).toBe(1);
+  it('returns insertedLines count for file.edit action', () => {
+    expect(editInsertedLines).toBe(2);
   });
 
-  it('applies replacement content using target file newline style', () => {
-    expect(windowsEditedContent).toBe('first\r\nupdated\r\nthird');
-  });
-
-  it('fails file.edit when oldText is not present', () => {
-    expect(editTextNotFoundError.includes('could not find')).toBe(true);
+  it('fails file.edit when startLine is out of bounds', () => {
+    expect(editOutOfBoundsError.includes('startLine')).toBe(true);
   });
 
   it('allows file actions outside workspace root for v1 flexibility', () => {

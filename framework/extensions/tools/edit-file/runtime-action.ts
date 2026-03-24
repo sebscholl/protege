@@ -1,14 +1,12 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
-import {
-  readOptionalRuntimeBoolean,
-  readRequiredRuntimePath,
-  readRequiredRuntimeString,
-  readRuntimeStringValue,
-} from '../shared/runtime-action-helpers';
+import { readRequiredRuntimePath } from '../shared/runtime-action-helpers';
 
 /**
- * Runs one file.edit runtime action using literal replacement semantics.
+ * Runs one file.edit runtime action using line-range replacement semantics.
+ *
+ * Reads the target file, replaces lines startLine through endLine (1-based,
+ * inclusive) with the provided content, and writes the result back to disk.
  */
 export function runEditFileRuntimeAction(
   args: {
@@ -21,121 +19,78 @@ export function runEditFileRuntimeAction(
     actionName: 'file.edit',
     enforceWorkspaceRoot: false,
   });
-  const oldText = readRequiredRuntimeString({
+  const startLine = readRequiredRuntimeInteger({
     payload: args.payload,
-    fieldName: 'oldText',
+    fieldName: 'startLine',
     actionName: 'file.edit',
   });
-  if (oldText.length === 0) {
-    throw new Error('file.edit payload.oldText must not be empty.');
-  }
-  const newText = readRuntimeStringValue({
+  const endLine = readRequiredRuntimeInteger({
     payload: args.payload,
-    fieldName: 'newText',
+    fieldName: 'endLine',
     actionName: 'file.edit',
   });
-  const replaceAll = readOptionalRuntimeBoolean({
+  const content = readRuntimeContentString({
     payload: args.payload,
-    fieldName: 'replaceAll',
+    fieldName: 'content',
     actionName: 'file.edit',
-  }) ?? false;
+  });
 
   const original = readFileSync(targetPath, 'utf8');
-  const primaryMatchCount = countLiteralMatches({
-    haystack: original,
-    needle: oldText,
-  });
-  const newlineVariant = buildNewlineAdjustedEditPayload({
-    original,
-    oldText,
-    newText,
-  });
-  const fallbackMatchCount = newlineVariant
-    ? countLiteralMatches({
-      haystack: original,
-      needle: newlineVariant.oldText,
-    })
-    : 0;
-  const usingFallback = primaryMatchCount <= 0 && fallbackMatchCount > 0 && newlineVariant !== undefined;
-  const selectedOldText = usingFallback ? newlineVariant.oldText : oldText;
-  const selectedNewText = usingFallback ? newlineVariant.newText : newText;
-  const matchCount = usingFallback ? fallbackMatchCount : primaryMatchCount;
-  if (matchCount <= 0) {
-    const newlineHint = hasNewlineOnlyMatch({
-      original,
-      oldText,
-    })
-      ? ' Newline style mismatch detected between payload.oldText and file content.'
-      : '';
-    throw new Error(`file.edit could not find payload.oldText in target file.${newlineHint}`);
+  const lines = original.split('\n');
+
+  if (startLine < 1) {
+    throw new Error('file.edit startLine must be >= 1.');
+  }
+  if (endLine > lines.length) {
+    throw new Error(`file.edit endLine (${endLine}) exceeds file length (${lines.length} lines).`);
   }
 
-  const next = replaceAll
-    ? original.split(selectedOldText).join(selectedNewText)
-    : original.replace(selectedOldText, selectedNewText);
-  writeFileSync(targetPath, next, 'utf8');
+  const replacementLines = content.length === 0 ? [] : content.split('\n');
+  const removedLines = endLine - startLine + 1;
+
+  lines.splice(startLine - 1, removedLines, ...replacementLines);
+
+  writeFileSync(targetPath, lines.join('\n'), 'utf8');
+
   return {
     path: targetPath,
-    appliedEdits: replaceAll ? matchCount : 1,
+    removedLines,
+    insertedLines: replacementLines.length,
   };
 }
 
 /**
- * Counts literal occurrences of one needle inside one haystack string.
+ * Reads one required integer field from a runtime action payload.
  */
-export function countLiteralMatches(
+function readRequiredRuntimeInteger(
   args: {
-    haystack: string;
-    needle: string;
+    payload: Record<string, unknown>;
+    fieldName: string;
+    actionName: string;
   },
 ): number {
-  return args.haystack.split(args.needle).length - 1;
+  const value = args.payload[args.fieldName];
+  if (typeof value !== 'number' || !Number.isInteger(value)) {
+    throw new Error(`${args.actionName} payload.${args.fieldName} must be an integer.`);
+  }
+
+  return value;
 }
 
 /**
- * Builds newline-adjusted edit payload text when file and payload newline styles differ.
+ * Reads one required string field from a runtime action payload (may be empty).
  */
-export function buildNewlineAdjustedEditPayload(
+function readRuntimeContentString(
   args: {
-    original: string;
-    oldText: string;
-    newText: string;
+    payload: Record<string, unknown>;
+    fieldName: string;
+    actionName: string;
   },
-): {
-  oldText: string;
-  newText: string;
-} | undefined {
-  if (args.original.includes('\r\n') && args.oldText.includes('\n') && !args.oldText.includes('\r\n')) {
-    return {
-      oldText: args.oldText.replace(/\n/g, '\r\n'),
-      newText: args.newText.replace(/\n/g, '\r\n'),
-    };
+): string {
+  const value = args.payload[args.fieldName];
+  if (typeof value !== 'string') {
+    throw new Error(`${args.actionName} payload.${args.fieldName} must be a string.`);
   }
 
-  if (!args.original.includes('\r\n') && args.oldText.includes('\r\n')) {
-    return {
-      oldText: args.oldText.replace(/\r\n/g, '\n'),
-      newText: args.newText.replace(/\r\n/g, '\n'),
-    };
-  }
-
-  return undefined;
-}
-
-/**
- * Returns true when oldText matches only after normalizing both values to LF newlines.
- */
-export function hasNewlineOnlyMatch(
-  args: {
-    original: string;
-    oldText: string;
-  },
-): boolean {
-  const normalizedOriginal = args.original.replace(/\r\n/g, '\n');
-  const normalizedOldText = args.oldText.replace(/\r\n/g, '\n');
-  if (normalizedOriginal === args.original && normalizedOldText === args.oldText) {
-    return false;
-  }
-
-  return normalizedOriginal.includes(normalizedOldText);
+  return value;
 }

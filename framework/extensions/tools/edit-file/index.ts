@@ -3,16 +3,14 @@ import type {
   HarnessToolExecutionContext,
 } from 'protege-toolkit';
 
-import { normalizeToolTextContent } from '../shared/content-normalization';
-
 /**
  * Represents accepted input payload for edit_file tool execution.
  */
 export type EditFileToolInput = {
   path: string;
-  oldText: string;
-  newText: string;
-  replaceAll?: boolean;
+  startLine: number;
+  endLine: number;
+  content: string;
 };
 
 /**
@@ -21,28 +19,32 @@ export type EditFileToolInput = {
 export class EditFileToolInputError extends Error { }
 
 /**
- * Creates one edit_file tool definition with validated input execution behavior.
+ * Creates one edit_file tool definition using line-range replacement semantics.
  */
 export function createEditFileTool(): HarnessToolDefinition {
   return {
     name: 'edit_file',
-    description: 'Edit one UTF-8 text file using literal text replacement.',
+    description: 'Replace lines in one UTF-8 text file. Specify the inclusive line range to replace and the new content. Read the file first to confirm line numbers.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
-      required: ['path', 'oldText', 'newText'],
+      required: ['path', 'startLine', 'endLine', 'content'],
       properties: {
         path: {
           type: 'string',
+          description: 'File path to edit.',
         },
-        oldText: {
+        startLine: {
+          type: 'integer',
+          description: 'First line to replace (1-based, inclusive).',
+        },
+        endLine: {
+          type: 'integer',
+          description: 'Last line to replace (1-based, inclusive).',
+        },
+        content: {
           type: 'string',
-        },
-        newText: {
-          type: 'string',
-        },
-        replaceAll: {
-          type: 'boolean',
+          description: 'Replacement content. May be empty to delete lines.',
         },
       },
     },
@@ -80,14 +82,15 @@ export async function executeEditFileTool(
     event: 'harness.tool.edit_file.completed',
     context: {
       path: normalized.path,
-      replaceAll: normalized.replaceAll ?? false,
+      startLine: normalized.startLine,
+      endLine: normalized.endLine,
     },
   });
   return result;
 }
 
 /**
- * Validates and normalizes one edit_file payload.
+ * Validates and normalizes one edit_file payload into line-range fields.
  */
 export function normalizeEditFileInput(
   args: {
@@ -98,29 +101,23 @@ export function normalizeEditFileInput(
     value: args.input.path,
     fieldName: 'path',
   });
-  const oldText = readRequiredString({
-    value: args.input.oldText,
-    fieldName: 'oldText',
+  const startLine = readRequiredInteger({
+    value: args.input.startLine,
+    fieldName: 'startLine',
   });
-  const newText = normalizeToolTextContent({
-    content: readContentString({
-      value: args.input.newText,
-      fieldName: 'newText',
-    }),
+  const endLine = readRequiredInteger({
+    value: args.input.endLine,
+    fieldName: 'endLine',
   });
-  const normalizedOldText = normalizeToolTextContent({
-    content: oldText,
+  if (startLine > endLine) {
+    throw new EditFileToolInputError('edit_file startLine must not be greater than endLine.');
+  }
+  const content = readRequiredContent({
+    value: args.input.content,
+    fieldName: 'content',
   });
-  const replaceAll = readOptionalBoolean({
-    value: args.input.replaceAll,
-    fieldName: 'replaceAll',
-  });
-  return {
-    path,
-    oldText: normalizedOldText,
-    newText,
-    replaceAll,
-  };
+
+  return { path, startLine, endLine, content };
 }
 
 /**
@@ -142,7 +139,7 @@ export function readRequiredString(
 /**
  * Reads one required string field which may be empty.
  */
-export function readContentString(
+export function readRequiredContent(
   args: {
     value: unknown;
     fieldName: string;
@@ -156,19 +153,16 @@ export function readContentString(
 }
 
 /**
- * Reads one optional boolean field.
+ * Reads one required integer field.
  */
-export function readOptionalBoolean(
+export function readRequiredInteger(
   args: {
     value: unknown;
     fieldName: string;
   },
-): boolean | undefined {
-  if (args.value === undefined) {
-    return undefined;
-  }
-  if (typeof args.value !== 'boolean') {
-    throw new EditFileToolInputError(`edit_file input field "${args.fieldName}" must be a boolean.`);
+): number {
+  if (typeof args.value !== 'number' || !Number.isInteger(args.value)) {
+    throw new EditFileToolInputError(`edit_file input field "${args.fieldName}" must be an integer.`);
   }
 
   return args.value;

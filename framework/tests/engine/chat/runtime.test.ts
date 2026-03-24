@@ -158,15 +158,15 @@ beforeAll(async (): Promise<void> => {
 
   workspace.writeFile({
     relativePath: 'tmp/chat-edit.txt',
-    payload: 'before after before',
+    payload: 'line 1\nline 2\nline 3\n',
   });
   await invoke({
     action: 'file.edit',
     payload: {
       path: 'tmp/chat-edit.txt',
-      oldText: 'before',
-      newText: 'after',
-      replaceAll: true,
+      startLine: 2,
+      endLine: 2,
+      content: 'replaced',
     },
   });
   fileEditContent = readFileSync(join(tempRootPath, 'tmp', 'chat-edit.txt'), 'utf8');
@@ -317,7 +317,7 @@ describe('chat runtime helper behavior', () => {
   });
 
   it('supports file.edit runtime actions in chat mode', () => {
-    expect(fileEditContent).toBe('after after after');
+    expect(fileEditContent).toBe('line 1\nreplaced\nline 3\n');
   });
 
   it('renders simplified view and display mode in status line prefix', () => {
