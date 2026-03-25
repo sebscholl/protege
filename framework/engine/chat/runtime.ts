@@ -17,6 +17,7 @@ import { buildInboxViewModel, buildThreadViewModel } from '@engine/chat/view-mod
 import { createLocalChatThreadSeed, storeLocalChatUserMessage } from '@engine/chat/writes';
 import { isHookEventName } from '@engine/harness/hooks/events';
 import { createHookDispatcher, loadHookRegistry } from '@engine/harness/hooks/registry';
+import { readInferenceRuntimeConfig } from '@engine/harness/config';
 import { resolveMigrationsDirPath, runHarnessForPersistedInboundMessage } from '@engine/harness/runtime';
 import { storeOutboundMessage } from '@engine/harness/storage';
 import { initializeDatabase } from '@engine/shared/database';
@@ -70,6 +71,8 @@ export async function startChatRuntime(
   args: StartChatRuntimeOptions,
 ): Promise<void> {
   const globalConfig = readGlobalRuntimeConfig();
+  const inferenceConfig = readInferenceRuntimeConfig();
+  const modelLabel = inferenceConfig.model;
   const allPersonas = listPersonas();
   const filteredPersonas = args.personaSelector
     ? [resolvePersonaBySelector({
@@ -267,6 +270,7 @@ export async function startChatRuntime(
         footerHint: `${globalConfig.chat.keymap.open_thread}=create thread for persona  Esc=cancel`,
         statusMessage,
         theme: globalConfig.chatUiTheme,
+        modelLabel,
       }));
       screen.render();
       return;
@@ -308,6 +312,7 @@ export async function startChatRuntime(
           footerHint: inboxViewModel.footerHint,
           statusMessage,
           theme: globalConfig.chatUiTheme,
+          modelLabel,
         }),
       );
       screen.render();
@@ -370,6 +375,7 @@ export async function startChatRuntime(
         footerHint: threadViewModel.footerHint,
         statusMessage,
         theme: globalConfig.chatUiTheme,
+        modelLabel,
       }),
     );
     if (shouldScrollThreadToBottom) {
@@ -953,6 +959,7 @@ export function buildStatusLine(
     footerHint: string;
     statusMessage: string;
     theme: ChatUiTheme;
+    modelLabel?: string;
   },
 ): string {
   const prefix = wrapWithBlessedTag({
@@ -980,15 +987,23 @@ export function buildStatusLine(
     tags: args.theme.status.dividerTag,
     value: '|',
   });
-  const hasStatusMessage = args.statusMessage.trim().length > 0;
-  if (!hasStatusMessage) {
+  const trailingParts: string[] = [];
+  if (args.modelLabel && args.modelLabel.trim().length > 0) {
+    trailingParts.push(wrapWithBlessedTag({
+      tags: args.theme.status.commandTextTag,
+      value: args.modelLabel,
+    }));
+  }
+  if (args.statusMessage.trim().length > 0) {
+    trailingParts.push(wrapWithBlessedTag({
+      tags: args.theme.status.messageTag,
+      value: args.statusMessage,
+    }));
+  }
+  if (trailingParts.length === 0) {
     return `${prefix} ${divider} ${commandStrip}`;
   }
-  const styledMessage = wrapWithBlessedTag({
-    tags: args.theme.status.messageTag,
-    value: args.statusMessage,
-  });
-  return `${prefix} ${divider} ${commandStrip} ${divider} ${styledMessage}`;
+  return `${prefix} ${divider} ${commandStrip} ${divider} ${trailingParts.join(` ${divider} `)}`;
 }
 
 /**

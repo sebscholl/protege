@@ -113,7 +113,8 @@ export function readChatThreadDetail(
     threadId: args.threadId,
   });
 
-  const messages = rows.map((row) => parseChatThreadMessageRow({ row }));
+  const allMessages = rows.map((row) => parseChatThreadMessageRow({ row }));
+  const messages = allMessages.filter((message) => !isSeedMessage({ message }));
   const firstMessage = rows.length > 0 ? rows[0] : undefined;
   const isReadOnly = !isWritableLocalSyntheticThread({
     firstMessage,
@@ -121,7 +122,7 @@ export function readChatThreadDetail(
   });
   return {
     threadId: args.threadId,
-    subject: messages[0]?.subject ?? '',
+    subject: allMessages[0]?.subject ?? '',
     messages,
     isReadOnly,
   };
@@ -206,6 +207,17 @@ export function buildChatPreview(
   }
 
   return `${compact.slice(0, (args.maxLength ?? 120) - 1)}…`;
+}
+
+/**
+ * Returns true when one message is the synthetic seed inserted at thread creation.
+ */
+export function isSeedMessage(
+  args: {
+    message: ChatThreadMessage;
+  },
+): boolean {
+  return args.message.metadata.chat_local_seed === true;
 }
 
 /**
