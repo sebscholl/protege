@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.1-alpha.4 — 2026-03-25
 
 ### Fixed
 
