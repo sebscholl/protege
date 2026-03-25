@@ -8,9 +8,9 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Docs](https://img.shields.io/badge/docs-protege.bot-blue)](https://docs.protege.bot)
 
-**Email-native AI agent focused on simplicity, interoperability, and self-sovereignty.**
+**Email-native Agent Framework - focused on simplicity, interoperability, and self-sovereignty.**
 
-Email is the ultimate open protocol for agent communication — decentralized, universal, asynchronous, and threaded natively. Protege embraces email as the primary interface so that any person or system with an email client can interact with your agent without installing anything, creating accounts, or adopting proprietary APIs.
+Email is the ultimate open protocol for agent communication — decentralized, universal, asynchronous, and threaded natively. Protege embraces email as the primary interface so that any person or system with an email client can directly interact with your agent without installing anything, creating accounts, or adopting proprietary APIs.
 
 ## Why Protege
 
@@ -59,15 +59,15 @@ Full walkthrough: [Getting Started](https://docs.protege.bot/getting-started/)
 ## Architecture
 
 ```
-┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
-│  Any Email Client │─SMTP─▶  Relay (optional) │─WS──▶  Local Bot Client │
-│  Gmail, Outlook…  │      │  Public MX bridge │◀─WS──│  Your hardware    │
-└──────────────────┘      └──────────────────┘      └──────────────────┘
-                                                      │ Gateway
-                                                      │ Harness (LLM)
-                                                      │ Scheduler
-                                                      │ Memory
-                                                      │ Extensions
+┌────────────────────┐       ┌────────────────────┐      ┌──────────────────┐
+│  Any Email Client  │─SMTP─▶  Relay (optional)   │─WS──▶  Local Bot Client │
+│  Gmail, Outlook…   │       │  Public MX bridge  │◀─WS──│  Your hardware   │
+└────────────────────┘       └────────────────────┘      └──────────────────┘
+                                                          │ Gateway
+                                                          │ Harness (LLM)
+                                                          │ Scheduler
+                                                          │ Memory
+                                                          │ Extensions
 ```
 
 All sensitive data and agent intelligence remains fully self-hosted. The relay is an optional convenience — Protege works without it if you can receive inbound SMTP directly.
