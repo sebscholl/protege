@@ -1,5 +1,13 @@
 # Protege Monorepo
 
+[![CI](https://github.com/sebscholl/protege/actions/workflows/ci.yml/badge.svg)](https://github.com/sebscholl/protege/actions/workflows/ci.yml)
+[![Release](https://github.com/sebscholl/protege/actions/workflows/release.yml/badge.svg)](https://github.com/sebscholl/protege/actions/workflows/release.yml)
+[![npm version](https://img.shields.io/npm/v/protege-toolkit/alpha?color=cb3837&label=npm)](https://www.npmjs.com/package/protege-toolkit)
+[![GitHub release](https://img.shields.io/github/v/release/sebscholl/protege?include_prereleases&label=release)](https://github.com/sebscholl/protege/releases/latest)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D22-brightgreen?logo=node.js)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Docs](https://img.shields.io/badge/docs-protege.bot-blue)](https://docs.protege.bot)
+
 Documentation: https://docs.protege.bot
 
 This repository contains three fully separate packages:
