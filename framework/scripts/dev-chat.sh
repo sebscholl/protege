@@ -41,13 +41,13 @@ npx tsx engine/cli/main.ts setup \
 cat > "$TMP_DIR/configs/inference.json" << 'EOF'
 {
   "provider": "anthropic",
-  "model": "claude-sonnet-4-5-20250514",
+  "model": "claude-sonnet-4-6",
   "recursion_depth": 6,
   "max_tool_turns": 20
 }
 EOF
 
-echo "Using anthropic/claude-sonnet-4-5-20250514"
+echo "Using anthropic/claude-sonnet-4-6"
 
 # Launch chat from the temp workspace
 cd "$TMP_DIR"
