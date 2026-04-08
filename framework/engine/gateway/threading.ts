@@ -68,7 +68,7 @@ export function deriveThreadId(
     : undefined;
   const normalizedMessageId = normalizeMessageId({ value: args.messageId });
   const anchor = normalizedReferences.length > 0
-    ? normalizedReferences[normalizedReferences.length - 1]
+    ? normalizedReferences[0]
     : normalizedInReplyTo ?? normalizedMessageId;
 
   return createHash('sha256').update(anchor).digest('hex');

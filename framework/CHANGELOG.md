@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.1-alpha.5 — 2026-04-08
+
+### Fixed
+
+- Email thread ID derivation now anchors on the root (first) reference in the RFC 5322 `References` header instead of the last. Previously, each reply in a multi-party thread produced a different thread ID, fragmenting a single conversation into many separate threads in the database and chat UI.
+
 ## 0.0.1-alpha.4 — 2026-03-25
 
 ### Fixed
