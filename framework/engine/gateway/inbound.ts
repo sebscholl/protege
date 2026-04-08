@@ -671,7 +671,7 @@ export function sanitizeMessageIdForPath(
     messageId: string;
   },
 ): string {
-  return normalizeMessageId({ value: args.messageId }).replace(/[^a-z0-9.-]/g, '_');
+  return normalizeMessageId({ value: args.messageId }).replace(/[^a-zA-Z0-9.-]/g, '_');
 }
 
 /**

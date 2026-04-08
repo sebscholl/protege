@@ -9,8 +9,13 @@ import {
 } from '@engine/gateway/threading';
 
 describe('gateway threading utilities', () => {
-  it('normalizes message ids with brackets and lowercase', () => {
-    expect(normalizeMessageId({ value: ' Foo@Bar.COM ' })).toBe('<foo@bar.com>');
+  it('normalizes message ids with brackets and preserves case', () => {
+    expect(normalizeMessageId({ value: ' Foo@Bar.COM ' })).toBe('<Foo@Bar.COM>');
+  });
+
+  it('preserves mixed-case Message-IDs from Gmail', () => {
+    const gmailId = '<CALt4BUQooUKMNXsnFSJebs3K0jjk=6z4Mq=ZwZSi48-HCkMZ3A@mail.gmail.com>';
+    expect(normalizeMessageId({ value: gmailId })).toBe(gmailId);
   });
 
   it('ensures message ids fall back to synthetic values', () => {
@@ -26,7 +31,7 @@ describe('gateway threading utilities', () => {
   });
 
   it('builds outbound references by appending normalized parent id', () => {
-    expect(buildReplyReferences({ inboundReferences: ['<a@b>'], parentMessageId: 'C@D' })).toEqual(['<a@b>', '<c@d>']);
+    expect(buildReplyReferences({ inboundReferences: ['<a@b>'], parentMessageId: 'C@D' })).toEqual(['<a@b>', '<C@D>']);
   });
 
   it('adds re prefix to plain subjects', () => {
@@ -65,5 +70,15 @@ describe('gateway threading utilities', () => {
     const branchB = deriveThreadId({ references: [root, '<b@example.com>'], messageId: '<b2@example.com>' });
 
     expect(branchA).toBe(branchB);
+  });
+
+  it('groups replies with mixed-case root references into the same thread', () => {
+    const originalId = '<CALt4BUQoo@mail.gmail.com>';
+    const replyId = '<protege.abc123@localhost>';
+
+    const threadFromOriginal = deriveThreadId({ references: [], messageId: originalId });
+    const threadFromReply = deriveThreadId({ references: [originalId], messageId: replyId });
+
+    expect(threadFromOriginal).toBe(threadFromReply);
   });
 });

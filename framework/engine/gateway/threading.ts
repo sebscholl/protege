@@ -8,7 +8,7 @@ export function normalizeMessageId(
     value: string;
   },
 ): string {
-  const trimmed = args.value.trim().toLowerCase();
+  const trimmed = args.value.trim();
   if (trimmed.startsWith('<') && trimmed.endsWith('>')) {
     return trimmed;
   }

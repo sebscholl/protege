@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.1-alpha.6 — 2026-04-09
+
+### Fixed
+
+- `normalizeMessageId` no longer lowercases Message-IDs. The original case is preserved in storage and outbound headers (In-Reply-To, References), fixing broken Gmail threading where replies started new threads instead of continuing the original conversation.
+
 ## 0.0.1-alpha.5 — 2026-04-08
 
 ### Fixed
