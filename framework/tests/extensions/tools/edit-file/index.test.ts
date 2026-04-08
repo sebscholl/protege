@@ -1,6 +1,13 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createEditFileTool } from '@extensions/tools/edit-file/index';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
+
+const workspace = createTestWorkspaceFromFixture({ fixtureName: 'minimal-protege', tempPrefix: 'protege-edit-file-', chdir: false });
+const testDb = workspace.openPersonaDb({ personaId: 'test' });
+const testLogger = workspace.logger;
+
+afterAll((): void => { workspace.cleanup(); });
 
 let toolName = '';
 let toolDescription = '';
@@ -54,6 +61,8 @@ beforeAll(async (): Promise<void> => {
           };
         },
       },
+      logger: testLogger,
+      db: testDb,
     },
   });
   removedLines = Number(result.removedLines ?? -1);
@@ -62,7 +71,7 @@ beforeAll(async (): Promise<void> => {
   try {
     await tool.execute({
       input: { path: 'src/app.ts', endLine: 5, content: 'new' },
-      context: { runtime: { invoke: async (): Promise<Record<string, unknown>> => ({}) } },
+      context: { runtime: { invoke: async (): Promise<Record<string, unknown>> => ({}) }, logger: testLogger, db: testDb },
     });
   } catch (error) {
     missingStartLineError = (error as Error).message;
@@ -71,7 +80,7 @@ beforeAll(async (): Promise<void> => {
   try {
     await tool.execute({
       input: { path: 'src/app.ts', startLine: 5, content: 'new' },
-      context: { runtime: { invoke: async (): Promise<Record<string, unknown>> => ({}) } },
+      context: { runtime: { invoke: async (): Promise<Record<string, unknown>> => ({}) }, logger: testLogger, db: testDb },
     });
   } catch (error) {
     missingEndLineError = (error as Error).message;
@@ -80,7 +89,7 @@ beforeAll(async (): Promise<void> => {
   try {
     await tool.execute({
       input: { path: 'src/app.ts', startLine: 'five', endLine: 7, content: 'new' },
-      context: { runtime: { invoke: async (): Promise<Record<string, unknown>> => ({}) } },
+      context: { runtime: { invoke: async (): Promise<Record<string, unknown>> => ({}) }, logger: testLogger, db: testDb },
     });
   } catch (error) {
     invalidStartLineTypeError = (error as Error).message;
@@ -89,7 +98,7 @@ beforeAll(async (): Promise<void> => {
   try {
     await tool.execute({
       input: { path: 'src/app.ts', startLine: 10, endLine: 5, content: 'new' },
-      context: { runtime: { invoke: async (): Promise<Record<string, unknown>> => ({}) } },
+      context: { runtime: { invoke: async (): Promise<Record<string, unknown>> => ({}) }, logger: testLogger, db: testDb },
     });
   } catch (error) {
     startAfterEndError = (error as Error).message;
@@ -98,7 +107,7 @@ beforeAll(async (): Promise<void> => {
   try {
     await tool.execute({
       input: { path: 'src/app.ts', startLine: 5, endLine: 7 },
-      context: { runtime: { invoke: async (): Promise<Record<string, unknown>> => ({}) } },
+      context: { runtime: { invoke: async (): Promise<Record<string, unknown>> => ({}) }, logger: testLogger, db: testDb },
     });
   } catch (error) {
     missingContentError = (error as Error).message;

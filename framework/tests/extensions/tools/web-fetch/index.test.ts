@@ -1,6 +1,13 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createWebFetchTool } from '@extensions/tools/web-fetch/index';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
+
+const workspace = createTestWorkspaceFromFixture({ fixtureName: 'minimal-protege', tempPrefix: 'protege-web-fetch-', chdir: false });
+const testDb = workspace.openPersonaDb({ personaId: 'test' });
+const testLogger = workspace.logger;
+
+afterAll((): void => { workspace.cleanup(); });
 
 let toolName = '';
 let schemaType = '';
@@ -41,6 +48,8 @@ beforeAll(async (): Promise<void> => {
           };
         },
       },
+      logger: testLogger,
+      db: testDb,
     },
   });
   responseStatus = Number(result.status ?? -1);
@@ -52,6 +61,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({}),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch (error) {
@@ -67,6 +78,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({}),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch (error) {

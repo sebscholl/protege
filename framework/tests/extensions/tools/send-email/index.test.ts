@@ -1,10 +1,17 @@
 import { createTransport } from 'nodemailer';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   createSendEmailTool,
   readSendEmailToolConfig,
 } from '@extensions/tools/send-email/index';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
+
+const workspace = createTestWorkspaceFromFixture({ fixtureName: 'minimal-protege', tempPrefix: 'protege-send-email-', chdir: false });
+const testDb = workspace.openPersonaDb({ personaId: 'test' });
+const testLogger = workspace.logger;
+
+afterAll((): void => { workspace.cleanup(); });
 
 let toolName = '';
 let schemaType = '';
@@ -88,6 +95,8 @@ beforeAll(async (): Promise<void> => {
           };
         },
       },
+      logger: testLogger,
+      db: testDb,
     },
   });
 
@@ -101,6 +110,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'unused' }),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch (error) {
@@ -118,6 +129,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'unused' }),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch (error) {
@@ -135,6 +148,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'ok-1' }),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
     plusAddressAccepted = true;
@@ -153,6 +168,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'ok-2' }),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
     subdomainAddressAccepted = true;
@@ -171,6 +188,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'ok-3' }),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
     mixedCaseAddressAccepted = true;
@@ -189,6 +208,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'ok-4' }),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
     localhostAddressAccepted = true;
@@ -207,6 +228,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'unused' }),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch (error) {
@@ -224,6 +247,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'unused' }),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch (error) {
@@ -241,6 +266,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'unused' }),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch (error) {
@@ -271,6 +298,8 @@ beforeAll(async (): Promise<void> => {
             return { messageId: 'threading-mode-forwarded' };
           },
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch {
@@ -289,6 +318,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'unused' }),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch (error) {
@@ -345,6 +376,7 @@ beforeAll(async (): Promise<void> => {
             return { messageId: 'attachment-forwarded' };
           },
         },
+        db: testDb,
       },
     });
   } catch {
@@ -367,6 +399,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({ messageId: 'unused' }),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch (error) {

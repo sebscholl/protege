@@ -63,6 +63,8 @@ beforeAll(async (): Promise<void> => {
           return {};
         },
       },
+      logger: workspace.logger,
+      db: workspace.openPersonaDb({ personaId: 'test' }),
     },
   });
 

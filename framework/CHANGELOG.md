@@ -2,6 +2,16 @@
 
 ## 0.0.1-alpha.6 — 2026-04-09
 
+### Added
+
+- `search_email` tool — searches stored emails by full-text query, sender, recipient, subject, direction, or date range. Returns full message records including body, metadata, and attachments.
+- `HarnessToolExecutionContext` now includes `db` and `logger` as required fields, giving tools direct access to the persona's temporal database and structured logging.
+- `TestWorkspace` exposes `openPersonaDb()` and `logger` for real database and logger instances in tests.
+
+### Changed
+
+- `logger` is now required (previously optional) on `HarnessToolExecutionContext`, `runHarnessForPersistedInboundMessage`, `runHarnessForInboundMessage`, `persistInboundMessageForRuntime`, `SchedulerRunExecutor`, and `runNextQueuedResponsibility`.
+
 ### Fixed
 
 - `normalizeMessageId` no longer lowercases Message-IDs. The original case is preserved in storage and outbound headers (In-Reply-To, References), fixing broken Gmail threading where replies started new threads instead of continuing the original conversation.

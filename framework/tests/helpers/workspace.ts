@@ -1,7 +1,13 @@
+import type { ProtegeDatabase } from '@engine/shared/database';
+import type { GatewayLogger } from '@engine/gateway/types';
+
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { initializeDatabase } from '@engine/shared/database';
+import { resolveMigrationsDirPath } from '@engine/harness/runtime';
+import { createUnifiedLogger } from '@engine/shared/logger';
 import { writeTestConfigFiles } from '@tests/helpers/config';
 
 /**
@@ -15,6 +21,8 @@ export type TestFilePayload = string | Record<string, unknown>;
 export type TestWorkspace = {
   tempRootPath: string;
   previousCwd: string;
+  logger: GatewayLogger;
+  openPersonaDb: (args: { personaId: string }) => ProtegeDatabase;
   patchConfigFiles: (files: Record<string, string | Record<string, unknown>>) => void;
   patchExtensionsManifest: (manifestPatch: Record<string, unknown>) => void;
   patchPersona: (
@@ -125,9 +133,29 @@ export function createTestWorkspaceFromFixture(
     process.chdir(tempRootPath);
   }
 
+  const openedDbs: ProtegeDatabase[] = [];
+
+  function openPersonaDb(
+    dbArgs: { personaId: string },
+  ): ProtegeDatabase {
+    const dbPath = join(tempRootPath, 'memory', dbArgs.personaId, 'temporal.db');
+    const db = initializeDatabase({
+      databasePath: dbPath,
+      migrationsDirPath: resolveMigrationsDirPath(),
+    });
+    openedDbs.push(db);
+    return db;
+  }
+
   return {
     tempRootPath,
     previousCwd,
+    logger: createUnifiedLogger({
+      logsDirPath: join(tempRootPath, 'tmp', 'logs'),
+      scope: 'test',
+      emitToConsole: false,
+    }),
+    openPersonaDb,
     patchConfigFiles: (
       files,
     ): void => {
@@ -181,6 +209,9 @@ export function createTestWorkspaceFromFixture(
       });
     },
     cleanup: (): void => {
+      for (const db of openedDbs) {
+        try { db.close(); } catch { /* already closed */ }
+      }
       if (process.cwd() === tempRootPath) {
         process.chdir(previousCwd);
       }

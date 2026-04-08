@@ -1,10 +1,17 @@
 import { createTransport } from 'nodemailer';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   executeRegisteredTool,
   loadToolRegistry,
 } from '@engine/harness/tools/registry';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
+
+const workspace = createTestWorkspaceFromFixture({ fixtureName: 'minimal-protege', tempPrefix: 'protege-tool-exec-', chdir: false });
+const testDb = workspace.openPersonaDb({ personaId: 'test' });
+const testLogger = workspace.logger;
+
+afterAll((): void => { workspace.cleanup(); });
 
 let sentMessageId = '';
 let toolNotFoundMessage = '';
@@ -59,6 +66,8 @@ beforeAll(async (): Promise<void> => {
           };
         },
       },
+      logger: testLogger,
+      db: testDb,
     },
   });
   sentMessageId = String(result.messageId ?? '');
@@ -85,6 +94,8 @@ beforeAll(async (): Promise<void> => {
           };
         },
       },
+      logger: testLogger,
+      db: testDb,
     },
   });
   readFileContent = String(readResult.content ?? '');
@@ -111,6 +122,8 @@ beforeAll(async (): Promise<void> => {
           };
         },
       },
+      logger: testLogger,
+      db: testDb,
     },
   });
   globPathsCount = Array.isArray(globResult.paths) ? globResult.paths.length : -1;
@@ -141,6 +154,8 @@ beforeAll(async (): Promise<void> => {
           };
         },
       },
+      logger: testLogger,
+      db: testDb,
     },
   });
   shellExitCode = Number(shellResult.exitCode ?? -1);
@@ -154,6 +169,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({}),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch (error) {

@@ -1,12 +1,19 @@
-import { beforeAll, describe, expect, it } from 'vitest';
-
-import { HarnessProviderError } from '@engine/harness/providers/contract';
 import type { HarnessProviderAdapter } from '@engine/harness/providers/contract';
 import type { HarnessProviderGenerateRequest } from '@engine/harness/providers/contract';
+
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { HarnessProviderError } from '@engine/harness/providers/contract';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
 import { createOpenAiProviderAdapter } from '@extensions/providers/openai';
 import { executeProviderToolLoop } from '@engine/harness/runtime';
 import { loadToolRegistry } from '@engine/harness/tools/registry';
 import { mswIntercept } from '@tests/network/index';
+
+const workspace = createTestWorkspaceFromFixture({ fixtureName: 'minimal-protege', tempPrefix: 'protege-tool-loop-', chdir: false });
+const testDb = workspace.openPersonaDb({ personaId: 'test' });
+
+afterAll((): void => { workspace.cleanup(); });
 
 let maxTurnsErrorCode = '';
 let unknownToolErrorMessage = '';
@@ -87,6 +94,7 @@ beforeAll(async (): Promise<void> => {
           },
           error: (): void => undefined,
         },
+        db: testDb,
       },
     });
   } catch (error) {
@@ -141,6 +149,7 @@ beforeAll(async (): Promise<void> => {
             }
           },
         },
+        db: testDb,
       },
     });
   } catch (error) {
@@ -235,6 +244,7 @@ beforeAll(async (): Promise<void> => {
         },
         error: (): void => undefined,
       },
+      db: testDb,
     },
   });
   multiToolResponseText = multiToolResult.responseText;
@@ -326,6 +336,7 @@ beforeAll(async (): Promise<void> => {
             }
           },
         },
+        db: testDb,
       },
     });
   } catch (error) {
@@ -454,6 +465,7 @@ beforeAll(async (): Promise<void> => {
         info: (): void => undefined,
         error: (): void => undefined,
       },
+      db: testDb,
     },
   })).responseText;
 
@@ -544,6 +556,7 @@ beforeAll(async (): Promise<void> => {
         info: (): void => undefined,
         error: (): void => undefined,
       },
+      db: testDb,
     },
   });
 
@@ -619,6 +632,7 @@ beforeAll(async (): Promise<void> => {
         info: (): void => undefined,
         error: (): void => undefined,
       },
+      db: testDb,
     },
     persistToolEvent: (
       event: {

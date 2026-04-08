@@ -94,18 +94,20 @@ beforeAll(async (): Promise<void> => {
 
   mswIntercept({ fixtureKey: 'openai/chat-completions/200' });
 
-  persistInboundMessageForRuntime({ message: personaAMessage });
-  persistInboundMessageForRuntime({ message: personaBMessage });
+  persistInboundMessageForRuntime({ message: personaAMessage, logger: workspace.logger });
+  persistInboundMessageForRuntime({ message: personaBMessage, logger: workspace.logger });
 
   await Promise.all([
     runHarnessForPersistedInboundMessage({
       message: personaAMessage,
       senderAddress: 'protege@localhost',
-    }),
+    
+      logger: workspace.logger,}),
     runHarnessForPersistedInboundMessage({
       message: personaBMessage,
       senderAddress: 'protege@localhost',
-    }),
+    
+      logger: workspace.logger,}),
   ]);
 
   personaADatabasePath = join(tempRootPath, 'memory', 'persona-a', 'temporal.db');

@@ -1,6 +1,13 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createShellTool } from '@extensions/tools/shell/index';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
+
+const workspace = createTestWorkspaceFromFixture({ fixtureName: 'minimal-protege', tempPrefix: 'protege-shell-', chdir: false });
+const testDb = workspace.openPersonaDb({ personaId: 'test' });
+const testLogger = workspace.logger;
+
+afterAll((): void => { workspace.cleanup(); });
 
 let toolName = '';
 let schemaType = '';
@@ -46,6 +53,8 @@ beforeAll(async (): Promise<void> => {
           };
         },
       },
+      logger: testLogger,
+      db: testDb,
     },
   });
   exitCode = Number(result.exitCode ?? -1);
@@ -59,6 +68,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({}),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch (error) {

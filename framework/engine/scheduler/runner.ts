@@ -40,7 +40,7 @@ export type SchedulerRunExecutor = (
     message: InboundNormalizedMessage;
     senderAddress: string;
     invokeRuntimeAction?: HarnessRuntimeActionInvoker;
-    logger?: GatewayLogger;
+    logger: GatewayLogger;
     correlationId?: string;
   },
 ) => Promise<HarnessRunResult>;
@@ -64,7 +64,7 @@ export async function runNextQueuedResponsibility(
     db: ProtegeDatabase;
     personaId?: string;
     roots?: PersonaRoots;
-    logger?: GatewayLogger;
+    logger: GatewayLogger;
     invokeRuntimeAction?: HarnessRuntimeActionInvoker;
     createRuntimeActionInvoker?: (
       args: {
@@ -88,7 +88,7 @@ export async function runNextQueuedResponsibility(
       status: 'idle',
     };
   }
-  args.logger?.info({
+  args.logger.info({
     event: 'scheduler.run.claimed',
     context: {
       personaId: run.personaId,
@@ -111,7 +111,7 @@ export async function runNextQueuedResponsibility(
       errorMessage,
       failureCategory: 'config',
     });
-    args.logger?.error({
+    args.logger.error({
       event: 'scheduler.run.failed',
       context: {
         personaId: run.personaId,
@@ -164,7 +164,7 @@ export async function runNextQueuedResponsibility(
     personaMailboxIdentity,
   });
   const executeRun = args.executeRun ?? runHarnessForInboundMessage;
-  args.logger?.info({
+  args.logger.info({
     event: 'scheduler.run.started',
     context: {
       personaId: run.personaId,
@@ -193,7 +193,7 @@ export async function runNextQueuedResponsibility(
       inboundMessageId,
       outboundMessageId: result.responseMessageId,
     });
-    args.logger?.info({
+    args.logger.info({
       event: 'scheduler.run.completed',
       context: {
         personaId: run.personaId,
@@ -231,7 +231,7 @@ export async function runNextQueuedResponsibility(
       responsibility,
       errorMessage,
     });
-    args.logger?.error({
+    args.logger.error({
       event: 'scheduler.run.failed',
       context: {
         personaId: run.personaId,

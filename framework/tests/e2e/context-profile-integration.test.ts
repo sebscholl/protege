@@ -138,11 +138,13 @@ beforeAll(async (): Promise<void> => {
   await runHarnessForPersistedInboundMessage({
     message: createEmailInboundMessage(),
     senderAddress: 'agent@example.com',
-  });
+  
+    logger: workspace.logger,});
   await runHarnessForInboundMessage({
     message: createResponsibilityInboundMessage(),
     senderAddress: 'agent@example.com',
-  });
+  
+    logger: workspace.logger,});
 
   emailProfileSystemMessage = readSystemMessageText({
     messages: requestMessagesByCall[0] ?? [],

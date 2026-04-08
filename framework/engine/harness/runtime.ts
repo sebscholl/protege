@@ -64,7 +64,7 @@ export type HarnessRuntimeActionInvoker = (
 export function persistInboundMessageForRuntime(
   args: {
     message: InboundNormalizedMessage;
-    logger?: GatewayLogger;
+    logger: GatewayLogger;
     correlationId?: string;
   },
 ): void {
@@ -78,7 +78,7 @@ export function persistInboundMessageForRuntime(
         message: args.message,
       },
     });
-    args.logger?.info({
+    args.logger.info({
       event: 'harness.inbound.persisted',
       context: {
         correlationId: args.correlationId ?? null,
@@ -101,7 +101,7 @@ export async function runHarnessForPersistedInboundMessage(
     senderAddress: string;
     invokeRuntimeAction?: HarnessRuntimeActionInvoker;
     suppressFinalResponsePersistenceWhenActions?: string[];
-    logger?: GatewayLogger;
+    logger: GatewayLogger;
     correlationId?: string;
   },
 ): Promise<HarnessRunResult> {
@@ -111,7 +111,7 @@ export async function runHarnessForPersistedInboundMessage(
   try {
     const runId = randomUUID();
     let runStepIndex = 0;
-    args.logger?.info({
+    args.logger.info({
       event: 'harness.inference.started',
       context: {
         correlationId: args.correlationId ?? null,
@@ -151,6 +151,7 @@ export async function runHarnessForPersistedInboundMessage(
       toolContext: createToolExecutionContext({
         invokeRuntimeAction: args.invokeRuntimeAction,
         logger: args.logger,
+        db,
         correlationId: args.correlationId,
       }),
       registry,
@@ -211,7 +212,7 @@ export async function runHarnessForPersistedInboundMessage(
         },
       });
     }
-    args.logger?.info({
+    args.logger.info({
       event: 'harness.inference.completed',
       context: {
         correlationId: args.correlationId ?? null,
@@ -242,7 +243,7 @@ export async function runHarnessForInboundMessage(
     senderAddress: string;
     invokeRuntimeAction?: HarnessRuntimeActionInvoker;
     suppressFinalResponsePersistenceWhenActions?: string[];
-    logger?: GatewayLogger;
+    logger: GatewayLogger;
     correlationId?: string;
   },
 ): Promise<HarnessRunResult> {
@@ -626,7 +627,8 @@ export function toErrorStackPreview(
 export function createToolExecutionContext(
   args: {
     invokeRuntimeAction?: HarnessRuntimeActionInvoker;
-    logger?: GatewayLogger;
+    logger: GatewayLogger;
+    db: ProtegeDatabase;
     correlationId?: string;
   },
 ): HarnessToolExecutionContext {
@@ -648,6 +650,7 @@ export function createToolExecutionContext(
       },
     },
     logger: args.logger,
+    db: args.db,
   };
   Object.assign(context, {
     __correlationId: args.correlationId,

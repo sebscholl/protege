@@ -104,19 +104,23 @@ beforeAll(async (): Promise<void> => {
 
   persistInboundMessageForRuntime({
     message: firstInboundMessage,
+    logger: workspace.logger,
   });
   await runHarnessForPersistedInboundMessage({
     message: firstInboundMessage,
     senderAddress: 'protege@localhost',
-  });
+  
+    logger: workspace.logger,});
 
   persistInboundMessageForRuntime({
     message: secondInboundMessage,
+    logger: workspace.logger,
   });
   await runHarnessForPersistedInboundMessage({
     message: secondInboundMessage,
     senderAddress: 'protege@localhost',
-  });
+  
+    logger: workspace.logger,});
 
   capturedSecondRequestMessages = requestMessagesByCall[1] ?? [];
   temporalDbPath = join(

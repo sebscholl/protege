@@ -6,6 +6,11 @@ import {
   mergeRecordWithOverride,
   resolveWebSearchToolConfig,
 } from '@extensions/tools/web-search/index';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
+
+const workspace = createTestWorkspaceFromFixture({ fixtureName: 'minimal-protege', tempPrefix: 'protege-web-search-', chdir: false });
+const testDb = workspace.openPersonaDb({ personaId: 'test' });
+const testLogger = workspace.logger;
 
 let toolName = '';
 let runtimeAction = '';
@@ -50,6 +55,8 @@ beforeAll(async (): Promise<void> => {
           };
         },
       },
+      logger: testLogger,
+      db: testDb,
     },
   });
   runtimeStatus = Number(result.status ?? -1);
@@ -61,6 +68,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({}),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch (error) {
@@ -84,6 +93,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({}),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch (error) {
@@ -124,6 +135,7 @@ beforeAll(async (): Promise<void> => {
 afterAll((): void => {
   delete process.env.PERPLEXITY_API_KEY;
   delete process.env.TAVILY_API_KEY;
+  workspace.cleanup();
 });
 
 describe('web_search tool', () => {

@@ -1,4 +1,5 @@
 import type { GatewayLogger } from '@engine/gateway/types';
+import type { ProtegeDatabase } from '@engine/shared/database';
 
 /**
  * Represents one callable tool declaration exposed to provider adapters.
@@ -32,5 +33,6 @@ export type HarnessToolExecutionContext = {
       },
     ) => Promise<Record<string, unknown>>;
   };
-  logger?: GatewayLogger;
+  logger: GatewayLogger;
+  db: ProtegeDatabase;
 };

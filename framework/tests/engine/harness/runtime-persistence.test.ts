@@ -38,7 +38,8 @@ beforeAll((): void => {
     },
   });
 
-  persistInboundMessageForRuntime({ message });
+  persistInboundMessageForRuntime({
+    logger: workspace.logger, message });
 
   temporalDbPath = join(tempRootPath, 'memory', message.personaId as string, 'temporal.db');
   databaseCreated = existsSync(temporalDbPath);

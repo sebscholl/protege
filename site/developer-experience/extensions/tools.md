@@ -4,7 +4,7 @@ Tools are the actions your agent can take during an inference run. When the LLM 
 
 ## Built-In Tools
 
-Protege ships with nine tools that cover file operations, web access, shell execution, and email:
+Protege ships with ten tools that cover file operations, web access, shell execution, and email:
 
 ### `send-email` — Send outbound email
 
@@ -25,6 +25,24 @@ The most important tool. This is how your agent replies to messages and communic
 The `threadingMode` field controls email threading:
 - `reply_current` (default) — replies in the same thread as the incoming message
 - `new_thread` — starts a fresh email thread
+
+### `search-email` — Search stored emails
+
+Searches the persona's email history stored in the local temporal database. Supports full-text search across subject and body, plus structured filters for sender, recipient, subject, direction, and date range. Returns full message records including body, metadata, and attachments.
+
+```json
+// Tool name exposed to the LLM: search_email
+// Reads directly from persona temporal.db
+{
+  "query": "deployment pipeline",
+  "from": "alice@example.com",
+  "direction": "inbound",
+  "after": "2026-04-01T00:00:00.000Z",
+  "limit": 10
+}
+```
+
+All parameters are optional, but at least one filter is required. The `query` parameter uses SQLite FTS5 full-text search — input is automatically sanitized to prevent operator injection.
 
 ### `web-search` — Search the web
 
@@ -122,7 +140,7 @@ The shell tool runs with the same permissions as the Protege process. See [Secur
 
 ```json
 {
-  "tools": ["shell", "read-file", "write-file", "send-email", "web-search"]
+  "tools": ["shell", "read-file", "write-file", "send-email", "search-email", "web-search"]
 }
 ```
 
@@ -151,6 +169,7 @@ The manifest uses kebab-case names (`web-search`), but the tool name exposed to 
 | Manifest Name | LLM Tool Name | Runtime Action |
 |--------------|---------------|----------------|
 | `send-email` | `send_email` | `email.send` |
+| `search-email` | `search_email` | — (direct db) |
 | `web-search` | `web_search` | `web.search` |
 | `web-fetch` | `web_fetch` | `web.fetch` |
 | `shell` | `shell` | `shell.exec` |

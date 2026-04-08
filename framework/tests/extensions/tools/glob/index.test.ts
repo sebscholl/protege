@@ -1,6 +1,13 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createGlobTool } from '@extensions/tools/glob/index';
+import { createTestWorkspaceFromFixture } from '@tests/helpers/workspace';
+
+const workspace = createTestWorkspaceFromFixture({ fixtureName: 'minimal-protege', tempPrefix: 'protege-glob-', chdir: false });
+const testDb = workspace.openPersonaDb({ personaId: 'test' });
+const testLogger = workspace.logger;
+
+afterAll((): void => { workspace.cleanup(); });
 
 let toolName = '';
 let schemaType = '';
@@ -37,6 +44,8 @@ beforeAll(async (): Promise<void> => {
           };
         },
       },
+      logger: testLogger,
+      db: testDb,
     },
   });
   returnedPathCount = Array.isArray(result.paths) ? result.paths.length : 0;
@@ -48,6 +57,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({ paths: [] }),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch (error) {
@@ -64,6 +75,8 @@ beforeAll(async (): Promise<void> => {
         runtime: {
           invoke: async (): Promise<Record<string, unknown>> => ({ paths: [] }),
         },
+        logger: testLogger,
+        db: testDb,
       },
     });
   } catch (error) {

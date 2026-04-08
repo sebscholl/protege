@@ -224,7 +224,8 @@ beforeAll(async (): Promise<void> => {
           invokedActions: [],
         };
       },
-    }),
+    
+      logger: workspace.logger,}),
     runNextQueuedResponsibility({
       db: db as ProtegeDatabase,
       roots,
@@ -237,7 +238,8 @@ beforeAll(async (): Promise<void> => {
         responseMessageId: '<overlap-second@localhost>',
         invokedActions: [],
       }),
-    }),
+    
+      logger: workspace.logger,}),
   ]);
   overlapFirstRunStatus = overlapResultA.status;
   overlapSecondRunStatus = overlapResultB.status;

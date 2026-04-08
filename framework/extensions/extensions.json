@@ -15,7 +15,8 @@
     "edit-file",
     "web-fetch",
     "web-search",
-    "send-email"
+    "send-email",
+    "search-email"
   ],
   "hooks": [
     {

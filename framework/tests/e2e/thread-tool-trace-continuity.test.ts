@@ -156,6 +156,7 @@ beforeAll(async (): Promise<void> => {
 
   persistInboundMessageForRuntime({
     message: inboundTurnOne,
+    logger: workspace.logger,
   });
   await runHarnessForPersistedInboundMessage({
     message: inboundTurnOne,
@@ -163,10 +164,12 @@ beforeAll(async (): Promise<void> => {
     invokeRuntimeAction: async (): Promise<Record<string, unknown>> => ({
       messageId: '<e2e-runtime-action-1@example.com>',
     }),
-  });
+  
+    logger: workspace.logger,});
 
   persistInboundMessageForRuntime({
     message: inboundTurnTwo,
+    logger: workspace.logger,
   });
   await runHarnessForPersistedInboundMessage({
     message: inboundTurnTwo,
@@ -174,7 +177,8 @@ beforeAll(async (): Promise<void> => {
     invokeRuntimeAction: async (): Promise<Record<string, unknown>> => ({
       messageId: '<e2e-runtime-action-2@example.com>',
     }),
-  });
+  
+    logger: workspace.logger,});
 
   const db = new Database(
     join(tempRootPath, 'memory', inboundTurnOne.personaId as string, 'temporal.db'),

@@ -141,6 +141,7 @@ beforeAll(async (): Promise<void> => {
 
   persistInboundMessageForRuntime({
     message: firstInboundMessage,
+    logger: workspace.logger,
   });
   await runHarnessForPersistedInboundMessage({
     message: firstInboundMessage,
@@ -148,10 +149,12 @@ beforeAll(async (): Promise<void> => {
     invokeRuntimeAction: async (): Promise<Record<string, unknown>> => ({
       messageId: '<runtime-action-send@example.com>',
     }),
-  });
+  
+    logger: workspace.logger,});
 
   persistInboundMessageForRuntime({
     message: secondInboundMessage,
+    logger: workspace.logger,
   });
   await runHarnessForPersistedInboundMessage({
     message: secondInboundMessage,
@@ -159,7 +162,8 @@ beforeAll(async (): Promise<void> => {
     invokeRuntimeAction: async (): Promise<Record<string, unknown>> => ({
       messageId: '<runtime-action-send-2@example.com>',
     }),
-  });
+  
+    logger: workspace.logger,});
 
   temporalDbPath = join(
     tempRootPath,
